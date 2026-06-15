@@ -1,4 +1,4 @@
-package com.repertorio.hermandad.config;
+package com.repertorio.hermandad.adapter.config;
 
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;

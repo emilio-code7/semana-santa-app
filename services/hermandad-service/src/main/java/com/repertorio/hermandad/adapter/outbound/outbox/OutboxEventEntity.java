@@ -1,4 +1,4 @@
-package com.repertorio.hermandad.domain.model;
+package com.repertorio.hermandad.adapter.outbound.outbox;
 
 import jakarta.persistence.*;
 import lombok.Getter;

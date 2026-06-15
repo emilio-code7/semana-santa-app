@@ -1,8 +1,8 @@
-package com.repertorio.hermandad.api.controller;
+package com.repertorio.hermandad.adapter.inbound.rest.controller;
 
-import com.repertorio.hermandad.api.dto.AddMemberRequest;
-import com.repertorio.hermandad.api.dto.CreateHermandadRequest;
-import com.repertorio.hermandad.api.dto.HermandadResponse;
+import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
+import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
+import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.application.service.HermandadService;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import jakarta.validation.Valid;

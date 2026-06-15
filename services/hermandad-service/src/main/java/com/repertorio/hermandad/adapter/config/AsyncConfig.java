@@ -1,4 +1,4 @@
-package com.repertorio.hermandad.config;
+package com.repertorio.hermandad.adapter.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

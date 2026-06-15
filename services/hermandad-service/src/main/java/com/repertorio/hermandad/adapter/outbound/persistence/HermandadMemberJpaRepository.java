@@ -1,4 +1,13 @@
 package com.repertorio.hermandad.adapter.outbound.persistence;
 
-public interface HermandadMemberJpaRepository {
+import com.repertorio.hermandad.domain.model.HermandadMember;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface HermandadMemberJpaRepository extends JpaRepository<HermandadMember, UUID> {
+    List<HermandadMember> findByHermandadId(UUID id);
 }

@@ -1,6 +1,5 @@
-package com.repertorio.hermandad.adapter.outbound.outbox.;
+package com.repertorio.hermandad.adapter.outbound.outbox;
 
-import com.repertorio.hermandad.adapter.outbound.outbox.OutboxEventEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

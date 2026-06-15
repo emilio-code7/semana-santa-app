@@ -1,4 +1,7 @@
 package com.repertorio.hermandad.application.port;
 
-public class EventPublisher {
+import java.util.UUID;
+
+public interface EventPublisher {
+    void publish(String aggregateType, UUID aggregateId, String eventType, Object payload);
 }

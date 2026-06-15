@@ -1,4 +1,4 @@
-package com.repertorio.hermandad.api;
+package com.repertorio.hermandad.adapter.inbound.rest;
 
 import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
 import org.springframework.http.HttpStatus;

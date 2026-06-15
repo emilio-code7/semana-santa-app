@@ -1,4 +1,4 @@
-package com.repertorio.hermandad.api.dto;
+package com.repertorio.hermandad.adapter.inbound.rest.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

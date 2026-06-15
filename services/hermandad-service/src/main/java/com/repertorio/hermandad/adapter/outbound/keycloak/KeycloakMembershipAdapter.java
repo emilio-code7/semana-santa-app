@@ -11,7 +11,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class KeycloakMembershipService {
+public class KeycloakMembershipAdapter {
 
     private static final String SEMANA_SANTA_REALM = "semana-santa";
 
