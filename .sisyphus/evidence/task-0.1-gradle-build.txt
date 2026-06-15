@@ -1,0 +1,93 @@
+=== GRADLE PROJECTS OUTPUT ===
+
+> Task :projects
+
+Projects:
+
+------------------------------------------------------------
+Root project 'repertorio'
+------------------------------------------------------------
+
+Root project 'repertorio'
++--- Project ':api-gateway'
++--- Project ':common'
++--- Project ':discovery-server'
++--- Project ':hermandad-service'
++--- Project ':notification-service'
++--- Project ':procesion-service'
++--- Project ':repertorio-service'
+\--- Project ':tracking-service'
+
+To see a list of the tasks of a project, run gradlew <project-path>:tasks
+For example, try running gradlew :api-gateway:tasks
+
+BUILD SUCCESSFUL in 1s
+1 actionable task: 1 executed
+
+=== GRADLE BUILD OUTPUT ===
+> Task :compileJava NO-SOURCE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :assemble UP-TO-DATE
+> Task :check
+> Task :build
+> Task :api-gateway:compileJava NO-SOURCE
+> Task :api-gateway:processResources NO-SOURCE
+> Task :api-gateway:classes UP-TO-DATE
+> Task :api-gateway:jar UP-TO-DATE
+> Task :api-gateway:assemble UP-TO-DATE
+> Task :api-gateway:check
+> Task :api-gateway:build
+> Task :common:compileJava NO-SOURCE
+> Task :common:processResources NO-SOURCE
+> Task :common:classes UP-TO-DATE
+> Task :common:jar UP-TO-DATE
+> Task :common:assemble UP-TO-DATE
+> Task :common:check
+> Task :common:build
+> Task :discovery-server:compileJava NO-SOURCE
+> Task :discovery-server:processResources NO-SOURCE
+> Task :discovery-server:classes UP-TO-DATE
+> Task :discovery-server:jar UP-TO-DATE
+> Task :discovery-server:assemble UP-TO-DATE
+> Task :discovery-server:check
+> Task :discovery-server:build
+> Task :hermandad-service:compileJava NO-SOURCE
+> Task :hermandad-service:processResources NO-SOURCE
+> Task :hermandad-service:classes UP-TO-DATE
+> Task :hermandad-service:jar UP-TO-DATE
+> Task :hermandad-service:assemble UP-TO-DATE
+> Task :hermandad-service:check
+> Task :hermandad-service:build
+> Task :notification-service:compileJava NO-SOURCE
+> Task :notification-service:processResources NO-SOURCE
+> Task :notification-service:classes UP-TO-DATE
+> Task :notification-service:jar UP-TO-DATE
+> Task :notification-service:assemble UP-TO-DATE
+> Task :notification-service:check
+> Task :notification-service:build
+> Task :procesion-service:compileJava NO-SOURCE
+> Task :procesion-service:processResources NO-SOURCE
+> Task :procesion-service:classes UP-TO-DATE
+> Task :procesion-service:jar UP-TO-DATE
+> Task :procesion-service:assemble UP-TO-DATE
+> Task :procesion-service:check
+> Task :procesion-service:build
+> Task :repertorio-service:compileJava NO-SOURCE
+> Task :repertorio-service:processResources NO-SOURCE
+> Task :repertorio-service:classes UP-TO-DATE
+> Task :repertorio-service:jar UP-TO-DATE
+> Task :repertorio-service:assemble UP-TO-DATE
+> Task :repertorio-service:check
+> Task :repertorio-service:build
+> Task :tracking-service:compileJava NO-SOURCE
+> Task :tracking-service:processResources NO-SOURCE
+> Task :tracking-service:classes UP-TO-DATE
+> Task :tracking-service:jar UP-TO-DATE
+> Task :tracking-service:assemble UP-TO-DATE
+> Task :tracking-service:check
+> Task :tracking-service:build
+
+BUILD SUCCESSFUL in 2s
+9 actionable tasks: 9 up-to-date

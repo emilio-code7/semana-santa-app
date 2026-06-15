@@ -1,0 +1,316 @@
+name: repertorio
+services:
+  kafka:
+    profiles:
+      - core
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+        required: true
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_BROKER_ID: "1"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - kafka-broker-api-versions --bootstrap-server localhost:9092
+      timeout: 10s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: confluentinc/cp-kafka:7.4.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9092
+        published: "9092"
+        protocol: tcp
+    restart: unless-stopped
+  kafka-init:
+    profiles:
+      - core
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+        required: true
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo 'Creating Kafka topics...' &&
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic hermandad-events      --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic procesion-events      --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification-commands --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic tracking-events       --partitions 6 --replication-factor 1 &&
+        echo 'All topics created.'
+    image: confluentinc/cp-kafka:7.4.0
+    networks:
+      default: null
+    restart: "no"
+  kafka-ui:
+    profiles:
+      - core
+    container_name: kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+        required: true
+    environment:
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_NAME: local
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://localhost:8080 || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 5
+      start_period: 15s
+    image: provectuslabs/kafka-ui:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8086"
+        protocol: tcp
+    restart: unless-stopped
+  keycloak:
+    profiles:
+      - core
+    command:
+      - start-dev
+      - --import-realm
+    container_name: keycloak
+    environment:
+      KC_DB: dev-file
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:8080/realms/master || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: quay.io/keycloak/keycloak:24.0.3
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8180"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /home/emilio/Proyectos/learning/repertorio/infrastructure/keycloak/realm-export.json
+        target: /opt/keycloak/data/import/realm-export.json
+        read_only: true
+        bind: {}
+  postgres-hermandad:
+    profiles:
+      - core
+    container_name: postgres-hermandad
+    environment:
+      POSTGRES_DB: hermandad_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5432"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: hermandad_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-notification:
+    profiles:
+      - core
+    container_name: postgres-notification
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5436"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: notification_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-procesion:
+    profiles:
+      - core
+    container_name: postgres-procesion
+    environment:
+      POSTGRES_DB: procesion_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5434"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: procesion_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-repertorio:
+    profiles:
+      - core
+    container_name: postgres-repertorio
+    environment:
+      POSTGRES_DB: repertorio_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5433"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: repertorio_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-tracking:
+    profiles:
+      - core
+    container_name: postgres-tracking
+    environment:
+      POSTGRES_DB: tracking_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5435"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: tracking_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  redis:
+    profiles:
+      - core
+    container_name: redis
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: redis:7-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "6379"
+        protocol: tcp
+    restart: unless-stopped
+  zookeeper:
+    profiles:
+      - core
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: "2181"
+      ZOOKEEPER_TICK_TIME: "2000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - echo ruok | nc localhost 2181 | grep imok
+      timeout: 5s
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    image: confluentinc/cp-zookeeper:7.4.0
+    networks:
+      default: null
+    restart: unless-stopped
+networks:
+  default:
+    name: repertorio_default
+volumes:
+  hermandad_db_data:
+    name: repertorio_hermandad_db_data
+  notification_db_data:
+    name: repertorio_notification_db_data
+  procesion_db_data:
+    name: repertorio_procesion_db_data
+  repertorio_db_data:
+    name: repertorio_repertorio_db_data
+  tracking_db_data:
+    name: repertorio_tracking_db_data

@@ -1,0 +1,328 @@
+openapi: 3.0.3
+info:
+  title: Repertorio API
+  version: 0.1.0
+  description: Semana Santa procession management microservice backend
+
+servers:
+  - url: http://localhost:8080
+    description: Local gateway
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/hermandades:
+    post:
+      tags: [Hermandad]
+      summary: Create a hermandad
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHermandadRequest'
+      responses:
+        '201':
+          description: Hermandad created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HermandadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    get:
+      tags: [Hermandad]
+      summary: List all hermandades
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: city
+          in: query
+          schema:
+            type: string
+          description: Filter by city
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: createdAt,desc
+          description: Sort field and direction, e.g. foundedYear,desc
+      responses:
+        '200':
+          description: Paginated list of hermandades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedHermandadResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/hermandades/{hermandadId}:
+    get:
+      tags: [Hermandad]
+      summary: Get hermandad by ID
+      parameters:
+        - $ref: '#/components/parameters/HermandadId'
+      responses:
+        '200':
+          description: Hermandad found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HermandadResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/hermandades/{hermandadId}/members:
+    post:
+      tags: [Members]
+      summary: Add a member to hermandad
+      parameters:
+        - $ref: '#/components/parameters/HermandadId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMemberRequest'
+      responses:
+        '201':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HermandadMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    get:
+      tags: [Members]
+      summary: Get all members of a hermandad
+      parameters:
+        - $ref: '#/components/parameters/HermandadId'
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembersCache'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/hermandades/{hermandadId}/with-members:
+    get:
+      tags: [Hermandad]
+      summary: Get hermandad with all its members
+      parameters:
+        - $ref: '#/components/parameters/HermandadId'
+      responses:
+        '200':
+          description: Hermandad with members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HermandadWithMembersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: http://localhost:8180/realms/semana-santa/protocol/openid-connect/token
+          scopes:
+            openid: Default scope
+
+  parameters:
+    HermandadId:
+      name: hermandadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  schemas:
+    CreateHermandadRequest:
+      type: object
+      required:
+        - name
+        - city
+        - foundedYear
+      properties:
+        name:
+          type: string
+          example: Hermandad de la Macarena
+          minLength: 1
+          maxLength: 255
+        city:
+          type: string
+          example: Sevilla
+          minLength: 1
+          maxLength: 255
+        foundedYear:
+          type: integer
+          example: 1932
+          minimum: 1
+
+    HermandadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        foundedYear:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    HermandadMemberResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        hermandadId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [HERMANDAD_ADMIN, BAND_DIRECTOR, MUSICIAN]
+        joinedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MembersCache:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/HermandadMemberResponse'
+
+    HermandadWithMembersResponse:
+      type: object
+      properties:
+        hermandad:
+          $ref: '#/components/schemas/HermandadResponse'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/HermandadMemberResponse'
+
+    PagedHermandadResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/HermandadResponse'
+        totalElements:
+          type: integer
+          example: 42
+        totalPages:
+          type: integer
+          example: 3
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+
+    AddMemberRequest:
+      type: object
+      required:
+        - userId
+        - role
+      properties:
+        userId:
+          type: string
+          example: keycloak-user-id-123
+        role:
+          type: string
+          enum: [HERMANDAD_ADMIN, BAND_DIRECTOR, MUSICIAN]
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          example: HERMANDAD_NOT_FOUND
+        message:
+          type: string
+          description: Human-readable error description
+          example: Hermandad with ID 7ea01ed8-32bd-49c2-bd3a-82b5f1b2f716 was not found
+
+  responses:
+    Unauthorized:
+      description: Invalid or missing token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAUTHORIZED
+            message: Invalid or missing token
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: HERMANDAD_NOT_FOUND
+            message: Hermandad with ID 7ea01ed8-32bd-49c2-bd3a-82b5f1b2f716 was not found
+
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: VALIDATION_ERROR
+            message: 'foundedYear must be greater than 0'

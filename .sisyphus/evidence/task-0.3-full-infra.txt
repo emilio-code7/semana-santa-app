@@ -1,0 +1,497 @@
+name: repertorio
+services:
+  elasticsearch:
+    profiles:
+      - full
+    container_name: elasticsearch
+    environment:
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:9200/_cluster/health || exit 1
+      timeout: 10s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9200
+        published: "9200"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: elasticsearch_data
+        target: /usr/share/elasticsearch/data
+        volume: {}
+  grafana:
+    profiles:
+      - full
+    container_name: grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+        required: true
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:3000/api/health || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 5
+      start_period: 15s
+    image: grafana/grafana:10.4.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /home/emilio/Proyectos/learning/repertorio/infrastructure/grafana/provisioning
+        target: /etc/grafana/provisioning
+        read_only: true
+        bind: {}
+  kafka:
+    profiles:
+      - core
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+        required: true
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_BROKER_ID: "1"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - kafka-broker-api-versions --bootstrap-server localhost:9092
+      timeout: 10s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: confluentinc/cp-kafka:7.4.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9092
+        published: "9092"
+        protocol: tcp
+    restart: unless-stopped
+  kafka-init:
+    profiles:
+      - core
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+        required: true
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo 'Creating Kafka topics...' &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic hermandad-events      --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic procesion-events      --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification-commands --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic tracking-events       --partitions 6 --replication-factor 1 &&
+        echo 'All topics created.'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - exit 0
+      timeout: 5s
+      interval: 5s
+      retries: 1
+    image: confluentinc/cp-kafka:7.4.0
+    networks:
+      default: null
+    restart: "no"
+  kafka-ui:
+    profiles:
+      - core
+    container_name: kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+        required: true
+    environment:
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_NAME: local
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://localhost:8080 || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 5
+      start_period: 15s
+    image: provectuslabs/kafka-ui
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8086"
+        protocol: tcp
+    restart: unless-stopped
+  keycloak:
+    profiles:
+      - core
+    command:
+      - start-dev
+      - --import-realm
+    container_name: keycloak
+    environment:
+      KC_DB: dev-file
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:8080/realms/master || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: quay.io/keycloak/keycloak:24.0.3
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8180"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /home/emilio/Proyectos/learning/repertorio/infrastructure/keycloak/realm-export.json
+        target: /opt/keycloak/data/import/realm-export.json
+        read_only: true
+        bind: {}
+  kibana:
+    profiles:
+      - full
+    container_name: kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+        required: true
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:5601/api/status || exit 1
+      timeout: 10s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5601
+        published: "5601"
+        protocol: tcp
+    restart: unless-stopped
+  logstash:
+    profiles:
+      - full
+    container_name: logstash
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+        required: true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:9600 || exit 1
+      timeout: 10s
+      interval: 15s
+      retries: 10
+      start_period: 30s
+    image: docker.elastic.co/logstash/logstash:8.13.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5044
+        published: "5044"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /home/emilio/Proyectos/learning/repertorio/infrastructure/logstash/pipeline/logstash.conf
+        target: /usr/share/logstash/pipeline/logstash.conf
+        read_only: true
+        bind: {}
+  postgres-hermandad:
+    profiles:
+      - core
+    container_name: postgres-hermandad
+    environment:
+      POSTGRES_DB: hermandad_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5432"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: hermandad_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-notification:
+    profiles:
+      - core
+    container_name: postgres-notification
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5436"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: notification_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-procesion:
+    profiles:
+      - core
+    container_name: postgres-procesion
+    environment:
+      POSTGRES_DB: procesion_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5434"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: procesion_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-repertorio:
+    profiles:
+      - core
+    container_name: postgres-repertorio
+    environment:
+      POSTGRES_DB: repertorio_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5433"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: repertorio_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres-tracking:
+    profiles:
+      - core
+    container_name: postgres-tracking
+    environment:
+      POSTGRES_DB: tracking_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5435"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: tracking_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  prometheus:
+    profiles:
+      - full
+    container_name: prometheus
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://localhost:9090/-/healthy || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 5
+      start_period: 10s
+    image: prom/prometheus:v2.51.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9090
+        published: "9090"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /home/emilio/Proyectos/learning/repertorio/infrastructure/prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+        bind: {}
+  redis:
+    profiles:
+      - core
+    container_name: redis
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: redis:7-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "6379"
+        protocol: tcp
+    restart: unless-stopped
+  zipkin:
+    profiles:
+      - full
+    container_name: zipkin
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:9411/health || exit 1
+      timeout: 5s
+      interval: 15s
+      retries: 5
+      start_period: 15s
+    image: openzipkin/zipkin:3
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9411
+        published: "9411"
+        protocol: tcp
+    restart: unless-stopped
+  zookeeper:
+    profiles:
+      - core
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: "2181"
+      ZOOKEEPER_TICK_TIME: "2000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - echo ruok | nc localhost 2181 | grep imok
+      timeout: 5s
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    image: confluentinc/cp-zookeeper:7.4.0
+    networks:
+      default: null
+    restart: unless-stopped
+networks:
+  default:
+    name: repertorio_default
+volumes:
+  elasticsearch_data:
+    name: repertorio_elasticsearch_data
+  hermandad_db_data:
+    name: repertorio_hermandad_db_data
+  notification_db_data:
+    name: repertorio_notification_db_data
+  procesion_db_data:
+    name: repertorio_procesion_db_data
+  repertorio_db_data:
+    name: repertorio_repertorio_db_data
+  tracking_db_data:
+    name: repertorio_tracking_db_data

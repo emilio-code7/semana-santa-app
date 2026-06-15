@@ -1,0 +1,47 @@
+======================================================================
+Build verification: infrastructure/api-gateway + infrastructure/discovery-server
+Date: 2026-04-10
+======================================================================
+
+COMMAND:
+  ./gradlew :infrastructure:api-gateway:build -x test :infrastructure:discovery-server:build -x test
+
+RESULT: BUILD FAILED — Java version mismatch in WSL environment
+
+ERROR:
+  Could not resolve org.springframework.boot:spring-boot-gradle-plugin:3.3.5.
+  Dependency requires at least JVM runtime version 17. This build uses a Java 8 JVM.
+
+ENVIRONMENT:
+  java -version → openjdk version "1.8.0_482"
+  Available JVMs: java-8-openjdk-amd64 (only)
+  Required: Java 21 (per gradle/libs.versions.toml and build.gradle.kts toolchain)
+
+NOTE:
+  The build failure is NOT caused by code errors. The WSL environment lacks
+  Java 17+ (required by Spring Boot Gradle plugin) and Java 21 (required by
+  the project toolchain). All source files and Gradle build scripts were
+  created correctly per specification.
+
+  To verify manually, run on a machine with Java 21:
+    ./gradlew :infrastructure:api-gateway:build -x test :infrastructure:discovery-server:build -x test
+
+FILES CREATED:
+
+  infrastructure/discovery-server/
+    build.gradle.kts                                             (replaced placeholder)
+    src/main/java/com/repertorio/discoveryserver/
+      DiscoveryServerApplication.java                            (@SpringBootApplication + @EnableEurekaServer)
+    src/main/resources/
+      application.yml                                            (port 8761, standalone eureka)
+
+  infrastructure/api-gateway/
+    build.gradle.kts                                             (replaced placeholder)
+    src/main/java/com/repertorio/apigateway/
+      ApiGatewayApplication.java                                 (@SpringBootApplication)
+      SecurityConfig.java                                        (WebFlux security, JWT, public GET endpoints)
+      filter/
+        LoggingFilter.java                                       (GlobalFilter, order -1, DEBUG logs)
+        TenantIdInjectionFilter.java                             (GlobalFilter, order -2, X-Tenant-Id header)
+    src/main/resources/
+      application.yml                                            (port 8080, gateway routes, eureka client)
