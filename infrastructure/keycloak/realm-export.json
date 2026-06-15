@@ -1,0 +1,70 @@
+{
+  "realm": "semana-santa",
+  "enabled": true,
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "HERMANDAD_ADMIN",
+        "composite": false
+      },
+      {
+        "name": "BAND_DIRECTOR",
+        "composite": false
+      },
+      {
+        "name": "MUSICIAN",
+        "composite": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "semana-santa-client",
+      "enabled": true,
+      "secret": "secret",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "hermandad_memberships",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "hermandad_memberships",
+            "claim.name": "hermandad_memberships",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "semana-santa-admin-client",
+      "enabled": true,
+      "secret": "admin-secret",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-semana-santa-admin-client",
+      "enabled": true,
+      "serviceAccountClientId": "semana-santa-admin-client",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users"
+        ]
+      }
+    }
+  ]
+}

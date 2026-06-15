@@ -1,0 +1,63 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/semana-santa
+          jwk-set-uri: http://localhost:8180/realms/semana-santa/protocol/openid-connect/certs
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: hermandad-service
+          uri: lb://hermandad-service
+          predicates:
+            - Path=/api/hermandades/**
+        - id: repertorio-service
+          uri: lb://repertorio-service
+          predicates:
+            - Path=/api/marchas/**
+        - id: procesion-service
+          uri: lb://procesion-service
+          predicates:
+            - Path=/api/procesiones/**
+        - id: tracking-service
+          uri: lb://tracking-service
+          predicates:
+            - Path=/api/tracking/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level [${spring.application.name}] %logger{36} - %msg%n"
