@@ -27,3 +27,4 @@ application-local.properties
 
 # Docker
 docker-compose.override.yml
+.omo/
