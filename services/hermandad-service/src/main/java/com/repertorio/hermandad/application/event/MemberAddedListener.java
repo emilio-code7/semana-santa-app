@@ -1,6 +1,7 @@
 package com.repertorio.hermandad.application.event;
 
 import com.repertorio.hermandad.adapter.outbound.keycloak.KeycloakMembershipAdapter;
+import com.repertorio.hermandad.domain.event.MemberAddedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
