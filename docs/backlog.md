@@ -3,7 +3,8 @@
 Process:
 1. **Sprint planning** — pick backlog items, define acceptance criteria, break into tasks
 2. **Implementation** — TDD (RED → GREEN → refactor), domain-first, vertical slices. Every feature needs a test before code.
-3. **Sprint review** — mark done, decide next sprint
+3. **Commit** — one commit per completed story (acceptance criteria met, all green). Descriptive conventional commit messages in English.
+4. **Sprint review** — mark done, decide next sprint
 
 ---
 
