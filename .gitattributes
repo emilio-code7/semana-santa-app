@@ -1,0 +1,8 @@
+# Normalize all text files to LF
+* text=auto eol=lf
+
+# Explicitly force LF for shell scripts
+*.sh text eol=lf
+
+# Batch files stay CRLF (Windows needs them)
+*.bat text eol=crlf
