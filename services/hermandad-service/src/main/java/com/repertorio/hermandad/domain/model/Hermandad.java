@@ -16,19 +16,14 @@ public class Hermandad {
     @GeneratedValue
     @UuidGenerator
     private UUID id;
-
     @Column(nullable = false, unique = true)
     private String name;
-
     @Column(nullable = false)
     private String city;
-
     @Column(nullable = false)
     private int foundedYear;
-
     @Column
     private String keycloakGroupId;
-
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -44,4 +39,5 @@ public class Hermandad {
     public void prePersist() {
         createdAt = Instant.now();
     }
+
 }

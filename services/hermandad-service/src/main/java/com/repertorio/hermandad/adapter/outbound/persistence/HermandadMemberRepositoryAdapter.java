@@ -18,4 +18,9 @@ public class HermandadMemberRepositoryAdapter implements HermandadMemberReposito
     public List<HermandadMember> findByHermandadId(UUID hermandadId) {
         return jpaRepository.findByHermandadId(hermandadId);
     }
+
+    @Override
+    public HermandadMember save(HermandadMember member) {
+        return jpaRepository.save(member);
+    }
 }

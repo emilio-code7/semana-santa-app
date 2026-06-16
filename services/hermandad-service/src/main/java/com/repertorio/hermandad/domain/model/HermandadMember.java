@@ -2,7 +2,6 @@ package com.repertorio.hermandad.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.io.Serializable;
@@ -12,7 +11,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "hermandad_member")
 @Getter
-@Setter
 public class HermandadMember implements Serializable {
 
     @Id
@@ -42,6 +40,13 @@ public class HermandadMember implements Serializable {
         this.hermandadId = hermandadId;
         this.userId = userId;
         this.role = role;
+    }
+
+    public void changeRole(HermandadRole newRole) {
+        if (this.role == newRole) {
+            throw new IllegalArgumentException("Member already has role " + newRole);
+        }
+        this.role = newRole;
     }
 
     @PrePersist

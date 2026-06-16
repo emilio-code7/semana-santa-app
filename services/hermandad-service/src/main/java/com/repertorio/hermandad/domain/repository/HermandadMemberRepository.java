@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface HermandadMemberRepository {
     List<HermandadMember> findByHermandadId(UUID hermandadId);
+    HermandadMember save(HermandadMember member);
 }
