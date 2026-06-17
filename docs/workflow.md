@@ -1,9 +1,17 @@
 # Development Workflow
 
+## Core Principle
+
+**The user implements, AI only guides/scaffolds.** The AI designs, plans, writes specs, documents, and reminds. The user writes the code. Never implement without explicit confirmation.
+
+**TDD is mandatory:** RED (failing test) → GREEN (minimal code) → refactor. Test before code, always.
+
+---
+
 ## Per-Task Loop
 
 ```
-Ask → Implement → Build & Deploy → Verify → Document → Sync API → Commit
+Ask → Guide → User implements → Build & Deploy → Verify → Document → Sync API → Commit
 ```
 
 Each step must complete before the next. No skipping.
@@ -14,11 +22,12 @@ Each step must complete before the next. No skipping.
 
 ### 0. Ask
 
-Before any work, ask the user for confirmation. Do not proceed without a response.
+Before any work, ask the user for confirmation. Do not proceed without a response. The goal is to remind the user what needs to be done, not to do it for them.
 
-### 1. Implement
+### 1. Guide
 
-- TDD where practical (test before code)
+- AI explains what to build, referencing the plan and backlog
+- AI provides the **test first** (RED) — the user writes the implementation (GREEN)
 - One atomic change per task
 - No scope creep — if something else needs fixing, note it and ask
 

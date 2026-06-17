@@ -31,7 +31,7 @@ public class HermandadMember implements Serializable {
     @Column(nullable = false, updatable = false)
     private Instant joinedAt;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private Instant updatedAt;
 
     protected HermandadMember() {}

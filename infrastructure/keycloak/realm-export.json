@@ -15,6 +15,10 @@
       {
         "name": "MUSICIAN",
         "composite": false
+      },
+      {
+        "name": "CAPATAZ",
+        "composite": false
       }
     ]
   },

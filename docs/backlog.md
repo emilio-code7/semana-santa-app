@@ -10,83 +10,42 @@ Process:
 
 ## Current Sprint
 
-### Sprint 1 — Complete Member Flow (vertical slice)
+### Sprint 2 — Audit Fixes & Member Removal
 
-Close the loop on member management from domain to infrastructure.
+Clean technical debt, add missing error handlers, and complete member CRUD.
 
-#### ~~1. DB unique constraint for members~~ ✅
+---
 
-**As a** developer, **I want** the DB to enforce that a user can't be added twice to the same hermandad, **so that** the invariant is guaranteed even if the application has a bug.
+#### 1. Audit fixes
+
+**As a** developer, **I want** the codebase to have consistent structured error handling, a working `updatedAt` timestamp, and a DB column that fits the payload, **so that** the API is robust and maintainable.
+
+**Items:**
+- Fix `HermandadMember.updatedAt` — remove `updatable = false` so `@PreUpdate` actually persists changes
+- Refactor `GlobalExceptionHandler` to return structured JSON `{code, message}` format across all handlers
+- Add `DataIntegrityViolationException` handler → 409 `CONFLICT`
+- Add `MethodArgumentNotValidException` handler → 400 `VALIDATION_ERROR`
+- Add generic `Exception` fallback → 500 `INTERNAL_ERROR`
+- Bump outbox `payload` column from `VARCHAR(255)` to `TEXT` (Flyway V3)
+
+---
+
+#### 2. Member removal
+
+**As a** API client, **I want** to remove a member via `DELETE /api/hermandades/{hermandadId}/members/{userId}`, **so that** I can undo member additions.
 
 **Acceptance:**
-- Flyway migration adds unique constraint on `(hermandad_id, user_id)` in `hermandad_member`
-- Inserting a duplicate throws a constraint violation at the DB level
-- No application-level duplicate check needed (DB is the source of truth)
+- `DELETE /api/hermandades/{hermandadId}/members/{userId}` → 204 No Content
+- 404 if hermandad or member not found (existing `HermandadMemberNotFoundException`)
+- `MemberRemovedEvent` published via `DomainEventPublisher`
+- Outbox → Kafka topic `hermandad-member-events` (eventType `MEMBER_REMOVED`)
+- TDD: service test verifies delete + event publication
 
 ---
 
-#### ~~2. Wire HermandadService to use EventPublisher port~~ ✅
+### Sprint 1 — Complete ✅
 
-**As a** domain model, **I want** the application service to depend on `EventPublisher` port (not `OutboxEventRepository` directly), **so that** the hexagonal architecture is consistent and the domain doesn't leak infrastructure.
-
-**Acceptance:**
-- `HermandadService` injects `EventPublisher` instead of `OutboxEventRepository`
-- `OutboxEventRepository` is no longer imported or used in `HermandadService`
-- `HermandadService` calls `eventPublisher.publish(...)` for outbox events
-- `ObjectMapper` is no longer used in `HermandadService` (serialization moves to the adapter)
-- `HermandadCreatedEvent` and `OutboxEvent` references are removed from the service
-- Compiles and tests pass
-
----
-
-#### ~~3. Outbox event when a member is added~~ ✅
-
-**As a** member management flow, **I want** an outbox event published when a member is added, **so that** other services can react via Kafka.
-
-**Acceptance:**
-- `HermandadService.addMember()` publishes via `EventPublisher` with eventType `MEMBER_ADDED`
-- `MemberAddedListener` remains for Keycloak sync (async via `ApplicationEventPublisher`)
-- Kafka topic: `hermandad-member-events` (derived from aggregateType `hermandad-member`)
-- **Test**: Unit test for `HermandadService.addMember()` verifies `EventPublisher.publish()` is called with the correct parameters
-
----
-
-#### ~~4. Change member role endpoint~~ ✅
-
-**As a** API client, **I want** to change a member's role via `PATCH /hermandads/{hermandadId}/members/{userId}/role`, **so that** I can update permissions without deleting and re-adding the member.
-
-**Acceptance:**
-- Endpoint: `PATCH /api/hermandades/{hermandadId}/members/{userId}/role`
-- Body: `{ "role": "CAPATAZ" }`
-- 200 OK returns the updated member
-- 404 if hermandad or member not found
-- 400 if role is the same as current (invariant from `changeRole()`)
-- Service loads `HermandadMember` via repository, calls `member.changeRole()`, saves
-
----
-
-#### ~~5. MemberRoleChangedEvent~~ ✅
-
-Domain events now implement `DomainEvent` interface (`aggregateType()`, `aggregateId()`, `eventType()`).
-`MemberRoleChangedEvent` published via `DomainEventPublisher` on role change.
-
----
-
-#### ~~6. Verify end-to-end member flow~~ ✅
-
-**As a** developer, **I want** to verify the full member add flow works end-to-end, **so that** I can be confident the sprint is complete.
-
-Verified:
-- ✅ Create hermandad
-- ✅ Add member → `MemberAddedEvent` in Kafka (`hermandad-member-events`)
-- ✅ Change role → `MemberRoleChangedEvent` in Kafka
-- ❌ Duplicate member → 409 (blocked by missing `DataIntegrityViolationException` handler — tracked in backlog)
-
----
-
-## Sprint 1 — Complete
-
-All stories implemented. E2E verified except duplicate member (needs `DataIntegrityViolationException` handler from backlog).
+All stories implemented. E2E verified except duplicate member (handled in Sprint 2 audit fixes).
 
 ---
 
@@ -96,14 +55,8 @@ All stories implemented. E2E verified except duplicate member (needs `DataIntegr
 
 Items from `docs/audit.md` — small-effort fixes that should be picked up early.
 
-- Fix `HermandadMember.updatedAt` - remove `updatable = false` so `@PreUpdate` actually persists changes
 - Add `hermandadId` field to `MemberAddedEvent` record and populate when publishing (Kafka consumers need tenant context)
-- Add `DataIntegrityViolationException` handler → 409 Conflict in `GlobalExceptionHandler`
-- Add `HermandadMemberNotFoundException` handler → 404 in `GlobalExceptionHandler`
-- Add generic `@ExceptionHandler(Exception.class)` fallback returning structured `{code, message}` JSON
-- Bump outbox `payload` column from `VARCHAR(255)` to `TEXT` or `VARCHAR(4000)` — current limit is too small for complex events
-- Add basic Controller advices for `MethodArgumentNotValidException` (validation) and `IllegalArgumentException`
-- Align error responses to OpenAPI spec `{code, message}` format across all handlers
+- Rename `keycloak_group_id` to `keycloak_group_id_refs` (audit finding — naming)
 
 ### Hermandad Service
 
@@ -114,12 +67,12 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 - Add `JwtAuthenticationConverter` to extract `hermandad_memberships` from JWT → enable `@PreAuthorize` tenant-scoped RBAC
 - Enforce auth in SecurityConfig (currently `.permitAll()`) after RBAC is in place
 - Add `PATCH /api/hermandades/{hermandadId}/members/{userId}/role` endpoint + `ChangeRoleRequest` DTO
-- Add `DELETE /api/hermandades/{hermandadId}/members/{userId}` endpoint
 - Add `PUT /api/hermandades/{hermandadId}` endpoint
 - Add `GET /api/hermandades` (list all public, paginated)
 - Add `GET /api/hermandades/{hermandadId}/with-members` endpoint (from OpenAPI spec)
 - Add missing entity fields: `country`, `description`, `visibility` (PUBLIC/PRIVATE), `showSongs` (boolean)
 - Add `CAPATAZ` role to OpenAPI spec + role-permission matrix
+- **Validate Keycloak user existence before adding member**: add `UserExistencePort`, `KeycloakUserExistenceAdapter` (calls admin API, 404 → false), inject into `HermandadService.addMember()`, fail with 400/404 if not found. Decision: C (pre-registered users only, Keycloak is source of truth for user lifecycle). Tracked from discussion on 2026-06-17.
 - Auto-assign creator as `HERMANDAD_ADMIN` on `POST /api/hermandades` (requires extracting JWT `sub`)
 
 - Add `ORDER BY created_at` to outbox poller query for predictable event ordering
