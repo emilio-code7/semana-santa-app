@@ -68,9 +68,22 @@ Keep aggregates small. An aggregate should load entirely in one transaction with
 
 Kafka messages are published via an outbox table (`outbox_event`) and a `@Scheduled` poller every 5s. This avoids distributed transactions. Topic naming: `{aggregate-type}-events`.
 
-### Event-Driven Sync
+### Domain Events
 
-Domain events (e.g., `MemberAddedEvent`) are published via Spring's `ApplicationEventPublisher` and handled asynchronously (`@Async`) by listeners. Example: `KeycloakMembershipAdapter` assigns Keycloak group membership when a member is added.
+All domain events implement the `DomainEvent` interface (`application/port/DomainEvent.java`) with:
+- `aggregateType()` — logical aggregate name for routing (e.g., `hermandad-member`)
+- `aggregateId()` — the aggregate's UUID
+- `eventType()` — event discriminant (e.g., `MEMBER_ADDED`)
+
+### Event Publishing
+
+Event publishing goes through a single `DomainEventPublisher` port (`application/port/DomainEventPublisher.java`).
+The adapter (`adapter/outbound/events/DomainEventPublisherAdapter.java`) wraps two downstream publishers:
+
+1. **Spring `ApplicationEventPublisher`** — synchronous in-process events for listeners (e.g., Keycloak group sync)
+2. **OutboxPublisher** — persists to the outbox table for async Kafka delivery
+
+Services never publish to multiple channels manually. One `domainEventPublisher.publish(event)` call routes to both.
 
 ### Caching
 
@@ -88,3 +101,31 @@ OAuth2 / JWT via `spring-boot-starter-oauth2-resource-server`. Keycloak as the i
 - No MapStruct (for now). Manual DTO mapping.
 - No Axon Framework, no Debezium CDC, no Saga pattern.
 - JPA annotations stay on domain models (pragmatic Hexagonal — JPA is not an "infrastructure leak", it's a practical choice).
+
+### Version Compatibility
+
+Versions live in `gradle/libs.versions.toml`. The Spring Cloud release train must match Spring Boot:
+
+| Spring Boot | Spring Cloud Train |
+|---|---|
+| 3.4.x | 2024.0.x (Moorgate) |
+| 3.5.x | 2025.0.x (Northfields) |
+| 4.0.x | 2025.1.x (Oakwood) |
+
+When upgrading either, update both. The compatibility verifier (`spring.cloud.compatibility-verifier.enabled=false`) can be disabled temporarily but will break at runtime if versions are mismatched.
+
+**Build prerequisites:**
+
+- Java 17+ in `$JAVA_HOME` (Gradle JVM must match Boot's requirements — Boot 3.5 needs Java 17+)
+- `export JAVA_HOME=~/.jdks/jdk-21.0.6+7` before any `./gradlew build`
+- Docker builds copy `build/libs/*.jar` — the `.dockerignore` must **not** exclude `build/libs/`
+
+### API Specification
+
+The REST API is documented via **springdoc-openapi** (`/v3/api-docs`, Swagger UI at `/swagger-ui.html`). The live spec is generated from controller annotations — no manual sync needed.
+
+For Postman: File → Import → Link → `http://localhost:8080/v3/api-docs`.
+
+Or browse interactively at `http://localhost:8080/swagger-ui.html`.
+
+A hand-written contract-first spec lives in [`docs/openapi.yaml`](./openapi.yaml) for design-stage reference, but the running code is the source of truth.
