@@ -88,7 +88,8 @@ services:
       - -c
       - |
         echo 'Creating Kafka topics...' &&
-        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic hermandad-events      --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic hermandad-events           --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic hermandad-member-events     --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic procesion-events      --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification-commands --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic tracking-events       --partitions 6 --replication-factor 1 &&

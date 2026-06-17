@@ -1,10 +1,17 @@
 package com.repertorio.hermandad.adapter.inbound.rest.controller;
 
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
+import com.repertorio.hermandad.adapter.inbound.rest.dto.ChangeRoleRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.application.service.HermandadService;
 import com.repertorio.hermandad.domain.model.HermandadMember;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

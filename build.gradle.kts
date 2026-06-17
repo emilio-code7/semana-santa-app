@@ -3,8 +3,9 @@ plugins {
     alias(libs.plugins.spring.dependency.management) apply false
 }
 
-val springBootVersion = "3.3.5"
-val springCloudVersion = "2023.0.3"
+val springBootVersion = libs.versions.spring.boot.get()
+val springCloudVersion = libs.versions.spring.cloud.get()
+val javaVersion = libs.versions.java.get()
 
 allprojects {
     group = "com.repertorio"
@@ -21,7 +22,7 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(javaVersion)
         }
     }
 
