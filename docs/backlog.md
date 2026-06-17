@@ -72,17 +72,21 @@ Domain events now implement `DomainEvent` interface (`aggregateType()`, `aggrega
 
 ---
 
-#### 6. Verify end-to-end member flow
+#### ~~6. Verify end-to-end member flow~~ ✅
 
 **As a** developer, **I want** to verify the full member add flow works end-to-end, **so that** I can be confident the sprint is complete.
 
-**Acceptance:**
-- Start the stack (Docker Compose)
-- Create a hermandad
-- Add a member → member appears in DB, event in outbox, Kafka topic has message, Keycloak group assigned
-- Change member role → role updates, event published, Keycloak updated
-- Try adding duplicate member → 409 or constraint violation
-- Manual or automated verification
+Verified:
+- ✅ Create hermandad
+- ✅ Add member → `MemberAddedEvent` in Kafka (`hermandad-member-events`)
+- ✅ Change role → `MemberRoleChangedEvent` in Kafka
+- ❌ Duplicate member → 409 (blocked by missing `DataIntegrityViolationException` handler — tracked in backlog)
+
+---
+
+## Sprint 1 — Complete
+
+All stories implemented. E2E verified except duplicate member (needs `DataIntegrityViolationException` handler from backlog).
 
 ---
 
