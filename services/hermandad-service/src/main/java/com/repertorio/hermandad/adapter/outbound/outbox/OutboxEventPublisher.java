@@ -1,24 +1,23 @@
 package com.repertorio.hermandad.adapter.outbound.outbox;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.repertorio.hermandad.application.port.EventPublisher;
+import com.repertorio.hermandad.application.port.DomainEvent;
+import com.repertorio.hermandad.application.port.OutboxPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
 @Component
 @RequiredArgsConstructor
-public class OutboxEventPublisher implements EventPublisher {
+public class OutboxEventPublisher implements OutboxPublisher {
 
     private final OutboxEventJpaRepository repository;
     private final ObjectMapper objectMapper;
 
     @Override
-    public void publish(String aggregateType, UUID aggregateId, String eventType, Object payload) {
+    public void publish(DomainEvent domainEvent) {
         try {
-            String json = objectMapper.writeValueAsString(payload);
-            repository.save(new OutboxEventEntity(aggregateType, aggregateId, eventType, json));
+            String json = objectMapper.writeValueAsString(domainEvent);
+            repository.save(new OutboxEventEntity(domainEvent.aggregateType(), domainEvent.aggregateId(), domainEvent.eventType(), json));
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize outbox payload", e);
         }

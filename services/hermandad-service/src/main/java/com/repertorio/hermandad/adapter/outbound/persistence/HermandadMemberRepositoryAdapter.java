@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -17,6 +18,11 @@ public class HermandadMemberRepositoryAdapter implements HermandadMemberReposito
     @Override
     public List<HermandadMember> findByHermandadId(UUID hermandadId) {
         return jpaRepository.findByHermandadId(hermandadId);
+    }
+
+    @Override
+    public Optional<HermandadMember> findByUserIdAndHermandadId(String userId, UUID hermandadId) {
+        return jpaRepository.findByUserIdAndHermandadId(userId, hermandadId);
     }
 
     @Override

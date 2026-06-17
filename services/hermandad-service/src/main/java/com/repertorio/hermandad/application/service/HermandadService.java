@@ -5,19 +5,17 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.MembersCache;
-import com.repertorio.hermandad.application.port.EventPublisher;
+import com.repertorio.hermandad.application.port.DomainEventPublisher;
+import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
 import com.repertorio.hermandad.domain.event.MemberAddedEvent;
-import com.repertorio.hermandad.domain.model.Hermandad;
-import com.repertorio.hermandad.domain.model.HermandadCreatedEvent;
-import com.repertorio.hermandad.domain.model.HermandadMember;
-import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
+import com.repertorio.hermandad.domain.event.MemberRoleChangedEvent;
+import com.repertorio.hermandad.domain.model.*;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
 import com.repertorio.hermandad.domain.repository.HermandadRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,9 +30,8 @@ public class HermandadService {
 
     private final HermandadRepository hermandadRepository;
     private final HermandadMemberRepository hermandadMemberRepository;
-    private final EventPublisher eventPublisher;
 
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
 
     @Transactional
     public HermandadResponse createHermandad(CreateHermandadRequest createHermandadRequest) {
@@ -51,13 +48,8 @@ public class HermandadService {
                 hermandad.getCity(),
                 hermandad.getFoundedYear()
         );
+        domainEventPublisher.publish(event);
 
-        eventPublisher.publish(
-                "hermandad",
-                hermandad.getId(),
-                "HERMANDAD_CREATED",
-                event
-        );
         return HermandadResponse.from(hermandad);
     }
 
@@ -80,13 +72,8 @@ public class HermandadService {
                 addMemberRequest.role()
         );
         member = hermandadMemberRepository.save(member);
-        applicationEventPublisher.publishEvent(new MemberAddedEvent(member.getUserId(), member.getRole()));
-        eventPublisher.publish(
-                "hermandad-member",
-                member.getId(),
-                "MEMBER_ADDED",
-                new MemberAddedEvent(member.getUserId(), member.getRole())
-        );
+        var memberAddedEvent = new MemberAddedEvent(member.getId(), member.getHermandadId(), member.getUserId(), member.getRole());
+        domainEventPublisher.publish(memberAddedEvent);
         return member;
     }
 
@@ -96,6 +83,19 @@ public class HermandadService {
             throw new HermandadNotFoundException(hermandadId);
         }
         return new MembersCache(hermandadMemberRepository.findByHermandadId(hermandadId));
+    }
+
+    public HermandadMember changeRole(UUID hermandadId, String userId, HermandadRole newRole) {
+        HermandadMember member = hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId)
+                .orElseThrow(() -> new HermandadMemberNotFoundException(hermandadId, userId));
+
+        HermandadRole oldRole = member.getRole();
+        member.changeRole(newRole);
+        member = hermandadMemberRepository.save(member);
+
+        var memberRoleChangedEvent = new MemberRoleChangedEvent(member.getId(), member.getHermandadId(), userId, oldRole, newRole);
+        domainEventPublisher.publish(memberRoleChangedEvent);
+        return member;
     }
 
 }

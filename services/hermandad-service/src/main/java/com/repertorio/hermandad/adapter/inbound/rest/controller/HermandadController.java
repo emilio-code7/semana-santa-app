@@ -31,12 +31,24 @@ public class HermandadController {
     private final HermandadService hermandadService;
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a new hermandad")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Hermandad created"),
+            @ApiResponse(responseCode = "400", description = "Invalid input (validation error)")
+    })
     public ResponseEntity<HermandadResponse> createHermandad(@Valid @RequestBody CreateHermandadRequest createHermandadRequest) {
         HermandadResponse hermandad = hermandadService.createHermandad(createHermandadRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(hermandad);
     }
 
     @GetMapping("/{hermandadId}")
+    @Operation(summary = "Get a hermandad by ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Hermandad found"),
+            @ApiResponse(responseCode = "400", description = "Invalid ID format"),
+            @ApiResponse(responseCode = "404", description = "Hermandad not found")
+    })
     public ResponseEntity<HermandadResponse> getHermandad(@PathVariable UUID hermandadId) {
         log.info("getHermandad {}", hermandadId);
         HermandadResponse hermandad = hermandadService.findHermandadById(hermandadId);
@@ -44,14 +56,43 @@ public class HermandadController {
     }
 
     @PostMapping("/{hermandadId}/members")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Add a member to a hermandad")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Member added"),
+            @ApiResponse(responseCode = "400", description = "Invalid input (validation error or illegal argument)"),
+            @ApiResponse(responseCode = "404", description = "Hermandad not found")
+    })
     public ResponseEntity<HermandadMember> createHermandadMember(@PathVariable UUID hermandadId, @Valid @RequestBody AddMemberRequest addMemberRequest) {
         HermandadMember member = hermandadService.addMember(hermandadId, addMemberRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(member);
     }
 
     @GetMapping("/{hermandadId}/members")
+    @Operation(summary = "List members of a hermandad")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of members",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = HermandadMember.class)))),
+            @ApiResponse(responseCode = "404", description = "Hermandad not found")
+    })
     public ResponseEntity<List<HermandadMember>> getHermandadMembers(@PathVariable UUID hermandadId) {
         return ResponseEntity.ok(hermandadService.getMembers(hermandadId).members());
+    }
+
+    @PatchMapping("/{hermandadId}/members/{userId}/role")
+    @Operation(summary = "Change a member's role")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Role updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid input (validation error)"),
+            @ApiResponse(responseCode = "404", description = "Member not found in this hermandad")
+    })
+    public ResponseEntity<HermandadMember> changeMemberRole(
+            @PathVariable UUID hermandadId,
+            @PathVariable String userId,
+            @Valid @RequestBody ChangeRoleRequest request
+    ) {
+        HermandadMember member = hermandadService.changeRole(hermandadId, userId, request.role());
+        return ResponseEntity.ok(member);
     }
 
 }

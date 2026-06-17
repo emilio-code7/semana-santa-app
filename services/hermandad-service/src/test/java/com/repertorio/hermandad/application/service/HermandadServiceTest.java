@@ -1,8 +1,10 @@
 package com.repertorio.hermandad.application.service;
 
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
-import com.repertorio.hermandad.application.port.EventPublisher;
-import com.repertorio.hermandad.domain.event.MemberAddedEvent;
+import com.repertorio.hermandad.application.port.DomainEvent;
+import com.repertorio.hermandad.application.port.DomainEventPublisher;
+import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
+import com.repertorio.hermandad.domain.model.Hermandad;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadRole;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
@@ -14,8 +16,8 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,38 +34,28 @@ class HermandadServiceTest {
     private HermandadMemberRepository hermandadMemberRepository;
 
     @Mock
-    private EventPublisher eventPublisher;
-
-    @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    private DomainEventPublisher domainEventPublisher;
 
     @InjectMocks
     private HermandadService hermandadService;
 
     @Captor
-    private ArgumentCaptor<MemberAddedEvent> memberAddedEventCaptor;
+    private ArgumentCaptor<DomainEvent> domainEventCaptor;
 
     @Test
-    void addMemberPublishesOutboxEvent() {
-        UUID hermandadId = UUID.randomUUID();
-        AddMemberRequest request = new AddMemberRequest("user-123", HermandadRole.MUSICIAN);
-        HermandadMember savedMember = new HermandadMember(hermandadId, "user-123", HermandadRole.MUSICIAN);
+    void createHermandadPublishesEvent() {
+        var request = new com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest("Macarena", "Sevilla", 1932);
+        Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932);
+        when(hermandadRepository.save(any())).thenReturn(saved);
 
-        when(hermandadRepository.existsById(hermandadId)).thenReturn(true);
-        when(hermandadMemberRepository.save(any())).thenReturn(savedMember);
+        hermandadService.createHermandad(request);
 
-        hermandadService.addMember(hermandadId, request);
-
-        verify(eventPublisher).publish(
-                eq("hermandad-member"),
-                isNull(),
-                eq("MEMBER_ADDED"),
-                any(MemberAddedEvent.class)
-        );
+        verify(domainEventPublisher).publish(domainEventCaptor.capture());
+        assertThat(domainEventCaptor.getValue()).isInstanceOf(HermandadCreatedEvent.class);
     }
 
     @Test
-    void addMemberPublishesSpringEvent() {
+    void addMemberPublishesDomainEvent() {
         UUID hermandadId = UUID.randomUUID();
         AddMemberRequest request = new AddMemberRequest("user-123", HermandadRole.MUSICIAN);
         HermandadMember savedMember = new HermandadMember(hermandadId, "user-123", HermandadRole.MUSICIAN);
@@ -73,8 +65,27 @@ class HermandadServiceTest {
 
         hermandadService.addMember(hermandadId, request);
 
-        verify(applicationEventPublisher).publishEvent(memberAddedEventCaptor.capture());
-        assertThat(memberAddedEventCaptor.getValue().userId()).isEqualTo("user-123");
-        assertThat(memberAddedEventCaptor.getValue().role()).isEqualTo(HermandadRole.MUSICIAN);
+        verify(domainEventPublisher).publish(domainEventCaptor.capture());
+        var event = domainEventCaptor.getValue();
+        assertThat(event.aggregateType()).isEqualTo("hermandad-member");
+        assertThat(event.eventType()).isEqualTo("MEMBER_ADDED");
+    }
+
+    @Test
+    void changeRolePublishesDomainEvent() {
+        UUID hermandadId = UUID.randomUUID();
+        String userId = "user-123";
+        HermandadMember member = new HermandadMember(hermandadId, userId, HermandadRole.MUSICIAN);
+
+        when(hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId))
+                .thenReturn(Optional.of(member));
+        when(hermandadMemberRepository.save(any())).thenReturn(member);
+
+        hermandadService.changeRole(hermandadId, userId, HermandadRole.CAPATAZ);
+
+        verify(domainEventPublisher).publish(domainEventCaptor.capture());
+        var event = domainEventCaptor.getValue();
+        assertThat(event.aggregateType()).isEqualTo("hermandad-member");
+        assertThat(event.eventType()).isEqualTo("MEMBER_ROLE_CHANGED");
     }
 }

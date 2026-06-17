@@ -5,9 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface HermandadMemberJpaRepository extends JpaRepository<HermandadMember, UUID> {
     List<HermandadMember> findByHermandadId(UUID id);
+    Optional<HermandadMember> findByUserIdAndHermandadId(String userId, UUID hermandadId);
 }
