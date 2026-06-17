@@ -25,6 +25,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/hermandades/{hermandadId}/marchas/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/procesiones/live").permitAll()
                         .pathMatchers(HttpMethod.GET, "/actuator/**").permitAll()
+                        .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))

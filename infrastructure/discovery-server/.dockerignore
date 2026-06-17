@@ -1,0 +1,11 @@
+.gradle/
+.git/
+*.md
+Dockerfile
+build/classes/
+build/reports/
+build/test-results/
+build/tmp/
+build/generated/
+build/spring-aot/
+build/resources/

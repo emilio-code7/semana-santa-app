@@ -27,6 +27,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
+    implementation(libs.springdoc.starter)
+
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 

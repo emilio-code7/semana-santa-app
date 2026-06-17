@@ -60,6 +60,18 @@ management:
     health:
       show-details: when-authorized
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /v3/api-docs
+    oauth:
+      client-id: admin-cli
+  servers:
+    - url: http://localhost:8080
+      description: API Gateway
+
 logging:
   level:
     com.repertorio.hermandad: DEBUG

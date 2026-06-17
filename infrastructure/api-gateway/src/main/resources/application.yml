@@ -20,6 +20,10 @@ spring:
           uri: lb://hermandad-service
           predicates:
             - Path=/api/hermandades/**
+        - id: hermandad-service-swagger
+          uri: lb://hermandad-service
+          predicates:
+            - Path=/swagger-ui.html,/swagger-ui/**,/v3/api-docs/**
         - id: repertorio-service
           uri: lb://repertorio-service
           predicates:
