@@ -86,13 +86,24 @@ public class HermandadController {
             @ApiResponse(responseCode = "400", description = "Invalid input (validation error)"),
             @ApiResponse(responseCode = "404", description = "Member not found in this hermandad")
     })
-    public ResponseEntity<HermandadMember> changeMemberRole(
+    public ResponseEntity<HermandadMember> changeHermandadMemberRole(
             @PathVariable UUID hermandadId,
             @PathVariable String userId,
             @Valid @RequestBody ChangeRoleRequest request
     ) {
         HermandadMember member = hermandadService.changeRole(hermandadId, userId, request.role());
         return ResponseEntity.ok(member);
+    }
+
+    @DeleteMapping("/{hermandadId}/members/{userId}")
+    @Operation(summary = "Delete a member from hermandad")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Member deleted"),
+            @ApiResponse(responseCode = "404", description = "Member not found in this hermandad")
+    })
+    public ResponseEntity<Void> deleteHermandadMember(@PathVariable UUID hermandadId, @PathVariable String userId) {
+        hermandadService.removeMember(hermandadId, userId);
+        return ResponseEntity.noContent().build();
     }
 
 }
