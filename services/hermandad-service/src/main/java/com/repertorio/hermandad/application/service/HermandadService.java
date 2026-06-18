@@ -8,6 +8,7 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.MembersCache;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
 import com.repertorio.hermandad.domain.event.MemberAddedEvent;
+import com.repertorio.hermandad.domain.event.MemberRemovedEvent;
 import com.repertorio.hermandad.domain.event.MemberRoleChangedEvent;
 import com.repertorio.hermandad.domain.model.*;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
@@ -96,6 +97,15 @@ public class HermandadService {
         var memberRoleChangedEvent = new MemberRoleChangedEvent(member.getId(), member.getHermandadId(), userId, oldRole, newRole);
         domainEventPublisher.publish(memberRoleChangedEvent);
         return member;
+    }
+
+    public void removeMember(UUID hermandadId, String userId) {
+        HermandadMember member = hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId)
+                .orElseThrow(() -> new HermandadMemberNotFoundException(hermandadId, userId));
+        hermandadMemberRepository.delete(member);
+
+        var memberRemovedEvent = new MemberRemovedEvent(member.getId(), member.getHermandadId(), userId, member.getRole());
+        domainEventPublisher.publish(memberRemovedEvent);
     }
 
 }

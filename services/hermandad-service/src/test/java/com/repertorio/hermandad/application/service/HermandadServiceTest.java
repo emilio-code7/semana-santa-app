@@ -6,6 +6,7 @@ import com.repertorio.hermandad.application.port.DomainEventPublisher;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
 import com.repertorio.hermandad.domain.model.Hermandad;
 import com.repertorio.hermandad.domain.model.HermandadMember;
+import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
 import com.repertorio.hermandad.domain.model.HermandadRole;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
 import com.repertorio.hermandad.domain.repository.HermandadRepository;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -87,5 +89,35 @@ class HermandadServiceTest {
         var event = domainEventCaptor.getValue();
         assertThat(event.aggregateType()).isEqualTo("hermandad-member");
         assertThat(event.eventType()).isEqualTo("MEMBER_ROLE_CHANGED");
+    }
+
+    @Test
+    void removeMemberPublishesDomainEvent() {
+        UUID hermandadId = UUID.randomUUID();
+        String userId = "user-123";
+        HermandadMember member = new HermandadMember(hermandadId, userId, HermandadRole.MUSICIAN);
+
+        when(hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId))
+                .thenReturn(Optional.of(member));
+
+        hermandadService.removeMember(hermandadId, userId);
+
+        verify(hermandadMemberRepository).delete(member);
+        verify(domainEventPublisher).publish(domainEventCaptor.capture());
+        var event = domainEventCaptor.getValue();
+        assertThat(event.aggregateType()).isEqualTo("hermandad-member");
+        assertThat(event.eventType()).isEqualTo("MEMBER_REMOVED");
+    }
+
+    @Test
+    void removeMemberThrowsWhenMemberNotFound() {
+        UUID hermandadId = UUID.randomUUID();
+        String userId = "user-123";
+
+        when(hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(HermandadMemberNotFoundException.class,
+                () -> hermandadService.removeMember(hermandadId, userId));
     }
 }
