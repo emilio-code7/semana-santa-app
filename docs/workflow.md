@@ -31,7 +31,27 @@ Before any work, ask the user for confirmation. Do not proceed without a respons
 - One atomic change per task
 - No scope creep — if something else needs fixing, note it and ask
 
-### 2. Build & Deploy
+### Plan Format
+
+Plans (`docs/plans/`) contain only:
+- Use cases / BDD scenarios (Given-When-Then)
+- Acceptance criteria
+- Technical decisions & trade-offs
+- Architectural notes
+
+**No implementation code in plans.** Code belongs in files, not planning documents. The plan captures *what* and *why*, not *how*.
+
+### 2. Code Review
+
+After the user implements (GREEN), AI reviews the diff before proceeding:
+- **Correctness** — does it meet the acceptance criteria?
+- **Pattern fit** — does it follow existing codebase conventions?
+- **Trade-offs** — propose alternative approaches with pros/cons if applicable
+- **No nitpicking** — only raise meaningful issues (correctness, maintainability, security)
+
+If issues found → flag them, let the user decide. Do not block on style preferences.
+
+### 3. Build & Deploy
 
 ```bash
 export JAVA_HOME="$HOME/.jdks/jdk-21.0.6+7"

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "OpenAPI definition",
+    "title": "Semana Santa API",
     "version": "v0",
     "description": "REST API for Semana Santa Hermandad management"
   },
@@ -172,7 +172,7 @@
           "hermandad-controller"
         ],
         "summary": "Change a member's role",
-        "operationId": "changeMemberRole",
+        "operationId": "changeHermandadMemberRole",
         "parameters": [
           {
             "name": "hermandadId",
@@ -284,6 +284,42 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/hermandades/{hermandadId}/members/{userId}": {
+      "delete": {
+        "tags": [
+          "hermandad-controller"
+        ],
+        "summary": "Delete a member from hermandad",
+        "operationId": "deleteHermandadMember",
+        "parameters": [
+          {
+            "name": "hermandadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Member deleted"
+          },
+          "404": {
+            "description": "Member not found in this hermandad"
           }
         }
       }

@@ -10,36 +10,35 @@ Process:
 
 ## Current Sprint
 
-### Sprint 2 — Audit Fixes & Member Removal
+### Sprint 2 — Audit Fixes & Member Removal (🔄 in progress)
 
 Clean technical debt, add missing error handlers, and complete member CRUD.
 
 ---
 
-#### 1. Audit fixes
+#### ~~1. Audit fixes~~ ✅
 
-**As a** developer, **I want** the codebase to have consistent structured error handling, a working `updatedAt` timestamp, and a DB column that fits the payload, **so that** the API is robust and maintainable.
-
-**Items:**
-- Fix `HermandadMember.updatedAt` — remove `updatable = false` so `@PreUpdate` actually persists changes
-- Refactor `GlobalExceptionHandler` to return structured JSON `{code, message}` format across all handlers
-- Add `DataIntegrityViolationException` handler → 409 `CONFLICT`
-- Add `MethodArgumentNotValidException` handler → 400 `VALIDATION_ERROR`
-- Add generic `Exception` fallback → 500 `INTERNAL_ERROR`
-- Bump outbox `payload` column from `VARCHAR(255)` to `TEXT` (Flyway V3)
+- ~~Fix `HermandadMember.updatedAt`~~ ✅
+- ~~Add `DataIntegrityViolationException` handler → 409~~ ✅
+- ~~Add `MethodArgumentNotValidException` handler → 400~~ ✅
+- ~~Add generic `Exception` fallback → 500~~ ✅
+- ~~Bump outbox `payload` column from `VARCHAR(255)` to `TEXT`~~ ✅
 
 ---
 
-#### 2. Member removal
+#### 2. Member removal (🔄 in progress)
 
 **As a** API client, **I want** to remove a member via `DELETE /api/hermandades/{hermandadId}/members/{userId}`, **so that** I can undo member additions.
 
-**Acceptance:**
-- `DELETE /api/hermandades/{hermandadId}/members/{userId}` → 204 No Content
-- 404 if hermandad or member not found (existing `HermandadMemberNotFoundException`)
-- `MemberRemovedEvent` published via `DomainEventPublisher`
-- Outbox → Kafka topic `hermandad-member-events` (eventType `MEMBER_REMOVED`)
-- TDD: service test verifies delete + event publication
+**Done:**
+- ~~`MemberRemovedEvent` domain event~~ ✅
+- ~~`HermandadMemberRepository.delete()` port + adapter~~ ✅
+- ~~`HermandadService.removeMember()` + service test~~ ✅
+
+**Remaining:**
+- `DELETE` endpoint in controller
+- MockMvc test
+- Sync OpenAPI spec
 
 ---
 
