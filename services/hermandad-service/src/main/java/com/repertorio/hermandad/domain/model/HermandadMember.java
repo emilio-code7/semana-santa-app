@@ -13,6 +13,8 @@ import java.util.UUID;
 @Getter
 public class HermandadMember implements Serializable {
 
+    public static final String DOMAIN_EVENT_AGGREGATE_TYPE = "hermandad-member";
+
     @Id
     @GeneratedValue
     @UuidGenerator

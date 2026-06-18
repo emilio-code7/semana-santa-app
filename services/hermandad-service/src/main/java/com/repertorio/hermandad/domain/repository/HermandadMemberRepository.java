@@ -10,4 +10,5 @@ public interface HermandadMemberRepository {
     HermandadMember save(HermandadMember member);
     List<HermandadMember> findByHermandadId(UUID hermandadId);
     Optional<HermandadMember> findByUserIdAndHermandadId(String userId, UUID hermandadId);
+    void delete(HermandadMember member);
 }

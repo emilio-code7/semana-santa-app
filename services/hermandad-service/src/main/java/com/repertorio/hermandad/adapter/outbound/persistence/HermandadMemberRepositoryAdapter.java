@@ -29,4 +29,9 @@ public class HermandadMemberRepositoryAdapter implements HermandadMemberReposito
     public HermandadMember save(HermandadMember member) {
         return jpaRepository.save(member);
     }
+
+    @Override
+    public void delete(HermandadMember member) {
+        jpaRepository.delete(member);
+    }
 }
