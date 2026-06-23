@@ -10,7 +10,13 @@ Process:
 
 ## Current Sprint
 
-### Sprint 2 — Audit Fixes & Member Removal (🔄 in progress)
+### Sprint 3 — Spring Boot 4.1 Migration (🔄 in progress)
+
+Upgrade platform to Boot 4.1. Bump versions, migrate modular starters, Jackson 3 packages, Redis serializers.
+
+---
+
+### Sprint 2 — Audit Fixes & Member Removal ✅
 
 Clean technical debt, add missing error handlers, and complete member CRUD.
 
@@ -35,10 +41,10 @@ Clean technical debt, add missing error handlers, and complete member CRUD.
 - ~~`HermandadMemberRepository.delete()` port + adapter~~ ✅
 - ~~`HermandadService.removeMember()` + service test~~ ✅
 
-**Remaining:**
-- `DELETE` endpoint in controller
-- MockMvc test
-- Sync OpenAPI spec
+**All done:**
+- ~~`DELETE` endpoint in controller~~ ✅
+- ~~MockMvc test~~ ✅
+- ~~Sync OpenAPI spec~~ ✅
 
 ---
 

@@ -86,7 +86,7 @@ Build a production-quality microservices backend for Semana Santa procession man
 ### Must NOT Have (Guardrails)
 - NO Axon Framework — implement CQRS manually to learn it
 - NO Debezium CDC — use manual @Scheduled outbox poller
-- NO Hexagonal Architecture — use simple layered architecture (Controller → Service → Repository)
+- Hexagonal Architecture + DDD — domain/application/adapter layers with explicit port interfaces (see docs/architecture.md for the reference pattern)
 - NO Saga Pattern — developer already knows this, don't add it
 - NO Resilience4j circuit breakers — developer already knows this
 - NO Spring Cloud Config Server — use application.yml + Docker env vars

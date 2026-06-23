@@ -45,6 +45,16 @@
               }
             }
           },
+          "409": {
+            "description": "Hermandad with this name already exists",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/HermandadResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Hermandad created",
             "content": {
@@ -445,7 +455,7 @@
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "description": "Paste your Keycloak access token here",
+        "description": "Paste your Keycloak access token here.\n\nGet one via:\n  curl -s -X POST http://localhost:8180/realms/semana-santa/protocol/openid-connect/token \\\n    -d \"grant_type=password&client_id=semana-santa-client&client_secret=secret&username=qa-admin-user&password=test\" \\\n    | jq -r '.access_token'",
         "scheme": "bearer",
         "bearerFormat": "JWT"
       }
