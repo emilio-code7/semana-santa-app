@@ -14,6 +14,17 @@ Process:
 
 Upgrade platform to Boot 4.1. Bump versions, migrate modular starters, Jackson 3 packages, Redis serializers.
 
+**Done:**
+- ~~Version catalog: Spring Boot 4.1.0, Spring Cloud 2025.0.0, tools.jackson~~ ✅
+- ~~Build files: all services migrated to Boot 4.1 / tools.jackson~~ ✅
+- ~~Jackson imports: RedisConfig, shared/common, test factories migrated~~ ✅
+- ~~Test packages: autoconfigure paths, @MockitoBean, jakarta.persistence~~ ✅
+- ~~TestCacheConfig: fix slice test CacheManager failures~~ ✅
+
+**All done:**
+- ~~Flyway V4 + service-level unique name constraint on Hermandad~~ ✅
+- ~~HermandadAlreadyExistsException → 409 CONFLICT in GlobalExceptionHandler~~ ✅
+
 ---
 
 ### Sprint 2 — Audit Fixes & Member Removal ✅

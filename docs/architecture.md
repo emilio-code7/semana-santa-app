@@ -2,7 +2,7 @@
 
 ## Stack
 
-- Java 21, Spring Boot 3.x
+- Java 21, Spring Boot 4.x
 - Gradle multi-project
 - PostgreSQL, Redis, Kafka
 - Keycloak (auth)
