@@ -1,7 +1,7 @@
 package com.repertorio.common;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.repertorio.common.tenant.HermandadMembership;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -21,7 +21,7 @@ public class JwtTestFactory {
                     .issuedAt(Instant.now())
                     .expiresAt(Instant.now().plusSeconds(3600))
                     .build();
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize memberships", e);
         }
     }

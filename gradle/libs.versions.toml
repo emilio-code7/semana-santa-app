@@ -1,21 +1,28 @@
 [versions]
 java = "21"
-spring-boot = "3.5.15"
-spring-cloud = "2025.0.3"
+spring-boot = "4.1.0"
+spring-cloud = "2025.1.2"
 testcontainers = "1.20.1"
 keycloak-admin-client = "24.0.3"
 spring-dependency-management = "1.1.7"
+springdoc = "3.0.3"
 
 [libraries]
-spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web" }
+spring-boot-starter-webmvc = { group = "org.springframework.boot", name = "spring-boot-starter-webmvc" }
 spring-boot-starter-data-jpa = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
 spring-boot-starter-webflux = { group = "org.springframework.boot", name = "spring-boot-starter-webflux" }
 spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
 spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
+spring-boot-starter-jackson = { group = "org.springframework.boot", name = "spring-boot-starter-jackson" }
+spring-boot-starter-flyway = { group = "org.springframework.boot", name = "spring-boot-starter-flyway" }
+spring-boot-starter-webflux-test = { group = "org.springframework.boot", name = "spring-boot-starter-webflux-test" }
+spring-boot-starter-security-test = { group = "org.springframework.boot", name = "spring-boot-starter-security-test" }
+spring-boot-starter-webmvc-test = { group = "org.springframework.boot", name = "spring-boot-starter-webmvc-test" }
+spring-boot-starter-data-jpa-test = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa-test" }
+spring-boot-properties-migrator = { group = "org.springframework.boot", name = "spring-boot-properties-migrator" }
 spring-cloud-starter-netflix-eureka-server = { group = "org.springframework.cloud", name = "spring-cloud-starter-netflix-eureka-server" }
 spring-cloud-starter-netflix-eureka-client = { group = "org.springframework.cloud", name = "spring-cloud-starter-netflix-eureka-client" }
-spring-cloud-starter-gateway = { group = "org.springframework.cloud", name = "spring-cloud-starter-gateway" }
 postgresql = { group = "org.postgresql", name = "postgresql" }
 h2database = { group = "com.h2database", name = "h2" }
 lombok = { group = "org.projectlombok", name = "lombok" }
@@ -25,11 +32,9 @@ testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", v
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
 keycloak-admin-client = { group = "org.keycloak", name = "keycloak-admin-client", version.ref = "keycloak-admin-client" }
 logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-logback-encoder", version = "7.4" }
-flyway-core = { group = "org.flywaydb", name = "flyway-core" }
-flyway-postgresql = { group = "org.flywaydb", name = "flyway-database-postgresql" }
 spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
 spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "spring-boot-starter-data-redis" }
-springdoc-starter = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-ui", version = "2.7.0" }
+springdoc-starter = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

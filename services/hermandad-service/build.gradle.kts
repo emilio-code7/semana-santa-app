@@ -9,7 +9,7 @@ tasks.withType<Test> {
 dependencies {
     implementation(project(":shared:common"))
 
-    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.security)
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
@@ -19,21 +19,24 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
     implementation(libs.keycloak.admin.client)
 
-    implementation(libs.flyway.core)
-    implementation(libs.flyway.postgresql)
+    implementation(libs.spring.boot.starter.flyway)
 
     runtimeOnly(libs.postgresql)
     implementation(libs.spring.boot.starter.data.redis)
     implementation("org.springframework.boot:spring-boot-starter-cache")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation(libs.spring.boot.starter.jackson)
 
     implementation(libs.springdoc.starter)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
+    runtimeOnly(libs.spring.boot.properties.migrator)
+
     testImplementation(libs.spring.boot.starter.test)
-    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation(libs.spring.boot.starter.security.test)
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.starter.data.jpa.test)
     testRuntimeOnly(libs.h2database)
     testImplementation(libs.testcontainers)
     testImplementation(libs.testcontainers.junit)

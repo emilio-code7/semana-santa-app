@@ -1,6 +1,6 @@
 package com.repertorio.hermandad.adapter.outbound.outbox;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.repertorio.hermandad.application.port.DomainEvent;
 import com.repertorio.hermandad.application.port.OutboxPublisher;
 import lombok.RequiredArgsConstructor;

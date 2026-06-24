@@ -1,20 +1,20 @@
 package com.repertorio.hermandad.adapter.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.DefaultTyping;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.MembersCache;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.cache.RedisCacheManagerBuilderCustomizer;
+import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY;
 import static java.time.Duration.ofDays;
 
 @Configuration
@@ -30,19 +30,23 @@ public class RedisConfig {
 
     @Bean
     public RedisCacheManagerBuilderCustomizer redisBuilderCustomizer(ObjectMapper objectMapper) {
-        ObjectMapper cacheObjectMapper = objectMapper.copy();
-        cacheObjectMapper.activateDefaultTyping(cacheObjectMapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                PROPERTY);
-        cacheObjectMapper.registerModule(new JavaTimeModule());
-        cacheObjectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        GenericJackson2JsonRedisSerializer defaultSerializer = new GenericJackson2JsonRedisSerializer(cacheObjectMapper);
+        ObjectMapper cacheObjectMapper = objectMapper.rebuild()
+                .activateDefaultTypingAsProperty(
+                        BasicPolymorphicTypeValidator.builder()
+                                .allowIfBaseType(Object.class)
+                                .build(),
+                        DefaultTyping.NON_FINAL,
+                        "@class"
+                )
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .build();
+        GenericJacksonJsonRedisSerializer defaultSerializer = new GenericJacksonJsonRedisSerializer(cacheObjectMapper);
 
-        Jackson2JsonRedisSerializer<HermandadResponse> hermandadJackson2JsonRedisSerializer
-                = new Jackson2JsonRedisSerializer<>(cacheObjectMapper, HermandadResponse.class);
+        JacksonJsonRedisSerializer<HermandadResponse> hermandadJacksonJsonRedisSerializer
+                = new JacksonJsonRedisSerializer<>(cacheObjectMapper, HermandadResponse.class);
 
-        Jackson2JsonRedisSerializer<MembersCache> hermandadMemberSerializer
-                = new Jackson2JsonRedisSerializer<>(cacheObjectMapper, MembersCache.class);
+        JacksonJsonRedisSerializer<MembersCache> hermandadMemberSerializer
+                = new JacksonJsonRedisSerializer<>(cacheObjectMapper, MembersCache.class);
 
         return builder -> builder.cacheDefaults(RedisCacheConfiguration.defaultCacheConfig()
                         .prefixCacheNameWith(CACHE_PREFIX)
@@ -50,7 +54,7 @@ public class RedisConfig {
                         .entryTtl(ofDays(1)))
                 .withCacheConfiguration(HERMANDAD, RedisCacheConfiguration.defaultCacheConfig()
                         .prefixCacheNameWith(CACHE_PREFIX)
-                        .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(hermandadJackson2JsonRedisSerializer))
+                        .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(hermandadJacksonJsonRedisSerializer))
                         .entryTtl(ofDays(2)))
                 .withCacheConfiguration(HERMANDAD_MEMBER, RedisCacheConfiguration.defaultCacheConfig()
                         .prefixCacheNameWith(CACHE_PREFIX)

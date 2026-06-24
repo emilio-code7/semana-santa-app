@@ -9,7 +9,7 @@ tasks.withType<Test> {
 dependencies {
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.webflux)
-    implementation(libs.spring.cloud.starter.gateway)
+    implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
     implementation(libs.spring.cloud.starter.netflix.eureka.client)
     implementation("org.springframework.cloud:spring-cloud-starter-loadbalancer")
     implementation(libs.spring.boot.starter.security)
@@ -17,4 +17,5 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.boot.starter.webflux.test)
 }

@@ -1,10 +1,12 @@
 package com.repertorio.hermandad.adapter.inbound.rest.controller;
 
+import com.repertorio.hermandad.adapter.config.TestCacheConfig;
 import com.repertorio.hermandad.application.service.HermandadService;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HermandadController.class)
+@Import(TestCacheConfig.class)
 @WithMockUser
 class HermandadControllerTest {
 

@@ -1,15 +1,18 @@
 package com.repertorio.hermandad.domain.model;
 
+import com.repertorio.hermandad.adapter.config.TestCacheConfig;
 import com.repertorio.hermandad.adapter.outbound.persistence.HermandadJpaRepository;
 import com.repertorio.hermandad.adapter.outbound.persistence.HermandadMemberJpaRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
+import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
+@Import(TestCacheConfig.class)
 class HermandadMemberDataJpaTest {
 
     @Autowired

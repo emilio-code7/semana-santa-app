@@ -1,8 +1,8 @@
 package com.repertorio.common.tenant;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.Collections;
@@ -19,7 +19,7 @@ public class JwtMembershipExtractor {
         }
         try {
             return objectMapper.readValue(claim, new TypeReference<>() {});
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Malformed hermandad_memberships claim: " + e.getMessage(), e);
         }
     }
