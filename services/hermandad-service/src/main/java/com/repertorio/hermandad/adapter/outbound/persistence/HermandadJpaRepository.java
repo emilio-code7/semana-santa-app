@@ -8,4 +8,5 @@ import java.util.UUID;
 
 @Repository
 public interface HermandadJpaRepository extends JpaRepository<Hermandad, UUID> {
+    boolean existsByName(String name);
 }

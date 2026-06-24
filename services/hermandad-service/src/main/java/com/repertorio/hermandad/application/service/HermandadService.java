@@ -36,6 +36,9 @@ public class HermandadService {
 
     @Transactional
     public HermandadResponse createHermandad(CreateHermandadRequest createHermandadRequest) {
+        if (hermandadRepository.existsByName(createHermandadRequest.name())) {
+            throw new HermandadAlreadyExistsException(createHermandadRequest.name());
+        }
         Hermandad hermandad = new Hermandad(
                 createHermandadRequest.name(),
                 createHermandadRequest.city(),

@@ -1,5 +1,6 @@
 package com.repertorio.hermandad.application.service;
 
+import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.application.port.DomainEvent;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
@@ -7,6 +8,7 @@ import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
 import com.repertorio.hermandad.domain.model.Hermandad;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
+import com.repertorio.hermandad.domain.model.HermandadAlreadyExistsException;
 import com.repertorio.hermandad.domain.model.HermandadRole;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
 import com.repertorio.hermandad.domain.repository.HermandadRepository;
@@ -46,7 +48,7 @@ class HermandadServiceTest {
 
     @Test
     void createHermandadPublishesEvent() {
-        var request = new com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest("Macarena", "Sevilla", 1932);
+        var request = new CreateHermandadRequest("Macarena", "Sevilla", 1932);
         Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932);
         when(hermandadRepository.save(any())).thenReturn(saved);
 
@@ -119,5 +121,18 @@ class HermandadServiceTest {
 
         assertThrows(HermandadMemberNotFoundException.class,
                 () -> hermandadService.removeMember(hermandadId, userId));
+    }
+
+    @Test
+    void createHermandadThrowsWhenNameAlreadyExists() {
+        var request = new CreateHermandadRequest("Macarena", "Sevilla", 1932);
+        Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932);
+        when(hermandadRepository.existsByName("Macarena")).thenReturn(false, true);
+        when(hermandadRepository.save(any())).thenReturn(saved);
+
+        hermandadService.createHermandad(request);
+
+        assertThrows(HermandadAlreadyExistsException.class,
+                () -> hermandadService.createHermandad(request));
     }
 }

@@ -1,5 +1,6 @@
 package com.repertorio.hermandad.adapter.inbound.rest;
 
+import com.repertorio.hermandad.domain.model.HermandadAlreadyExistsException;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
 import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,6 +18,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HermandadNotFoundException.class)
     public ResponseEntity<String> handleHermandadNotFoundException(HermandadNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(HermandadAlreadyExistsException.class)
+    public ResponseEntity<String> handleHermandadAlreadyExists(HermandadAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 
     @ExceptionHandler(HermandadMemberNotFoundException.class)

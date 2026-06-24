@@ -9,4 +9,5 @@ public interface HermandadRepository {
     Hermandad save(Hermandad hermandad);
     Optional<Hermandad> findById(UUID id);
     boolean existsById(UUID id);
+    boolean existsByName(String name);
 }
