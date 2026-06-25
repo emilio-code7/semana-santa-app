@@ -35,7 +35,7 @@ public class HermandadService {
     private final DomainEventPublisher domainEventPublisher;
 
     @Transactional
-    public HermandadResponse createHermandad(CreateHermandadRequest createHermandadRequest) {
+    public HermandadResponse createHermandad(CreateHermandadRequest createHermandadRequest, String creatorUserId) {
         if (hermandadRepository.existsByName(createHermandadRequest.name())) {
             throw new HermandadAlreadyExistsException(createHermandadRequest.name());
         }
@@ -45,6 +45,9 @@ public class HermandadService {
                 createHermandadRequest.foundedYear()
         );
         hermandad = hermandadRepository.save(hermandad);
+
+        var adminMember = new HermandadMember(hermandad.getId(), creatorUserId, HermandadRole.HERMANDAD_ADMIN);
+        hermandadMemberRepository.save(adminMember);
 
         HermandadCreatedEvent event = new HermandadCreatedEvent(
                 hermandad.getId(),

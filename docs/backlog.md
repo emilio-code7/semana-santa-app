@@ -24,9 +24,21 @@ Upgrade platform to Boot 4.1. Bump versions, migrate modular starters, Jackson 3
 
 ---
 
-## Sprint Planning
+### Sprint 4 — Hermandad Service Hardening (🔄 in progress)
 
-### Sprint 4 — (to be defined)
+Complete the hermandad service: auth, tests, missing fields, and outbox quality.
+
+1. **Auth enforcement** ✅
+   - ~~**`JwtAuthenticationConverter`**: new class. Extracts `hermandad_memberships` claim from JWT, creates `GrantedAuthority` in format `HERMANDAD_{hermandadId}_{role}`. Also captures JWT `sub` as the authenticated user ID for auto-assign.~~ ✅
+   - ~~**`SecurityConfig`**: wire the converter. `POST /api/hermandades` → any authenticated user (bootstrap). `GET /api/hermandades/{id}` → public. Everything else → authenticated + `@PreAuthorize`.~~ ✅
+   - ~~**`HermandadController`**: `@PreAuthorize` on member management. Bootstrap endpoint stays open.~~ ✅
+   - ~~**`HermandadService.createHermandad()`**: accept creator userId (from JWT `sub`) for auto-assign (ties into item 4).~~ ✅
+2. **Integration tests** — Testcontainers (PostgreSQL) for repository layer
+3. **Missing entity fields** — `country`, `description`, `visibility` (PUBLIC/PRIVATE), `showSongs` (boolean)
+4. **Auto-assign creator as HERMANDAD_ADMIN** on `POST /api/hermandades` ✅
+   - ~~Creator saved as `HERMANDAD_ADMIN` in `hermandad_member` on create~~ ✅
+   - ~~`HermandadSecurityService` dual-path auth: JWT authorities (fast) → DB membership (fallback)~~ ✅
+5. **Outbox quality** — `ORDER BY created_at` + batch size limit (100)
 
 
 
@@ -85,16 +97,9 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 - List members with pagination
 - Idempotent Kafka consumer for hermandad events
 - Integration tests for all endpoints
-- Add `JwtAuthenticationConverter` to extract `hermandad_memberships` from JWT → enable `@PreAuthorize` tenant-scoped RBAC
-- Enforce auth in SecurityConfig (currently `.permitAll()`) after RBAC is in place
-- Add `PATCH /api/hermandades/{hermandadId}/members/{userId}/role` endpoint + `ChangeRoleRequest` DTO
-- Add `PUT /api/hermandades/{hermandadId}` endpoint
-- Add `GET /api/hermandades` (list all public, paginated)
-- Add `GET /api/hermandades/{hermandadId}/with-members` endpoint (from OpenAPI spec)
 - Add missing entity fields: `country`, `description`, `visibility` (PUBLIC/PRIVATE), `showSongs` (boolean)
 - Add `CAPATAZ` role to OpenAPI spec + role-permission matrix
 - **Validate Keycloak user existence before adding member**: add `UserExistencePort`, `KeycloakUserExistenceAdapter` (calls admin API, 404 → false), inject into `HermandadService.addMember()`, fail with 400/404 if not found. Decision: C (pre-registered users only, Keycloak is source of truth for user lifecycle). Tracked from discussion on 2026-06-17.
-- Auto-assign creator as `HERMANDAD_ADMIN` on `POST /api/hermandades` (requires extracting JWT `sub`)
 
 - Add `ORDER BY created_at` to outbox poller query for predictable event ordering
 - Add batch size limit to outbox poller (fetch in chunks of 100)

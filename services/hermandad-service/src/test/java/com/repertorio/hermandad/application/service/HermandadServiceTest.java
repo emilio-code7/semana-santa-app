@@ -52,8 +52,9 @@ class HermandadServiceTest {
         Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932);
         when(hermandadRepository.save(any())).thenReturn(saved);
 
-        hermandadService.createHermandad(request);
+        hermandadService.createHermandad(request, "creator-id");
 
+        verify(hermandadMemberRepository).save(any());
         verify(domainEventPublisher).publish(domainEventCaptor.capture());
         assertThat(domainEventCaptor.getValue()).isInstanceOf(HermandadCreatedEvent.class);
     }
@@ -130,9 +131,9 @@ class HermandadServiceTest {
         when(hermandadRepository.existsByName("Macarena")).thenReturn(false, true);
         when(hermandadRepository.save(any())).thenReturn(saved);
 
-        hermandadService.createHermandad(request);
+        hermandadService.createHermandad(request, "creator-id");
 
         assertThrows(HermandadAlreadyExistsException.class,
-                () -> hermandadService.createHermandad(request));
+                () -> hermandadService.createHermandad(request, "creator-id"));
     }
 }

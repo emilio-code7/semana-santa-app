@@ -11,7 +11,7 @@
 ## Per-Task Loop
 
 ```
-Ask → Guide → User implements → Build & Deploy → Verify → Document → Sync API → Commit
+Ask → Guide → User implements → Refactor → Build & Deploy → Verify → Document → Sync API → Commit
 ```
 
 Each step must complete before the next. No skipping.
@@ -41,15 +41,25 @@ Plans (`docs/plans/`) contain only:
 
 **No implementation code in plans.** Code belongs in files, not planning documents. The plan captures *what* and *why*, not *how*.
 
-### 2. Code Review
+### 2. Code Review (GREEN Analysis)
 
-After the user implements (GREEN), AI reviews the diff before proceeding:
+After the user implements (GREEN), AI reviews the diff:
 - **Correctness** — does it meet the acceptance criteria?
 - **Pattern fit** — does it follow existing codebase conventions?
 - **Trade-offs** — propose alternative approaches with pros/cons if applicable
 - **No nitpicking** — only raise meaningful issues (correctness, maintainability, security)
 
 If issues found → flag them, let the user decide. Do not block on style preferences.
+
+### 2b. Refactor
+
+After review, analyze whether the GREEN code needs cleanup:
+- **Duplication** — extract if the same logic appears 3+ times
+- **Naming** — does it reflect intent or just describe what it does?
+- **Structure** — does it belong where it's placed?
+- **Ponytail check** — is this the minimum code that works? Any speculative abstraction?
+
+Only refactor when it adds measurable value. No unnecessary churn. If nothing to refactor, note "No refactor needed" and move on.
 
 ### 3. Build & Deploy
 

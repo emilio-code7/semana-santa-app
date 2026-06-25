@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,7 +41,8 @@ public class HermandadController {
             @ApiResponse(responseCode = "400", description = "Invalid input (validation error)")
     })
     public ResponseEntity<HermandadResponse> createHermandad(@Valid @RequestBody CreateHermandadRequest createHermandadRequest) {
-        HermandadResponse hermandad = hermandadService.createHermandad(createHermandadRequest);
+        var auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        HermandadResponse hermandad = hermandadService.createHermandad(createHermandadRequest, auth.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(hermandad);
     }
 
@@ -57,6 +61,7 @@ public class HermandadController {
 
     @PostMapping("/{hermandadId}/members")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("@hermandadSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Add a member to a hermandad")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Member added"),
@@ -69,6 +74,7 @@ public class HermandadController {
     }
 
     @GetMapping("/{hermandadId}/members")
+    @PreAuthorize("@hermandadSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "List members of a hermandad")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "List of members",
@@ -80,6 +86,7 @@ public class HermandadController {
     }
 
     @PatchMapping("/{hermandadId}/members/{userId}/role")
+    @PreAuthorize("@hermandadSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Change a member's role")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Role updated"),
@@ -96,6 +103,7 @@ public class HermandadController {
     }
 
     @DeleteMapping("/{hermandadId}/members/{userId}")
+    @PreAuthorize("@hermandadSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Delete a member from hermandad")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Member deleted"),
