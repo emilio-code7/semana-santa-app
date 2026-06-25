@@ -40,7 +40,9 @@ Complete the hermandad service: auth, tests, missing fields, and outbox quality.
 4. **Auto-assign creator as HERMANDAD_ADMIN** on `POST /api/hermandades` ✅
    - ~~Creator saved as `HERMANDAD_ADMIN` in `hermandad_member` on create~~ ✅
    - ~~`HermandadSecurityService` dual-path auth: JWT authorities (fast) → DB membership (fallback)~~ ✅
-5. **Outbox quality** — `ORDER BY created_at` + batch size limit (100)
+5. **Outbox quality** — `ORDER BY created_at` + batch size limit (100) ✅
+   - ~~`findTop100ByProcessedFalseOrderByCreatedAtAsc()` query~~ ✅
+   - ~~Poller uses `ORDER BY created_at ASC`, capped at 100~~ ✅
 
 
 

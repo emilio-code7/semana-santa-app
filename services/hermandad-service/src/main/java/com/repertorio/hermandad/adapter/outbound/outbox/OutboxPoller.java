@@ -19,7 +19,7 @@ public class OutboxPoller {
 
     @Scheduled(fixedDelayString = "PT5S")
     public void processPendingOutbox() {
-        List<OutboxEventEntity> outboxEventList = outboxEventRepository.findByProcessedFalse();
+        List<OutboxEventEntity> outboxEventList = outboxEventRepository.findTop100ByProcessedFalseOrderByCreatedAtAsc();
         log.info("Outbox events found after PT5S: {}", outboxEventList);
         for (OutboxEventEntity outboxEvent : outboxEventList) {
             kafkaTemplate.send(outboxEvent.getAggregateType() + "-events", outboxEvent.getPayload())
