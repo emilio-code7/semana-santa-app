@@ -33,7 +33,9 @@ Complete the hermandad service: auth, tests, missing fields, and outbox quality.
    - ~~**`SecurityConfig`**: wire the converter. `POST /api/hermandades` → any authenticated user (bootstrap). `GET /api/hermandades/{id}` → public. Everything else → authenticated + `@PreAuthorize`.~~ ✅
    - ~~**`HermandadController`**: `@PreAuthorize` on member management. Bootstrap endpoint stays open.~~ ✅
    - ~~**`HermandadService.createHermandad()`**: accept creator userId (from JWT `sub`) for auto-assign (ties into item 4).~~ ✅
-2. **Integration tests** — Testcontainers (PostgreSQL) for repository layer
+2. **Integration tests** — JPA repositories against real PostgreSQL ✅
+   - ~~`HermandadRepositoryIntegrationTest` — saves/finds/constraints via running Postgres~~ ✅
+   - ~~Skips automatically if no Postgres available (graceful dev/CI fallback)~~ ✅
 3. **Missing entity fields** — `description` (added, nullable TEXT) ✅
    - ~~`V5__add_description_to_hermandad.sql`~~ ✅
    - ~~`CreateHermandadRequest`, `HermandadResponse`, constructor, service, tests~~ ✅
