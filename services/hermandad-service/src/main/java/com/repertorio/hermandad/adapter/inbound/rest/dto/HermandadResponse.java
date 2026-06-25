@@ -11,6 +11,7 @@ public record HermandadResponse (
         String name,
         String city,
         int foundedYear,
+        String description,
         Instant createdAt
 ) implements Serializable {
     public static HermandadResponse from(Hermandad hermandad) {
@@ -19,6 +20,7 @@ public record HermandadResponse (
                 hermandad.getName(),
                 hermandad.getCity(),
                 hermandad.getFoundedYear(),
+                hermandad.getDescription(),
                 hermandad.getCreatedAt()
         );
     }

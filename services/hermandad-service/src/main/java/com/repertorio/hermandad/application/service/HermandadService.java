@@ -42,7 +42,8 @@ public class HermandadService {
         Hermandad hermandad = new Hermandad(
                 createHermandadRequest.name(),
                 createHermandadRequest.city(),
-                createHermandadRequest.foundedYear()
+                createHermandadRequest.foundedYear(),
+                createHermandadRequest.description()
         );
         hermandad = hermandadRepository.save(hermandad);
 

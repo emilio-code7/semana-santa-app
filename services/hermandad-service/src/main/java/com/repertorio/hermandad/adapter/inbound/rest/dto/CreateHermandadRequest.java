@@ -11,6 +11,8 @@ public record CreateHermandadRequest(
         String city,
 
         @Min(1)
-        int foundedYear
+        int foundedYear,
+
+        String description
 ) {
 }

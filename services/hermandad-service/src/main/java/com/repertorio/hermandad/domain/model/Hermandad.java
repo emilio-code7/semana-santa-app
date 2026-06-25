@@ -24,15 +24,18 @@ public class Hermandad {
     private int foundedYear;
     @Column
     private String keycloakGroupId;
+    @Column
+    private String description;
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     protected Hermandad() {}
 
-    public Hermandad(String name, String city, int foundedYear) {
+    public Hermandad(String name, String city, int foundedYear, String description) {
         this.name = name;
         this.city = city;
         this.foundedYear = foundedYear;
+        this.description = description;
     }
 
     @PrePersist

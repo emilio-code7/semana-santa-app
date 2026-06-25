@@ -34,7 +34,9 @@ Complete the hermandad service: auth, tests, missing fields, and outbox quality.
    - ~~**`HermandadController`**: `@PreAuthorize` on member management. Bootstrap endpoint stays open.~~ ✅
    - ~~**`HermandadService.createHermandad()`**: accept creator userId (from JWT `sub`) for auto-assign (ties into item 4).~~ ✅
 2. **Integration tests** — Testcontainers (PostgreSQL) for repository layer
-3. **Missing entity fields** — `country`, `description`, `visibility` (PUBLIC/PRIVATE), `showSongs` (boolean)
+3. **Missing entity fields** — `description` (added, nullable TEXT) ✅
+   - ~~`V5__add_description_to_hermandad.sql`~~ ✅
+   - ~~`CreateHermandadRequest`, `HermandadResponse`, constructor, service, tests~~ ✅
 4. **Auto-assign creator as HERMANDAD_ADMIN** on `POST /api/hermandades` ✅
    - ~~Creator saved as `HERMANDAD_ADMIN` in `hermandad_member` on create~~ ✅
    - ~~`HermandadSecurityService` dual-path auth: JWT authorities (fast) → DB membership (fallback)~~ ✅
@@ -97,7 +99,6 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 - List members with pagination
 - Idempotent Kafka consumer for hermandad events
 - Integration tests for all endpoints
-- Add missing entity fields: `country`, `description`, `visibility` (PUBLIC/PRIVATE), `showSongs` (boolean)
 - Add `CAPATAZ` role to OpenAPI spec + role-permission matrix
 - **Validate Keycloak user existence before adding member**: add `UserExistencePort`, `KeycloakUserExistenceAdapter` (calls admin API, 404 → false), inject into `HermandadService.addMember()`, fail with 400/404 if not found. Decision: C (pre-registered users only, Keycloak is source of truth for user lifecycle). Tracked from discussion on 2026-06-17.
 

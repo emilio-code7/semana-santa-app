@@ -54,7 +54,7 @@ class HermandadControllerTest {
     @Test
     void createHermandadReturns201ForAuthenticatedUser() throws Exception {
         when(hermandadService.createHermandad(any(), any())).thenReturn(
-                new HermandadResponse(hermandadId, "Test", "Sevilla", 2020, Instant.now()));
+                new HermandadResponse(hermandadId, "Test", "Sevilla", 2020, null, Instant.now()));
 
         mockMvc.perform(post("/api/hermandades")
                         .with(jwt())
@@ -177,7 +177,7 @@ class HermandadControllerTest {
     @Test
     void getHermandadReturns200WithoutAuth() throws Exception {
         when(hermandadService.findHermandadById(hermandadId))
-                .thenReturn(new HermandadResponse(hermandadId, "Test", "Sevilla", 2020, Instant.now()));
+                .thenReturn(new HermandadResponse(hermandadId, "Test", "Sevilla", 2020, null, Instant.now()));
 
         mockMvc.perform(get("/api/hermandades/{id}", hermandadId))
                 .andExpect(status().isOk());

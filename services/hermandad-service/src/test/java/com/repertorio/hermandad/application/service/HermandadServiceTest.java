@@ -48,8 +48,8 @@ class HermandadServiceTest {
 
     @Test
     void createHermandadPublishesEvent() {
-        var request = new CreateHermandadRequest("Macarena", "Sevilla", 1932);
-        Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932);
+        var request = new CreateHermandadRequest("Macarena", "Sevilla", 1932, null);
+        Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932, null);
         when(hermandadRepository.save(any())).thenReturn(saved);
 
         hermandadService.createHermandad(request, "creator-id");
@@ -126,8 +126,8 @@ class HermandadServiceTest {
 
     @Test
     void createHermandadThrowsWhenNameAlreadyExists() {
-        var request = new CreateHermandadRequest("Macarena", "Sevilla", 1932);
-        Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932);
+        var request = new CreateHermandadRequest("Macarena", "Sevilla", 1932, null);
+        Hermandad saved = new Hermandad("Macarena", "Sevilla", 1932, null);
         when(hermandadRepository.existsByName("Macarena")).thenReturn(false, true);
         when(hermandadRepository.save(any())).thenReturn(saved);
 

@@ -27,7 +27,7 @@ class HermandadMemberDataJpaTest {
     @Test
     void updatedAtChangesAfterRoleUpdate() {
         // ponytail: need a real hermandad to satisfy FK constraint
-        var hermandad = hermandadRepository.save(new Hermandad("Macarena", "Sevilla", 1932));
+        var hermandad = hermandadRepository.save(new Hermandad("Macarena", "Sevilla", 1932, null));
 
         var member = new HermandadMember(hermandad.getId(), "user-1", HermandadRole.MUSICIAN);
         var saved = memberRepository.save(member);
