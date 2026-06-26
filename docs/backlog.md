@@ -24,7 +24,7 @@ Upgrade platform to Boot 4.1. Bump versions, migrate modular starters, Jackson 3
 
 ---
 
-### Sprint 4 — Hermandad Service Hardening (🔄 in progress)
+### Sprint 4 — Hermandad Service Hardening ✅
 
 Complete the hermandad service: auth, tests, missing fields, and outbox quality.
 
@@ -44,9 +44,31 @@ Complete the hermandad service: auth, tests, missing fields, and outbox quality.
    - ~~`HermandadSecurityService` dual-path auth: JWT authorities (fast) → DB membership (fallback)~~ ✅
 5. **Outbox quality** — `ORDER BY created_at` + batch size limit (100) ✅
    - ~~`findTop100ByProcessedFalseOrderByCreatedAtAsc()` query~~ ✅
-   - ~~Poller uses `ORDER BY created_at ASC`, capped at 100~~ ✅
+    - ~~Poller uses `ORDER BY created_at ASC`, capped at 100~~ ✅
 
+---
 
+### Sprint 5 — Hermandad Polish + Idempotent Consumer ✅
+
+Complete remaining hermandad-service gaps and build the idempotent Kafka consumer reference pattern.
+
+1. **`MemberAddedEvent` add `hermandadId`** ✅
+   - ~~Add `UUID hermandadId` field to `MemberAddedEvent` record~~ ✅
+   - ~~Populate it when publishing from `HermandadService.addMember()`~~ ✅
+   - ~~Update `HermandadServiceTest`~~ ✅
+   - **AC**: Event payload includes hermandadId; Kafka consumers get tenant context without cross-service lookup
+
+2. **MockMvc + Exception handler tests** ✅
+   - ~~Fill gaps in `HermandadControllerTest` (validation 400, conflict 409, response body checks for success paths)~~ ✅
+   - ~~Add `GlobalExceptionHandlerTest` for each handler (HermandadNotFoundException → 404, validation → 400, conflict → 409, AccessDenied → 403, generic → 500)~~ ✅
+   - **AC**: All exception handlers have a test proving correct status code + body format
+
+3. **Idempotent Kafka consumer (reference implementation)** ✅
+   - ~~`V6__create_processed_event_table.sql`: `processed_event` table with `(event_id UUID PK, consumer_name VARCHAR(100), processed_at TIMESTAMP)`~~ ✅
+   - ~~Consumer bean listens to `hermandad-events` and `hermandad-member-events`~~ ✅
+   - ~~Checks `processed_event` table before processing; skips if already processed; stores event_id + consumer_name + timestamp if new~~ ✅
+   - ~~Register consumer group for offset tracking~~ ✅
+   - **AC**: Duplicate Kafka messages are silently skipped; each unique event is processed exactly once; pattern is copy-paste ready for other services
 
 ---
 
@@ -94,14 +116,12 @@ All stories implemented. E2E verified except duplicate member (handled in Sprint
 
 Items from `docs/audit.md` — small-effort fixes that should be picked up early.
 
-- Add `hermandadId` field to `MemberAddedEvent` record and populate when publishing (Kafka consumers need tenant context)
 - Rename `keycloak_group_id` to `keycloak_group_id_refs` (audit finding — naming)
 
 ### Hermandad Service
 
 - Member removal (soft delete or hard delete?)
 - List members with pagination
-- Idempotent Kafka consumer for hermandad events
 - Integration tests for all endpoints
 - Add `CAPATAZ` role to OpenAPI spec + role-permission matrix
 - **Validate Keycloak user existence before adding member**: add `UserExistencePort`, `KeycloakUserExistenceAdapter` (calls admin API, 404 → false), inject into `HermandadService.addMember()`, fail with 400/404 if not found. Decision: C (pre-registered users only, Keycloak is source of truth for user lifecycle). Tracked from discussion on 2026-06-17.
@@ -109,9 +129,6 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 ### Hermandad Tests
 
 - Add Testcontainers integration test for outbox → Kafka flow (EmbeddedKafka)
-- Add MockMvc tests for controller endpoints
-- Add tests for `HermandadMemberNotFoundException` error response
-- Add tests for `GlobalExceptionHandler` (validation errors, constraint violations)
 
 ### Shared Library
 
@@ -179,6 +196,11 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 
 ## Done
 
+- **Sprint 5 — Hermandad Polish + Idempotent Consumer** ✅
+  - `MemberAddedEvent.hermandadId` field + test assertion
+  - MockMvc tests (409/404/400 for controller, all handlers for GlobalExceptionHandler)
+  - Idempotent Kafka consumer reference pattern (`processed_event` table, entity, consumer, tests)
+- **Sprint 4 — Hermandad Service Hardening** ✅
 - Project skeleton: Gradle multi-project, Docker Compose, shared library
 - Infrastructure: API Gateway, Discovery Server, Keycloak realm
 - Hermandad model: `Hermandad`, `HermandadMember`, `HermandadRole`

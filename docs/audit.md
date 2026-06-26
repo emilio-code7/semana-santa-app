@@ -41,13 +41,13 @@ The `.sisyphus/plans/semana-santa-app.md` originally said *"NO Hexagonal Archite
 
 **Resolution**: `updatable = false` was removed from `updatedAt` (it remains only on `joinedAt`, which is correct). Role changes now persist the new `updatedAt` timestamp.
 
-### 3.2 `MemberAddedEvent` Missing `hermandadId`
+### 3.2 `MemberAddedEvent` Missing `hermandadId` ✅ RESOLVED
 
 **File**: `services/hermandad-service/.../domain/event/MemberAddedEvent.java`
 
-The event carries `memberId`, `userId`, and `role` but not `hermandadId`. Kafka consumers receiving this event cannot determine which hermandad the member belongs to without a cross-service lookup.
+The event carried `memberId`, `userId`, and `role` but not `hermandadId`. Kafka consumers could not determine which hermandad the member belongs to without a cross-service lookup.
 
-**Fix**: Add `UUID hermandadId` to the record and populate it when publishing.
+**Resolution (Sprint 5):** `UUID hermandadId` added to the record and populated when publishing. Verified in `HermandadServiceTest.addMemberPublishesDomainEvent()`.
 
 ### 3.3 Hermandad Entity Missing Fields ✅ PARTIALLY RESOLVED
 
@@ -59,11 +59,11 @@ The `Hermandad` entity has `name, city, foundedYear, keycloakGroupId, createdAt`
 
 ## 4. Error Handling
 
-### 4.1 Incomplete Exception Handling ✅ PARTIALLY RESOLVED
+### 4.1 Incomplete Exception Handling ✅ RESOLVED
 
 **File**: `services/hermandad-service/.../adapter/inbound/rest/GlobalExceptionHandler.java`
 
-Only `HermandadNotFoundException` is handled. Missing handlers for:
+Only `HermandadNotFoundException` was handled. Missing handlers:
 - `HermandadMemberNotFoundException` — used by `changeRole()`, would return 500 instead of 404 → ✅ Added
 - `MethodArgumentNotValidException` — validation errors from `@Valid` return 400 with Tomcat's default HTML → ✅ Added
 - `DataIntegrityViolationException` — duplicate member unique constraint returns 500 → ✅ Added
@@ -71,7 +71,9 @@ Only `HermandadNotFoundException` is handled. Missing handlers for:
 - Generic fallback — any unhandled exception returns 500 with no useful body → ✅ Added
 - `AccessDeniedException` — added in Sprint 4 → 403
 
-**Still open:** Error responses return `ResponseEntity<String>` with plain text (see 4.2).
+**Resolution (Sprint 2/4/5):** All handlers implemented. `GlobalExceptionHandlerTest` provides per-handler test coverage for each status code + body format.
+
+**Still open:** Error responses return `ResponseEntity<String>` with plain text (see section 4.2).
 
 ### 4.2 Non-Structured Error Responses
 
@@ -116,9 +118,11 @@ The `infrastructure/keycloak/seed-qa-users.sh` file exists but was not verified 
 
 The `shared/common` module has zero tests despite having logic (`JwtMembershipExtractor`, `TenantContextFilter`) that would benefit from them.
 
-### 6.3 No Controller Tests
+### 6.3 No Controller Tests ✅ RESOLVED
 
-`HermandadController` has no MockMvc or WebMvcTest tests. Only the service layer is tested.
+`HermandadController` had no MockMvc or WebMvcTest tests. Only the service layer was tested.
+
+**Resolution (Sprint 5):** `HermandadControllerTest` covers error paths (409 conflict, 404 not found, 400 same-role). `GlobalExceptionHandlerTest` covers all exception handlers with status + body assertions.
 
 ---
 
@@ -361,9 +365,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 ## Appendix: Quick Fixes (Small Effort)
 
-- `updatedAt` updatable=false → remove the constraint (Section 3.1)
-- Add `hermandadId` to `MemberAddedEvent` (Section 3.2)
 - Add `DataIntegrityViolationException` handler → 409 Conflict (Section 4.1)
-- Add `HermandadMemberNotFoundException` handler → 404 (Section 4.1)
 - Add basic `@ExceptionHandler(Exception.class)` fallback (Section 4.1)
 - Bump `payload` column to `TEXT` or `VARCHAR(4000)` (Section 9.3)

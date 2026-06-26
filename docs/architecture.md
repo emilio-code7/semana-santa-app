@@ -77,6 +77,19 @@ All domain events implement the `DomainEvent` interface (`application/port/Domai
 - `aggregateId()` — the aggregate's UUID
 - `eventType()` — event discriminant (e.g., `MEMBER_ADDED`)
 
+### Idempotent Kafka Consumer
+
+Kafka consumers use an idempotency pattern to safely handle duplicate message delivery (at-least-once semantics):
+
+1. **`processed_event` table** — stores `(event_id UUID PK, consumer_name VARCHAR(100), processed_at TIMESTAMP)` per processed event.
+2. **Deterministic event ID** — derived from the full payload via `UUID.nameUUIDFromBytes(payload.getBytes())`. Same payload always produces the same ID.
+3. **Check-before-process** — consumer checks `processed_event` before handling; skips if event_id exists.
+4. **Register on first process** — stores event_id + consumer_name + timestamp after successful processing.
+
+Topics follow `{aggregate-type}-events` naming (e.g., `hermandad-events`, `hermandad-member-events`). Consumer group: `hermandad-service-group`.
+
+Reference implementation: `IdempotentEventConsumer` in `adapter/inbound/kafka/`. Copy-paste ready for other services — only the processing logic (log line) needs replacement.
+
 ### Event Publishing
 
 Event publishing goes through a single `DomainEventPublisher` port (`application/port/DomainEventPublisher.java`).
