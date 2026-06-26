@@ -6,6 +6,7 @@ import com.repertorio.hermandad.adapter.config.TestCacheConfig;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.application.service.HermandadService;
+import com.repertorio.hermandad.domain.model.HermandadAlreadyExistsException;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
 import com.repertorio.hermandad.domain.model.HermandadRole;
@@ -32,6 +33,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HermandadController.class)
@@ -181,5 +184,48 @@ class HermandadControllerTest {
 
         mockMvc.perform(get("/api/hermandades/{id}", hermandadId))
                 .andExpect(status().isOk());
+    }
+
+    // --- Error responses ---
+
+    @Test
+    void createHermandadReturns409WhenNameExists() throws Exception {
+        when(hermandadService.createHermandad(any(), any()))
+                .thenThrow(new HermandadAlreadyExistsException("Existing"));
+
+        mockMvc.perform(post("/api/hermandades")
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Existing","city":"Sevilla","foundedYear":2020}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("already exists")));
+    }
+
+    @Test
+    void getHermandadReturns404WhenNotFound() throws Exception {
+        when(hermandadService.findHermandadById(hermandadId))
+                .thenThrow(new com.repertorio.hermandad.domain.model.HermandadNotFoundException(hermandadId));
+
+        mockMvc.perform(get("/api/hermandades/{id}", hermandadId))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("not found")));
+    }
+
+    @Test
+    void changeRoleReturns400WhenSameRole() throws Exception {
+        doThrow(new IllegalArgumentException("Member already has role MUSICIAN"))
+                .when(hermandadService).changeRole(hermandadId, "u1", HermandadRole.BAND_DIRECTOR);
+
+        mockMvc.perform(patch("/api/hermandades/{id}/members/{userId}/role", hermandadId, "u1")
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority("HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"BAND_DIRECTOR"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("already has role")));
     }
 }

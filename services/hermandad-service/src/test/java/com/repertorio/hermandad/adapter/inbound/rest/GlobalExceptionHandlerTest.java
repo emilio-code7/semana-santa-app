@@ -1,10 +1,12 @@
 package com.repertorio.hermandad.adapter.inbound.rest;
 
+import com.repertorio.hermandad.domain.model.HermandadAlreadyExistsException;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
 import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -81,5 +83,25 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).isEqualTo("An unexpected error occurred");
+    }
+
+    @Test
+    void hermandadAlreadyExistsReturns409() {
+        var ex = new HermandadAlreadyExistsException("test-name");
+
+        var response = handler.handleHermandadAlreadyExists(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).contains("already exists");
+    }
+
+    @Test
+    void accessDeniedReturns403() {
+        var ex = new AccessDeniedException("denied");
+
+        var response = handler.handleAccessDenied(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isEqualTo("Access denied");
     }
 }
