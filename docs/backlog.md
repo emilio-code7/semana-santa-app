@@ -106,12 +106,8 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 - Add `CAPATAZ` role to OpenAPI spec + role-permission matrix
 - **Validate Keycloak user existence before adding member**: add `UserExistencePort`, `KeycloakUserExistenceAdapter` (calls admin API, 404 → false), inject into `HermandadService.addMember()`, fail with 400/404 if not found. Decision: C (pre-registered users only, Keycloak is source of truth for user lifecycle). Tracked from discussion on 2026-06-17.
 
-- Add `ORDER BY created_at` to outbox poller query for predictable event ordering
-- Add batch size limit to outbox poller (fetch in chunks of 100)
-
 ### Hermandad Tests
 
-- Add Testcontainers integration test for repository layer (PostgreSQL)
 - Add Testcontainers integration test for outbox → Kafka flow (EmbeddedKafka)
 - Add MockMvc tests for controller endpoints
 - Add tests for `HermandadMemberNotFoundException` error response

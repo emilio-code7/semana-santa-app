@@ -9,15 +9,11 @@ This document captures findings from a comprehensive codebase audit. It serves a
 
 ## 1. Security & Access Control
 
-### 1.1 No Auth Enforcement in Hermandad Service
+### 1.1 No Auth Enforcement in Hermandad Service ✅ RESOLVED
 
 **File**: `services/hermandad-service/.../adapter/config/SecurityConfig.java`
 
-JWT resource server is configured but `authorizeHttpRequests` uses `.anyRequest().permitAll()`. The API Gateway enforces JWT at the edge, but direct access to `:8081` bypasses all auth. No `@PreAuthorize`, no `JwtAuthenticationConverter`, no tenant-scoped RBAC.
-
-**Impact**: Anyone with network access to the service port can add/remove members, create hermandads, etc.
-
-**Fix**: Implement `JwtAuthenticationConverter` to extract `hermandad_memberships` claim, configure method-security with tenant-scoped role checks.
+**Resolution (Sprint 4):** `JwtAuthenticationConverter` extracts `hermandad_memberships` → `HERMANDAD_{id}_{role}` authorities. `@EnableMethodSecurity` + `@PreAuthorize` on admin endpoints. Dual-path fallback via `HermandadSecurityService` (JWT fast, DB fallback). `AccessDeniedException` → 403.
 
 ### 1.2 Missing Role in OpenAPI Spec
 
@@ -37,18 +33,13 @@ The `.sisyphus/plans/semana-santa-app.md` originally said *"NO Hexagonal Archite
 
 ## 3. Data & Domain Issues
 
-### 3.1 `HermandadMember.updatedAt` Not Persisting
+### 3.1 `HermandadMember.updatedAt` Not Persisting ✅ RESOLVED
 
 **File**: `services/hermandad-service/.../domain/model/HermandadMember.java`
 
-```java
-@Column(nullable = false, updatable = false)  // ← prevents UPDATE
-private Instant updatedAt;
-```
+~~The column is marked `updatable = false`, but `@PreUpdate` sets `updatedAt` expecting it to persist. Hibernate omits it from UPDATE SQL — changes to `updatedAt` are silently lost.~~
 
-The column is marked `updatable = false`, but `@PreUpdate` sets `updatedAt` expecting it to persist. Hibernate omits it from UPDATE SQL — changes to `updatedAt` are silently lost.
-
-**Fix**: Remove `updatable = false` from the `updatedAt` field.
+**Resolution**: `updatable = false` was removed from `updatedAt` (it remains only on `joinedAt`, which is correct). Role changes now persist the new `updatedAt` timestamp.
 
 ### 3.2 `MemberAddedEvent` Missing `hermandadId`
 
@@ -58,24 +49,29 @@ The event carries `memberId`, `userId`, and `role` but not `hermandadId`. Kafka 
 
 **Fix**: Add `UUID hermandadId` to the record and populate it when publishing.
 
-### 3.3 Hermandad Entity Missing Fields
+### 3.3 Hermandad Entity Missing Fields ✅ PARTIALLY RESOLVED
 
 The `Hermandad` entity has `name, city, foundedYear, keycloakGroupId, createdAt` but the plan and OpenAPI spec define additional fields: `country`, `description`, `visibility` (PUBLIC/PRIVATE), `showSongs` (boolean). Visibility checks (return 404 for private hermandads) cannot work without these fields.
+
+**Resolution (Sprint 4):** `description` (nullable TEXT) was added. `country`, `visibility`, and `showSongs` were explicitly deferred as speculative (YAGNI review).
 
 ---
 
 ## 4. Error Handling
 
-### 4.1 Incomplete Exception Handling
+### 4.1 Incomplete Exception Handling ✅ PARTIALLY RESOLVED
 
 **File**: `services/hermandad-service/.../adapter/inbound/rest/GlobalExceptionHandler.java`
 
 Only `HermandadNotFoundException` is handled. Missing handlers for:
-- `HermandadMemberNotFoundException` — used by `changeRole()`, would return 500 instead of 404
-- `MethodArgumentNotValidException` — validation errors from `@Valid` return 400 with Tomcat's default HTML
-- `DataIntegrityViolationException` — duplicate member unique constraint returns 500
-- `IllegalArgumentException` — same-role change from `changeRole()` returns 500
-- Generic fallback — any unhandled exception returns 500 with no useful body
+- `HermandadMemberNotFoundException` — used by `changeRole()`, would return 500 instead of 404 → ✅ Added
+- `MethodArgumentNotValidException` — validation errors from `@Valid` return 400 with Tomcat's default HTML → ✅ Added
+- `DataIntegrityViolationException` — duplicate member unique constraint returns 500 → ✅ Added
+- `IllegalArgumentException` — same-role change from `changeRole()` returns 500 → ✅ Added
+- Generic fallback — any unhandled exception returns 500 with no useful body → ✅ Added
+- `AccessDeniedException` — added in Sprint 4 → 403
+
+**Still open:** Error responses return `ResponseEntity<String>` with plain text (see 4.2).
 
 ### 4.2 Non-Structured Error Responses
 
@@ -112,9 +108,9 @@ The `infrastructure/keycloak/seed-qa-users.sh` file exists but was not verified 
 
 ## 6. Testing Coverage
 
-### 6.1 No Integration Tests
+### 6.1 No Integration Tests ✅ RESOLVED
 
-Hermandad service tests use pure Mockito. There are zero Testcontainers tests — no real database, no real Kafka, no real Redis verification. The `IntegrationTestBase` referenced in the plan doesn't exist as a file.
+**Resolution (Sprint 4):** `HermandadRepositoryIntegrationTest` covers JPA repository CRUD + constraints against real PostgreSQL. Connects to running `docker-compose` Postgres, skips gracefully if unavailable.
 
 ### 6.2 Shared Library Has No Tests
 
@@ -164,24 +160,26 @@ The filter only injects `X-Tenant-Id` for paths under `/api/hermandades/{id}/...
 
 ## 9. Outbox Pattern Concerns
 
-### 9.1 No Batch Processing Limit
+### 9.1 No Batch Processing Limit ✅ RESOLVED
 
-`OutboxPoller.processPendingOutbox()` fetches all unprocessed rows without a batch limit. If the outbox table grows to tens of thousands of rows, this will cause memory pressure and long processing cycles.
+**Resolution (Sprint 4):** Query changed to `findTop100ByProcessedFalseOrderByCreatedAtAsc()`, capped at 100 rows per poll cycle.
 
-### 9.2 No Ordering Guarantee
+### 9.2 No Ordering Guarantee ✅ RESOLVED
 
-Events are processed in arbitrary order (no `ORDER BY created_at`). For events where ordering matters (e.g., `MEMBER_ADDED` before `MEMBER_ROLE_CHANGED`), this could cause issues.
+**Resolution (Sprint 4):** `ORDER BY created_at ASC` added to the outbox query. Oldest events are processed first.
 
-### 9.3 Payload Size Limit
+### 9.3 Payload Size Limit ✅ RESOLVED
 
-The `payload` column is `VARCHAR(255)` — too small for complex events. The `HermandadCreatedEvent` serialized as JSON might fit, but events with nested objects (e.g., `ProcesionStateChanged` with snapshot payloads) will be truncated.
+The `payload` column is `VARCHAR(255)` — too small for complex events. 
+
+**Resolution (Sprint 2):** `V3__alter_outbox_payload_column.sql` changed the column to `TEXT`.
 
 ---
 
-## 10. Spring Boot 4 Migration Impact Analysis
+## 10. Spring Boot 4 Migration Impact Analysis ✅ MIGRATED
 
-> Generated: 2026-06-17
-> Scope: Breaking changes, affected files, migration effort estimation for SB 3.3.5 → 4.0
+> **Status: Complete** — migrated to Spring Boot 4.1.x (Sprint 3).
+> This section is preserved as historical reference for future migrations.
 
 ### 10.1 Current Project Baseline
 
