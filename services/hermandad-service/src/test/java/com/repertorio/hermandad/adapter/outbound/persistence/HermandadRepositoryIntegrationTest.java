@@ -1,5 +1,6 @@
 package com.repertorio.hermandad.adapter.outbound.persistence;
 
+import com.repertorio.hermandad.adapter.inbound.kafka.IdempotentEventConsumer;
 import com.repertorio.hermandad.domain.model.Hermandad;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadRole;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -48,7 +50,6 @@ class HermandadRepositoryIntegrationTest {
         registry.add("spring.datasource.url", () -> POSTGRES_JDBC);
         registry.add("spring.datasource.username", () -> POSTGRES_USER);
         registry.add("spring.datasource.password", () -> POSTGRES_PASS);
-        registry.add("kafka.consumer.enabled", () -> "false");
     }
 
     @Autowired
@@ -56,6 +57,9 @@ class HermandadRepositoryIntegrationTest {
 
     @Autowired
     private HermandadMemberJpaRepository memberRepo;
+
+    @MockitoBean
+    private IdempotentEventConsumer idempotentEventConsumer;
 
     @Test
     void saveAndFindHermandad() {
