@@ -5,6 +5,7 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.application.port.DomainEvent;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
+import com.repertorio.hermandad.domain.event.MemberAddedEvent;
 import com.repertorio.hermandad.domain.model.Hermandad;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
@@ -72,6 +73,8 @@ class HermandadServiceTest {
 
         verify(domainEventPublisher).publish(domainEventCaptor.capture());
         var event = domainEventCaptor.getValue();
+        assertThat(event).isInstanceOf(MemberAddedEvent.class);
+        assertThat(((MemberAddedEvent) event).hermandadId()).isEqualTo(hermandadId);
         assertThat(event.aggregateType()).isEqualTo("hermandad-member");
         assertThat(event.eventType()).isEqualTo("MEMBER_ADDED");
     }
