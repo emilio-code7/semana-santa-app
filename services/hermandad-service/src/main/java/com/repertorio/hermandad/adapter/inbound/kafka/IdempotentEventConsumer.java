@@ -4,6 +4,7 @@ import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventEntity;
 import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "kafka.consumer.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class IdempotentEventConsumer {

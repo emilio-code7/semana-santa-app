@@ -48,6 +48,7 @@ class HermandadRepositoryIntegrationTest {
         registry.add("spring.datasource.url", () -> POSTGRES_JDBC);
         registry.add("spring.datasource.username", () -> POSTGRES_USER);
         registry.add("spring.datasource.password", () -> POSTGRES_PASS);
+        registry.add("kafka.consumer.enabled", () -> "false");
     }
 
     @Autowired
