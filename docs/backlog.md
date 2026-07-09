@@ -110,6 +110,33 @@ All stories implemented. E2E verified except duplicate member (handled in Sprint
 
 ---
 
+### Sprint 6 — Hermandad Service Polish ✅
+
+Complete remaining hermandad-service gaps: pagination, CAPATAZ role in OpenAPI, Keycloak validation.
+
+1. **Members list pagination** ✅
+   - ~~Port, JPA repo, adapter, service, controller updated with `Pageable`/`Page`~~ ✅
+   - ~~`@PageableDefault(size = 20)` on controller, `@Cacheable` removed from paginated method~~ ✅
+   - ~~Service test + integration test fix~~ ✅
+   - **AC**: `GET /api/hermandades/{id}/members?page=0&size=20` returns paginated response with Spring Data `Page` structure
+
+2. **CAPATAZ role in OpenAPI spec** ✅
+   - ~~Already present in `AddMemberRequest.role`, `HermandadMember.role`, `ChangeRoleRequest.role` enums~~ ✅
+   - **AC**: OpenAPI spec reflects all domain roles including CAPATAZ
+
+3. **Keycloak user existence validation** ✅
+   - ~~`UserExistencePort` interface with `exists(String userId)`~~ ✅
+   - ~~`KeycloakUserExistenceAdapter` calling `users().get(userId).toRepresentation()`~~ ✅
+   - ~~Check in `HermandadService.addMember()` → `IllegalArgumentException` → 400~~ ✅
+   - **AC**: Adding a member with a non-existent Keycloak user returns 400; existing users pass through
+
+4. **Integration test for pagination (bonus)** ✅
+   - ~~`HermandadControllerIntegrationTest` with Testcontainers PostgreSQL pattern~~ ✅
+   - ~~3 scenarios: paginated with size=2, size=5, default size=20~~ ✅
+   - **AC**: Integration test verifies pagination structure end-to-end
+
+---
+
 ## Backlog (unordered)
 
 ### Technical Debt / Audit Findings
@@ -121,10 +148,6 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 ### Hermandad Service
 
 - Member removal (soft delete or hard delete?)
-- List members with pagination
-- Integration tests for all endpoints
-- Add `CAPATAZ` role to OpenAPI spec + role-permission matrix
-- **Validate Keycloak user existence before adding member**: add `UserExistencePort`, `KeycloakUserExistenceAdapter` (calls admin API, 404 → false), inject into `HermandadService.addMember()`, fail with 400/404 if not found. Decision: C (pre-registered users only, Keycloak is source of truth for user lifecycle). Tracked from discussion on 2026-06-17.
 
 ### Hermandad Tests
 
