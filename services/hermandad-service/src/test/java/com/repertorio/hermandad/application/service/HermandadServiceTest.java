@@ -4,6 +4,7 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.application.port.DomainEvent;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
+import com.repertorio.hermandad.application.port.UserExistencePort;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
 import com.repertorio.hermandad.domain.event.MemberAddedEvent;
 import com.repertorio.hermandad.domain.model.Hermandad;
@@ -45,6 +46,9 @@ class HermandadServiceTest {
     @Mock
     private DomainEventPublisher domainEventPublisher;
 
+    @Mock
+    private UserExistencePort userExistencePort;
+
     @InjectMocks
     private HermandadService hermandadService;
 
@@ -71,6 +75,7 @@ class HermandadServiceTest {
         HermandadMember savedMember = new HermandadMember(hermandadId, "user-123", HermandadRole.MUSICIAN);
 
         when(hermandadRepository.existsById(hermandadId)).thenReturn(true);
+        when(userExistencePort.exists("user-123")).thenReturn(true);
         when(hermandadMemberRepository.save(any())).thenReturn(savedMember);
 
         hermandadService.addMember(hermandadId, request);
@@ -81,6 +86,18 @@ class HermandadServiceTest {
         assertThat(((MemberAddedEvent) event).hermandadId()).isEqualTo(hermandadId);
         assertThat(event.aggregateType()).isEqualTo("hermandad-member");
         assertThat(event.eventType()).isEqualTo("MEMBER_ADDED");
+    }
+
+    @Test
+    void addMemberThrowsWhenUserNotFound() {
+        UUID hermandadId = UUID.randomUUID();
+        AddMemberRequest request = new AddMemberRequest("nonexistent-user", HermandadRole.MUSICIAN);
+
+        when(hermandadRepository.existsById(hermandadId)).thenReturn(true);
+        when(userExistencePort.exists("nonexistent-user")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> hermandadService.addMember(hermandadId, request));
     }
 
     @Test

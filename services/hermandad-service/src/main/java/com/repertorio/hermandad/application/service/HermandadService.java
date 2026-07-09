@@ -5,6 +5,7 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
+import com.repertorio.hermandad.application.port.UserExistencePort;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
@@ -34,6 +35,7 @@ public class HermandadService {
     private final HermandadMemberRepository hermandadMemberRepository;
 
     private final DomainEventPublisher domainEventPublisher;
+    private final UserExistencePort userExistencePort;
 
     @Transactional
     public HermandadResponse createHermandad(CreateHermandadRequest createHermandadRequest, String creatorUserId) {
@@ -74,6 +76,9 @@ public class HermandadService {
     public HermandadMember addMember(UUID hermandadId, AddMemberRequest addMemberRequest) {
         if (!hermandadRepository.existsById(hermandadId)) {
             throw new HermandadNotFoundException(hermandadId);
+        }
+        if (!userExistencePort.exists(addMemberRequest.userId())) {
+            throw new IllegalArgumentException("User does not exist in Keycloak: " + addMemberRequest.userId());
         }
         HermandadMember member = new HermandadMember(
                 hermandadId,
