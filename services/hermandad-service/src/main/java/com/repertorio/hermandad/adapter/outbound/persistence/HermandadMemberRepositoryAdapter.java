@@ -3,9 +3,10 @@ package com.repertorio.hermandad.adapter.outbound.persistence;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,8 +17,8 @@ public class HermandadMemberRepositoryAdapter implements HermandadMemberReposito
     private final HermandadMemberJpaRepository jpaRepository;
 
     @Override
-    public List<HermandadMember> findByHermandadId(UUID hermandadId) {
-        return jpaRepository.findByHermandadId(hermandadId);
+    public Page<HermandadMember> findByHermandadId(UUID hermandadId, Pageable pageable) {
+        return jpaRepository.findByHermandadId(hermandadId, pageable);
     }
 
     @Override

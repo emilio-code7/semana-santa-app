@@ -7,7 +7,6 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
 import com.repertorio.hermandad.application.service.HermandadService;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,6 +14,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +24,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -77,12 +78,15 @@ public class HermandadController {
     @PreAuthorize("@hermandadSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "List members of a hermandad")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "List of members",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = HermandadMember.class)))),
+            @ApiResponse(responseCode = "200", description = "Paginated list of members",
+                    content = @Content(schema = @Schema(implementation = Page.class))),
             @ApiResponse(responseCode = "404", description = "Hermandad not found")
     })
-    public ResponseEntity<List<HermandadMember>> getHermandadMembers(@PathVariable UUID hermandadId) {
-        return ResponseEntity.ok(hermandadService.getMembers(hermandadId).members());
+    public ResponseEntity<Page<HermandadMember>> getHermandadMembers(
+            @PathVariable UUID hermandadId,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        return ResponseEntity.ok(hermandadService.getHermandadMembers(hermandadId, pageable));
     }
 
     @PatchMapping("/{hermandadId}/members/{userId}/role")

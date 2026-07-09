@@ -16,6 +16,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.springframework.data.domain.Pageable;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -103,8 +105,8 @@ class HermandadRepositoryIntegrationTest {
         assertThat(member.getId()).isNotNull();
         assertThat(member.getRole()).isEqualTo(HermandadRole.HERMANDAD_ADMIN);
 
-        var members = memberRepo.findByHermandadId(hermandad.getId());
-        assertThat(members).hasSize(1);
+        var members = memberRepo.findByHermandadId(hermandad.getId(), Pageable.unpaged());
+        assertThat(members.getContent()).hasSize(1);
     }
 
     @Test

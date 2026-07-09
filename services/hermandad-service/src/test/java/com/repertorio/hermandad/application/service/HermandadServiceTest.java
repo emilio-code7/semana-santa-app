@@ -21,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class HermandadServiceTest {
@@ -138,5 +142,20 @@ class HermandadServiceTest {
 
         assertThrows(HermandadAlreadyExistsException.class,
                 () -> hermandadService.createHermandad(request, "creator-id"));
+    }
+
+    @Test
+    void getHermandadMembersReturnsPagedResults() {
+        UUID hermandadId = UUID.randomUUID();
+        var pageRequest = PageRequest.of(0, 10);
+        var memberPage = new PageImpl<>(List.of(new HermandadMember(hermandadId, "user-1", HermandadRole.MUSICIAN)));
+
+        when(hermandadRepository.existsById(hermandadId)).thenReturn(true);
+        when(hermandadMemberRepository.findByHermandadId(hermandadId, pageRequest)).thenReturn(memberPage);
+
+        var result = hermandadService.getHermandadMembers(hermandadId, pageRequest);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getUserId()).isEqualTo("user-1");
     }
 }

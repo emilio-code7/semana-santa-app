@@ -4,8 +4,9 @@ import com.repertorio.hermandad.adapter.config.RedisConfig;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
-import com.repertorio.hermandad.adapter.inbound.rest.dto.MembersCache;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;
 import com.repertorio.hermandad.domain.event.MemberAddedEvent;
 import com.repertorio.hermandad.domain.event.MemberRemovedEvent;
@@ -85,12 +86,11 @@ public class HermandadService {
         return member;
     }
 
-    @Cacheable(value = HERMANDAD_MEMBER, key = "#hermandadId")
-    public MembersCache getMembers(UUID hermandadId) {
+    public Page<HermandadMember> getHermandadMembers(UUID hermandadId, Pageable pageable) {
         if (!hermandadRepository.existsById(hermandadId)) {
             throw new HermandadNotFoundException(hermandadId);
         }
-        return new MembersCache(hermandadMemberRepository.findByHermandadId(hermandadId));
+        return hermandadMemberRepository.findByHermandadId(hermandadId, pageable);
     }
 
     public HermandadMember changeRole(UUID hermandadId, String userId, HermandadRole newRole) {
