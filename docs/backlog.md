@@ -141,15 +141,55 @@ Complete remaining hermandad-service gaps: pagination, CAPATAZ role in OpenAPI, 
 
 Build the remaining hermandad-service feature (member removal) and bootstrap the Procesión service at MVP scope. Deployment prep not yet — focus on getting a second service running.
 
-1. **Member removal** — `DELETE /api/hermandades/{id}/members/{memberId}` with soft delete or hard delete. Auth required (admin only).
+**Implementation plan:** `docs/plans/2026-07-10-sprint-07-mvp-foundation.md`
+
+**Tasks:**
+
+1. **Member Removal (Hermandad Service)**
+   - Add `deleteById` to `HermandadMemberRepository` port + adapter
+   - Add `removeMember` service method (with event publishing)
+   - Add `DELETE /api/hermandades/{hermandadId}/members/{memberId}` endpoint
+   - Tests: service test (success + not-found) + controller test (204 + 404)
    - **AC**: Members can be removed; 404 if not found; 204 on success
 
-2. **Procesión Service (MVP)** — New microservice for procession management. Follows existing hexagonal + outbox pattern.
-   - **MVP scope**: Aggregate CRUD (create, get, list by hermandad, change state, delete), outbox event publishing, Keycloak auth, Eureka registration, Docker Compose + DB
-   - **NOT in scope**: Recorrido, GPS, cross-service Kafka consumers
-   - **AC**: `POST/GET/PATCH/DELETE /api/procesiones/**` working end-to-end with DB, events published to Kafka
+2. **Procesión Service — Project Skeleton**
+   - `build.gradle.kts`, `settings.gradle.kts`, `Application.java`, `application.yml`, `Dockerfile`
+   - **AC**: `./gradlew :services:procesion-service:compileJava` succeeds
 
-3. **Docker Compose + Gateway routes** — procesion-db PostgreSQL service, procesion-service container, API Gateway route
+3. **Procesión Service — Domain Aggregate + Repository Port**
+   - `Procesion` aggregate (hermandadId, fecha, hora, estado state machine)
+   - `ProcesionEstado` enum (PLANIFICADA, EN_CURSO, FINALIZADA, CANCELADA)
+   - `ProcesionCreatedEvent`, `ProcesionEstadoChangedEvent`
+   - **AC**: Domain model compiles, state transitions validated
+
+4. **Procesión Service — JPA Adapter + Flyway**
+   - `ProcesionEntity`, `ProcesionJpaRepository`, `ProcesionRepositoryAdapter`
+   - `V1__create_procesion_table.sql` migration
+   - Tests: adapter test with Mockito
+   - **AC**: Persistence layer passes tests
+
+5. **Procesión Service — Service Layer + Outbox**
+   - `ProcesionService` (create, get, change state, list by hermandad, delete)
+   - Outbox event publishing via `DomainEventPublisher`
+   - Tests: service test covering all operations + state transitions
+   - **AC**: Service logic passes tests, events published on create/state-change
+
+6. **Procesión Service — REST Controller + Auth**
+   - `ProcesionController` (POST/GET/PATCH/DELETE endpoints)
+   - DTOs: `CreateProcesionRequest`, `ProcesionResponse`, `EstadoChangeRequest`
+   - `GlobalExceptionHandler`, `SecurityConfig`
+   - Tests: controller test with `@WebMvcTest`
+   - **AC**: All endpoints return correct status codes, auth enforced
+
+7. **Docker Compose — Procesión Service + DB**
+   - `procesion-db` PostgreSQL service (port 5433)
+   - `procesion-service` container
+   - Networks, volumes, environment variables
+   - **AC**: Docker Compose starts procesion-service without errors
+
+8. **API Gateway — Procesión Routes**
+   - Route for `/api/procesiones/**` → `lb://procesion-service`
+   - **AC**: Requests reach procesion-service through gateway
 
 **Backlog items deferred:**
 - Audit rename (`keycloak_group_id` → `keycloak_group_id_refs`)
