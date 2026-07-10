@@ -137,7 +137,29 @@ Complete remaining hermandad-service gaps: pagination, CAPATAZ role in OpenAPI, 
 
 ---
 
-## Backlog (unordered)
+### Sprint 7 — MVP Foundation: Member Removal + Procesión Service
+
+Build the remaining hermandad-service feature (member removal) and bootstrap the Procesión service at MVP scope. Deployment prep not yet — focus on getting a second service running.
+
+1. **Member removal** — `DELETE /api/hermandades/{id}/members/{memberId}` with soft delete or hard delete. Auth required (admin only).
+   - **AC**: Members can be removed; 404 if not found; 204 on success
+
+2. **Procesión Service (MVP)** — New microservice for procession management. Follows existing hexagonal + outbox pattern.
+   - **MVP scope**: Aggregate CRUD (create, get, list by hermandad, change state, delete), outbox event publishing, Keycloak auth, Eureka registration, Docker Compose + DB
+   - **NOT in scope**: Recorrido, GPS, cross-service Kafka consumers
+   - **AC**: `POST/GET/PATCH/DELETE /api/procesiones/**` working end-to-end with DB, events published to Kafka
+
+3. **Docker Compose + Gateway routes** — procesion-db PostgreSQL service, procesion-service container, API Gateway route
+
+**Backlog items deferred:**
+- Audit rename (`keycloak_group_id` → `keycloak_group_id_refs`)
+- Shared lib unit tests
+- Outbox→Kafka integration test (EmbeddedKafka)
+- Repertorio Service, Tracking Service, Notification Service
+
+---
+
+## Backlog (ordered)
 
 ### Technical Debt / Audit Findings
 

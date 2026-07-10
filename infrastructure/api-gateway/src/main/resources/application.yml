@@ -12,34 +12,44 @@ spring:
           jwk-set-uri: http://localhost:8180/realms/semana-santa/protocol/openid-connect/certs
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: false
-      routes:
-        - id: hermandad-service
-          uri: lb://hermandad-service
-          predicates:
-            - Path=/api/hermandades/**
-        - id: hermandad-service-swagger
-          uri: lb://hermandad-service
-          predicates:
-            - Path=/swagger-ui.html,/swagger-ui/**,/v3/api-docs/**
-        - id: repertorio-service
-          uri: lb://repertorio-service
-          predicates:
-            - Path=/api/marchas/**
-        - id: procesion-service
-          uri: lb://procesion-service
-          predicates:
-            - Path=/api/procesiones/**
-        - id: tracking-service
-          uri: lb://tracking-service
-          predicates:
-            - Path=/api/tracking/**
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/notifications/**
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+          routes:
+            - id: hermandad-service
+              uri: lb://hermandad-service
+              predicates:
+                - Path=/api/hermandades/**
+            - id: hermandad-service-swagger
+              uri: lb://hermandad-service
+              predicates:
+                - Path=/swagger-ui/**
+            - id: hermandad-service-swagger-ui-html
+              uri: lb://hermandad-service
+              predicates:
+                - Path=/swagger-ui.html
+            - id: hermandad-service-swagger-api-docs
+              uri: lb://hermandad-service
+              predicates:
+                - Path=/v3/api-docs/**
+            - id: repertorio-service
+              uri: lb://repertorio-service
+              predicates:
+                - Path=/api/marchas/**
+            - id: procesion-service
+              uri: lb://procesion-service
+              predicates:
+                - Path=/api/procesiones/**
+            - id: tracking-service
+              uri: lb://tracking-service
+              predicates:
+                - Path=/api/tracking/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
 
 eureka:
   client:
@@ -62,6 +72,8 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.boot.context.properties: TRACE
+    org.springframework.core.env: DEBUG
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level [${spring.application.name}] %logger{36} - %msg%n"

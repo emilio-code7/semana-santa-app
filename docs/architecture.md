@@ -30,7 +30,7 @@ adapter/      — Infrastructure:
 | Service | Responsibility | DB |
 |---|---|---|
 | `hermandad-service` | Hermandades (brotherhoods) and their members | hermandad-db |
-| `procesion-service` | Processions, routes, schedules | procesion-db |
+| `procesion-service` | Processions (MVP: CRUD + state machine) | procesion-db |
 | `repertorio-service` | Musical repertoire, marches | repertorio-db |
 | `tracking-service` | Real-time GPS positions of processions | tracking-db |
 | `notification-service` | Push notifications / alerts | notification-db |
