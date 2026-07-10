@@ -1,19 +1,42 @@
 package com.repertorio.procesion.domain.model;
 
+import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
+@Entity
+@Table(name = "procesion")
 public class Procesion {
 
-    private final UUID id;
-    private final UUID hermandadId;
-    private final LocalDate fecha;
-    private final LocalTime hora;
-    private ProcesionEstado estado;
-    private final Instant createdAt;
+    @Id
+    @GeneratedValue
+    @UuidGenerator
+    private UUID id;
+
+    @Column(nullable = false)
+    private UUID hermandadId;
+
+    @Column(nullable = false)
+    private LocalDate fecha;
+
+    @Column(nullable = false)
+    private LocalTime hora;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ProcesionEstado estado = ProcesionEstado.PLANIFICADA;
+
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(nullable = false)
     private Instant updatedAt;
+
+    protected Procesion() {}
 
     private Procesion(UUID id, UUID hermandadId, LocalDate fecha, LocalTime hora,
                       ProcesionEstado estado, Instant createdAt, Instant updatedAt) {
@@ -61,6 +84,17 @@ public class Procesion {
 
         this.estado = nuevoEstado;
         this.updatedAt = Instant.now();
+    }
+
+    @PrePersist
+    protected void prePersist() {
+        if (createdAt == null) createdAt = Instant.now();
+        if (updatedAt == null) updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        updatedAt = Instant.now();
     }
 
     public UUID getId() { return id; }
