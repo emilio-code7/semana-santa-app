@@ -12,12 +12,10 @@ spring:
           jwk-set-uri: http://localhost:8180/realms/semana-santa/protocol/openid-connect/certs
   cloud:
     gateway:
-      server:
-        webflux:
-          discovery:
-            locator:
-              enabled: false
-          routes:
+      discovery:
+        locator:
+          enabled: false
+      routes:
             - id: hermandad-service
               uri: lb://hermandad-service
               predicates:
