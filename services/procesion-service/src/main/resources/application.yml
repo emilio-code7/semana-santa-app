@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: procesion-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/procesion-db
+    username: procesion
+    password: procesion
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    schemas: public
+  kafka:
+    producer:
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8084/realms/semana-santa
+          jwk-set-uri: http://keycloak:8084/realms/semana-santa/protocol/openid-connect/certs
+
+server:
+  port: 8082
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
