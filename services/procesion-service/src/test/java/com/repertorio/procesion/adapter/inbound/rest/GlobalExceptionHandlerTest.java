@@ -1,7 +1,7 @@
-package com.repertorio.hermandad.adapter.inbound.rest;
+package com.repertorio.procesion.adapter.inbound.rest;
 
-import com.repertorio.hermandad.adapter.inbound.rest.dto.ApiError;
-import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
+import com.repertorio.procesion.adapter.inbound.rest.dto.ApiError;
+import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +17,9 @@ class GlobalExceptionHandlerTest {
     @Test
     void handleNotFoundReturns404WithApiError() {
         var id = UUID.randomUUID();
-        var ex = new HermandadNotFoundException(id);
+        var ex = new ProcesionNotFoundException(id);
 
-        ResponseEntity<ApiError> response = handler.handleHermandadNotFoundException(ex);
+        ResponseEntity<ApiError> response = handler.handleNotFound(ex);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());

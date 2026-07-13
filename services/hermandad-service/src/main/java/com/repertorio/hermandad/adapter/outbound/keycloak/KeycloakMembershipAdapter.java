@@ -33,8 +33,12 @@ public class KeycloakMembershipAdapter {
                     .add(List.of(keycloakRole));
 
             log.info("Assigned role {} to user {}", hermandadRole, userId);
-        } catch (Exception e) {
-            log.error("Error assigning role {} to user {}", hermandadRole, userId, e);
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            log.error("Keycloak error assigning role {} to user {}", hermandadRole, userId, e);
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error assigning role {} to user {}", hermandadRole, userId, e);
+            throw e;
         }
     }
 }

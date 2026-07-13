@@ -21,7 +21,7 @@ public class MemberAddedListener {
         log.info("MemberAddedEvent received {}", event);
         try {
             keycloakMembershipAdapter.assignRole(event.userId(), event.role());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error assigning role {} to user {}", event.userId(), event.role(), e);
         }
     }

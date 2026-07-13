@@ -1,5 +1,6 @@
 package com.repertorio.procesion.adapter.inbound.rest;
 
+import com.repertorio.procesion.adapter.inbound.rest.dto.ApiError;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -17,31 +18,41 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProcesionNotFoundException.class)
-    public ResponseEntity<String> handleNotFound(ProcesionNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<ApiError> handleNotFound(ProcesionNotFoundException ex) {
+        var status = HttpStatus.NOT_FOUND;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
+        var status = HttpStatus.BAD_REQUEST;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<String> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<ApiError> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        var status = HttpStatus.CONFLICT;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
+        var status = HttpStatus.BAD_REQUEST;
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message);
+        var body = new ApiError(status.value(), status.getReasonPhrase(), message);
+        return ResponseEntity.status(status).body(body);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGeneric(Exception ex) {
+    public ResponseEntity<ApiError> handleGeneric(Exception ex) {
         log.error("Unhandled exception", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred");
+        var status = HttpStatus.INTERNAL_SERVER_ERROR;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), "An unexpected error occurred");
+        return ResponseEntity.status(status).body(body);
     }
 }

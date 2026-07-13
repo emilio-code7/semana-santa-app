@@ -18,7 +18,7 @@ public class OutboxEventPublisher implements OutboxPublisher {
         try {
             String json = objectMapper.writeValueAsString(domainEvent);
             repository.save(new OutboxEventEntity(domainEvent.aggregateType(), domainEvent.aggregateId(), domainEvent.eventType(), json));
-        } catch (Exception e) {
+        } catch (tools.jackson.databind.JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize outbox payload", e);
         }
     }

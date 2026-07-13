@@ -21,8 +21,11 @@ public class KeycloakUserExistenceAdapter implements UserExistencePort {
             keycloakClient.realm(SEMANA_SANTA_REALM).users().get(userId).toRepresentation();
             log.debug("User {} exists in Keycloak", userId);
             return true;
-        } catch (Exception e) {
+        } catch (jakarta.ws.rs.NotFoundException e) {
             log.debug("User {} not found in Keycloak", userId);
+            return false;
+        } catch (Exception e) {
+            log.warn("Error checking user {} existence in Keycloak", userId, e);
             return false;
         }
     }
