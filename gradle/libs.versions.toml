@@ -35,6 +35,7 @@ logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-lo
 spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
 spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "spring-boot-starter-data-redis" }
 springdoc-starter = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+springdoc-starter-webflux = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
