@@ -1,7 +1,7 @@
 package com.repertorio.procesion.adapter.inbound.rest.controller;
 
 import com.repertorio.procesion.adapter.inbound.rest.dto.CreateProcesionRequest;
-import com.repertorio.procesion.adapter.inbound.rest.dto.EstadoChangeRequest;
+import com.repertorio.procesion.adapter.inbound.rest.dto.StatusChangeRequest;
 import com.repertorio.procesion.adapter.inbound.rest.dto.ProcesionResponse;
 import com.repertorio.procesion.application.service.ProcesionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,26 +29,26 @@ public class ProcesionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create a new procesión")
+    @Operation(summary = "Create a new procesion")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Procesión created"),
+            @ApiResponse(responseCode = "201", description = "Procesion created"),
             @ApiResponse(responseCode = "400", description = "Invalid input (validation error)")
     })
-    public ResponseEntity<ProcesionResponse> crearProcesion(@Valid @RequestBody CreateProcesionRequest request) {
-        log.info("Creating procesión for hermandad {} on {}", request.hermandadId(), request.fecha());
-        var procesion = procesionService.crearProcesion(request.hermandadId(), request.fecha(), request.hora());
+    public ResponseEntity<ProcesionResponse> createProcesion(@Valid @RequestBody CreateProcesionRequest request) {
+        log.info("Creating procesion for hermandad {} on {}", request.hermandadId(), request.date());
+        var procesion = procesionService.createProcesion(request.hermandadId(), request.date(), request.time());
         return ResponseEntity.status(HttpStatus.CREATED).body(ProcesionResponse.from(procesion));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get a procesión by ID")
+    @Operation(summary = "Get a procesion by ID")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Procesión found"),
-            @ApiResponse(responseCode = "404", description = "Procesión not found")
+            @ApiResponse(responseCode = "200", description = "Procesion found"),
+            @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
-    public ResponseEntity<ProcesionResponse> obtenerProcesion(@PathVariable UUID id) {
-        log.info("Obtaining procesión {}", id);
-        var procesion = procesionService.obtenerProcesion(id);
+    public ResponseEntity<ProcesionResponse> getProcesion(@PathVariable UUID id) {
+        log.info("Getting procesion {}", id);
+        var procesion = procesionService.getProcesion(id);
         return ResponseEntity.ok(ProcesionResponse.from(procesion));
     }
 
@@ -57,42 +57,42 @@ public class ProcesionController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Paginated list of procesiones")
     })
-    public ResponseEntity<Page<ProcesionResponse>> listarPorHermandad(
+    public ResponseEntity<Page<ProcesionResponse>> listByHermandad(
             @RequestParam UUID hermandadId,
             @PageableDefault(size = 20) Pageable pageable
     ) {
         log.info("Listing procesiones for hermandad {}", hermandadId);
         return ResponseEntity.ok(
-                procesionService.listarPorHermandad(hermandadId, pageable)
+                procesionService.listByHermandad(hermandadId, pageable)
                         .map(ProcesionResponse::from));
     }
 
-    @PatchMapping("/{id}/estado")
-    @Operation(summary = "Change procesión estado")
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Change procesion status")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Estado changed"),
-            @ApiResponse(responseCode = "400", description = "Invalid estado transition"),
-            @ApiResponse(responseCode = "404", description = "Procesión not found")
+            @ApiResponse(responseCode = "200", description = "Status changed"),
+            @ApiResponse(responseCode = "400", description = "Invalid status transition"),
+            @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
-    public ResponseEntity<ProcesionResponse> cambiarEstado(
+    public ResponseEntity<ProcesionResponse> changeStatus(
             @PathVariable UUID id,
-            @Valid @RequestBody EstadoChangeRequest request
+            @Valid @RequestBody StatusChangeRequest request
     ) {
-        log.info("Changing estado of procesión {} to {}", id, request.nuevoEstado());
-        var procesion = procesionService.cambiarEstado(id, request.nuevoEstado());
+        log.info("Changing status of procesion {} to {}", id, request.newStatus());
+        var procesion = procesionService.changeStatus(id, request.newStatus());
         return ResponseEntity.ok(ProcesionResponse.from(procesion));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete a procesión")
+    @Operation(summary = "Delete a procesion")
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Procesión deleted"),
-            @ApiResponse(responseCode = "404", description = "Procesión not found")
+            @ApiResponse(responseCode = "204", description = "Procesion deleted"),
+            @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
-    public ResponseEntity<Void> eliminarProcesion(@PathVariable UUID id) {
-        log.info("Deleting procesión {}", id);
-        procesionService.eliminarProcesion(id);
+    public ResponseEntity<Void> deleteProcesion(@PathVariable UUID id) {
+        log.info("Deleting procesion {}", id);
+        procesionService.deleteProcesion(id);
         return ResponseEntity.noContent().build();
     }
 }

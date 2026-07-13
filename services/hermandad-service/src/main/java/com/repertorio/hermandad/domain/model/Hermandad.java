@@ -28,6 +28,8 @@ public class Hermandad {
     private String description;
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+    @Column
+    private Instant updatedAt;
 
     protected Hermandad() {}
 
@@ -41,6 +43,12 @@ public class Hermandad {
     @PrePersist
     public void prePersist() {
         createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = Instant.now();
     }
 
 }

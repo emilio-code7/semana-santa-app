@@ -13,7 +13,6 @@ import java.util.UUID;
 public class Procesion {
 
     @Id
-    @GeneratedValue
     @UuidGenerator
     private UUID id;
 
@@ -21,14 +20,14 @@ public class Procesion {
     private UUID hermandadId;
 
     @Column(nullable = false)
-    private LocalDate fecha;
+    private LocalDate date;
 
     @Column(nullable = false)
-    private LocalTime hora;
+    private LocalTime time;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private ProcesionEstado estado = ProcesionEstado.PLANIFICADA;
+    private ProcesionStatus status = ProcesionStatus.PLANNED;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -38,51 +37,51 @@ public class Procesion {
 
     protected Procesion() {}
 
-    private Procesion(UUID id, UUID hermandadId, LocalDate fecha, LocalTime hora,
-                      ProcesionEstado estado, Instant createdAt, Instant updatedAt) {
+    private Procesion(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
+                      ProcesionStatus status, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.hermandadId = hermandadId;
-        this.fecha = fecha;
-        this.hora = hora;
-        this.estado = estado;
+        this.date = date;
+        this.time = time;
+        this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static Procesion crear(UUID hermandadId, LocalDate fecha, LocalTime hora) {
+    public static Procesion create(UUID hermandadId, LocalDate date, LocalTime time) {
         var now = Instant.now();
         return new Procesion(
                 UUID.randomUUID(),
                 hermandadId,
-                fecha,
-                hora,
-                ProcesionEstado.PLANIFICADA,
+                date,
+                time,
+                ProcesionStatus.PLANNED,
                 now,
                 now
         );
     }
 
-    public void cambiarEstado(ProcesionEstado nuevoEstado) {
-        if (nuevoEstado == this.estado) return;
+    public void changeStatus(ProcesionStatus newStatus) {
+        if (newStatus == this.status) return;
 
-        switch (this.estado) {
-            case PLANIFICADA -> {
-                if (nuevoEstado != ProcesionEstado.EN_CURSO && nuevoEstado != ProcesionEstado.CANCELADA) {
+        switch (this.status) {
+            case PLANNED -> {
+                if (newStatus != ProcesionStatus.IN_PROGRESS && newStatus != ProcesionStatus.CANCELLED) {
                     throw new IllegalArgumentException(
-                            "No se puede cambiar estado de PLANIFICADA a " + nuevoEstado);
+                            "Cannot transition from PLANNED to " + newStatus);
                 }
             }
-            case EN_CURSO -> {
-                if (nuevoEstado != ProcesionEstado.FINALIZADA && nuevoEstado != ProcesionEstado.CANCELADA) {
+            case IN_PROGRESS -> {
+                if (newStatus != ProcesionStatus.COMPLETED && newStatus != ProcesionStatus.CANCELLED) {
                     throw new IllegalArgumentException(
-                            "No se puede cambiar estado de EN_CURSO a " + nuevoEstado);
+                            "Cannot transition from IN_PROGRESS to " + newStatus);
                 }
             }
-            case FINALIZADA, CANCELADA -> throw new IllegalArgumentException(
-                    "No se puede cambiar estado desde " + this.estado);
+            case COMPLETED, CANCELLED -> throw new IllegalArgumentException(
+                    "Cannot transition from terminal status " + this.status);
         }
 
-        this.estado = nuevoEstado;
+        this.status = newStatus;
         this.updatedAt = Instant.now();
     }
 
@@ -99,9 +98,9 @@ public class Procesion {
 
     public UUID getId() { return id; }
     public UUID getHermandadId() { return hermandadId; }
-    public LocalDate getFecha() { return fecha; }
-    public LocalTime getHora() { return hora; }
-    public ProcesionEstado getEstado() { return estado; }
+    public LocalDate getDate() { return date; }
+    public LocalTime getTime() { return time; }
+    public ProcesionStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

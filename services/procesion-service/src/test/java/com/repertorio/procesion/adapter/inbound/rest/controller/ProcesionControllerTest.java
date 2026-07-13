@@ -3,7 +3,7 @@ package com.repertorio.procesion.adapter.inbound.rest.controller;
 import com.repertorio.procesion.adapter.config.SecurityConfig;
 import com.repertorio.procesion.application.service.ProcesionService;
 import com.repertorio.procesion.domain.model.Procesion;
-import com.repertorio.procesion.domain.model.ProcesionEstado;
+import com.repertorio.procesion.domain.model.ProcesionStatus;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,30 +48,30 @@ class ProcesionControllerTest {
     private final UUID hermandadId = UUID.randomUUID();
 
     private Procesion buildProcesion() {
-        return Procesion.crear(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0));
+        return Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0));
     }
 
     // --- CREATE ---
 
     @Test
-    void crearProcesionReturns201ForAuthenticatedUser() throws Exception {
-        when(procesionService.crearProcesion(any(), any(), any())).thenReturn(buildProcesion());
+    void createProcesionReturns201ForAuthenticatedUser() throws Exception {
+        when(procesionService.createProcesion(any(), any(), any())).thenReturn(buildProcesion());
 
         mockMvc.perform(post("/api/procesiones")
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"hermandadId":"%s","fecha":"2026-04-13","hora":"18:00:00"}
+                                {"hermandadId":"%s","date":"2026-04-13","time":"18:00:00"}
                                 """.formatted(hermandadId)))
                 .andExpect(status().isCreated());
     }
 
     @Test
-    void crearProcesionReturns401WhenUnauthenticated() throws Exception {
+    void createProcesionReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(post("/api/procesiones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"hermandadId":"%s","fecha":"2026-04-13","hora":"18:00:00"}
+                                {"hermandadId":"%s","date":"2026-04-13","time":"18:00:00"}
                                 """.formatted(hermandadId)))
                 .andExpect(status().isUnauthorized());
     }
@@ -79,8 +79,8 @@ class ProcesionControllerTest {
     // --- GET BY ID ---
 
     @Test
-    void obtenerProcesionReturns200ForAuthenticatedUser() throws Exception {
-        when(procesionService.obtenerProcesion(procesionId)).thenReturn(buildProcesion());
+    void getProcesionReturns200ForAuthenticatedUser() throws Exception {
+        when(procesionService.getProcesion(procesionId)).thenReturn(buildProcesion());
 
         mockMvc.perform(get("/api/procesiones/{id}", procesionId)
                         .with(jwt()))
@@ -89,18 +89,18 @@ class ProcesionControllerTest {
     }
 
     @Test
-    void obtenerProcesionReturns404WhenNotFound() throws Exception {
-        when(procesionService.obtenerProcesion(procesionId))
+    void getProcesionReturns404WhenNotFound() throws Exception {
+        when(procesionService.getProcesion(procesionId))
                 .thenThrow(new ProcesionNotFoundException(procesionId));
 
         mockMvc.perform(get("/api/procesiones/{id}", procesionId)
                         .with(jwt()))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("no encontrada")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("not found")));
     }
 
     @Test
-    void obtenerProcesionReturns401WhenUnauthenticated() throws Exception {
+    void getProcesionReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/procesiones/{id}", procesionId))
                 .andExpect(status().isUnauthorized());
     }
@@ -108,9 +108,9 @@ class ProcesionControllerTest {
     // --- LIST BY HERMANDAD ---
 
     @Test
-    void listarPorHermandadReturns200ForAuthenticatedUser() throws Exception {
+    void listByHermandadReturns200ForAuthenticatedUser() throws Exception {
         Page<Procesion> page = new PageImpl<>(List.of(buildProcesion()));
-        when(procesionService.listarPorHermandad(eq(hermandadId), any(Pageable.class)))
+        when(procesionService.listByHermandad(eq(hermandadId), any(Pageable.class)))
                 .thenReturn(page);
 
         mockMvc.perform(get("/api/procesiones")
@@ -121,49 +121,49 @@ class ProcesionControllerTest {
     }
 
     @Test
-    void listarPorHermandadReturns401WhenUnauthenticated() throws Exception {
+    void listByHermandadReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/procesiones")
                         .param("hermandadId", hermandadId.toString()))
                 .andExpect(status().isUnauthorized());
     }
 
-    // --- CHANGE ESTADO ---
+    // --- CHANGE STATUS ---
 
     @Test
-    void cambiarEstadoReturns200ForAuthenticatedUser() throws Exception {
-        when(procesionService.cambiarEstado(procesionId, ProcesionEstado.EN_CURSO))
+    void changeStatusReturns200ForAuthenticatedUser() throws Exception {
+        when(procesionService.changeStatus(procesionId, ProcesionStatus.IN_PROGRESS))
                 .thenReturn(buildProcesion());
 
-        mockMvc.perform(patch("/api/procesiones/{id}/estado", procesionId)
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nuevoEstado":"EN_CURSO"}
+                                {"newStatus":"IN_PROGRESS"}
                                 """))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void cambiarEstadoReturns400OnInvalidTransition() throws Exception {
-        when(procesionService.cambiarEstado(procesionId, ProcesionEstado.EN_CURSO))
+    void changeStatusReturns400OnInvalidTransition() throws Exception {
+        when(procesionService.changeStatus(procesionId, ProcesionStatus.IN_PROGRESS))
                 .thenThrow(new IllegalArgumentException(
-                        "No se puede cambiar estado de PLANIFICADA a EN_CURSO"));
+                        "Cannot transition from PLANNED to IN_PROGRESS"));
 
-        mockMvc.perform(patch("/api/procesiones/{id}/estado", procesionId)
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nuevoEstado":"EN_CURSO"}
+                                {"newStatus":"IN_PROGRESS"}
                                 """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void cambiarEstadoReturns401WhenUnauthenticated() throws Exception {
-        mockMvc.perform(patch("/api/procesiones/{id}/estado", procesionId)
+    void changeStatusReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nuevoEstado":"EN_CURSO"}
+                                {"newStatus":"IN_PROGRESS"}
                                 """))
                 .andExpect(status().isUnauthorized());
     }
@@ -171,16 +171,16 @@ class ProcesionControllerTest {
     // --- DELETE ---
 
     @Test
-    void eliminarProcesionReturns204ForAuthenticatedUser() throws Exception {
+    void deleteProcesionReturns204ForAuthenticatedUser() throws Exception {
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
                         .with(jwt()))
                 .andExpect(status().isNoContent());
     }
 
     @Test
-    void eliminarProcesionReturns404WhenNotFound() throws Exception {
+    void deleteProcesionReturns404WhenNotFound() throws Exception {
         doThrow(new ProcesionNotFoundException(procesionId))
-                .when(procesionService).eliminarProcesion(procesionId);
+                .when(procesionService).deleteProcesion(procesionId);
 
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
                         .with(jwt()))
@@ -188,7 +188,7 @@ class ProcesionControllerTest {
     }
 
     @Test
-    void eliminarProcesionReturns401WhenUnauthenticated() throws Exception {
+    void deleteProcesionReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId))
                 .andExpect(status().isUnauthorized());
     }

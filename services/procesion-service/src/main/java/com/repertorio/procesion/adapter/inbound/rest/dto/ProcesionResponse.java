@@ -10,9 +10,9 @@ import java.util.UUID;
 public record ProcesionResponse(
         UUID id,
         UUID hermandadId,
-        LocalDate fecha,
-        LocalTime hora,
-        String estado,
+        LocalDate date,
+        LocalTime time,
+        String status,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -20,9 +20,9 @@ public record ProcesionResponse(
         return new ProcesionResponse(
                 procesion.getId(),
                 procesion.getHermandadId(),
-                procesion.getFecha(),
-                procesion.getHora(),
-                procesion.getEstado().name(),
+                procesion.getDate(),
+                procesion.getTime(),
+                procesion.getStatus().name(),
                 procesion.getCreatedAt(),
                 procesion.getUpdatedAt()
         );

@@ -2,10 +2,10 @@ package com.repertorio.procesion.application.service;
 
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
-import com.repertorio.procesion.domain.event.ProcesionEstadoChangedEvent;
+import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;
 import com.repertorio.procesion.domain.model.Procesion;
-import com.repertorio.procesion.domain.model.ProcesionEstado;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
+import com.repertorio.procesion.domain.model.ProcesionStatus;
 import com.repertorio.procesion.domain.repository.ProcesionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,39 +25,38 @@ public class ProcesionService {
     private final DomainEventPublisher eventPublisher;
 
     @Transactional
-    public Procesion crearProcesion(UUID hermandadId, LocalDate fecha, LocalTime hora) {
-        var procesion = Procesion.crear(hermandadId, fecha, hora);
+    public Procesion createProcesion(UUID hermandadId, LocalDate date, LocalTime time) {
+        var procesion = Procesion.create(hermandadId, date, time);
         procesion = procesionRepository.save(procesion);
-        eventPublisher.publish(new ProcesionCreatedEvent(procesion.getId(), hermandadId, fecha, hora));
+        eventPublisher.publish(new ProcesionCreatedEvent(procesion.getId(), hermandadId, date, time));
         return procesion;
     }
 
     @Transactional(readOnly = true)
-    public Procesion obtenerProcesion(UUID id) {
+    public Procesion getProcesion(UUID id) {
         return procesionRepository.findById(id)
                 .orElseThrow(() -> new ProcesionNotFoundException(id));
     }
 
     @Transactional
-    public Procesion cambiarEstado(UUID id, ProcesionEstado nuevoEstado) {
-        var procesion = obtenerProcesion(id);
-        var estadoAnterior = procesion.getEstado();
-        procesion.cambiarEstado(nuevoEstado);
+    public Procesion changeStatus(UUID id, ProcesionStatus newStatus) {
+        var procesion = getProcesion(id);
+        var previousStatus = procesion.getStatus();
+        procesion.changeStatus(newStatus);
         procesion = procesionRepository.save(procesion);
-        eventPublisher.publish(new ProcesionEstadoChangedEvent(id, procesion.getHermandadId(), estadoAnterior, nuevoEstado));
+        eventPublisher.publish(new ProcesionStatusChangedEvent(id, procesion.getHermandadId(), previousStatus, newStatus));
         return procesion;
     }
 
     @Transactional(readOnly = true)
-    public Page<Procesion> listarPorHermandad(UUID hermandadId, Pageable pageable) {
+    public Page<Procesion> listByHermandad(UUID hermandadId, Pageable pageable) {
         return procesionRepository.findByHermandadId(hermandadId, pageable);
     }
 
     @Transactional
-    public void eliminarProcesion(UUID id) {
-        if (procesionRepository.findById(id).isEmpty()) {
-            throw new ProcesionNotFoundException(id);
-        }
-        procesionRepository.deleteById(id);
+    public void deleteProcesion(UUID id) {
+        var procesion = procesionRepository.findById(id)
+                .orElseThrow(() -> new ProcesionNotFoundException(id));
+        procesionRepository.delete(procesion);
     }
 }

@@ -9,8 +9,8 @@ import java.util.UUID;
 public record ProcesionCreatedEvent(
         UUID id,
         UUID hermandadId,
-        LocalDate fecha,
-        LocalTime hora
+        LocalDate date,
+        LocalTime time
 ) implements DomainEvent {
     @Override
     public String aggregateType() { return "procesion"; }

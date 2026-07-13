@@ -8,6 +8,6 @@ import java.util.UUID;
 
 public record CreateProcesionRequest(
         @NotNull UUID hermandadId,
-        @NotNull LocalDate fecha,
-        @NotNull LocalTime hora
+        @NotNull LocalDate date,
+        @NotNull LocalTime time
 ) {}

@@ -3,9 +3,9 @@ package com.repertorio.procesion.application.service;
 import com.repertorio.procesion.application.port.DomainEvent;
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
-import com.repertorio.procesion.domain.event.ProcesionEstadoChangedEvent;
+import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;
 import com.repertorio.procesion.domain.model.Procesion;
-import com.repertorio.procesion.domain.model.ProcesionEstado;
+import com.repertorio.procesion.domain.model.ProcesionStatus;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import com.repertorio.procesion.domain.repository.ProcesionRepository;
 import org.junit.jupiter.api.Test;
@@ -45,105 +45,105 @@ class ProcesionServiceTest {
     private ArgumentCaptor<DomainEvent> eventCaptor;
 
     @Test
-    void crearProcesionPersistsAndPublishesEvent() {
+    void createProcesionPersistsAndPublishesEvent() {
         var hermandadId = UUID.randomUUID();
-        var fecha = LocalDate.of(2026, 4, 5);
-        var hora = LocalTime.of(18, 0);
-        var saved = Procesion.crear(hermandadId, fecha, hora);
+        var date = LocalDate.of(2026, 4, 5);
+        var time = LocalTime.of(18, 0);
+        var saved = Procesion.create(hermandadId, date, time);
 
         when(procesionRepository.save(any())).thenReturn(saved);
 
-        var result = procesionService.crearProcesion(hermandadId, fecha, hora);
+        var result = procesionService.createProcesion(hermandadId, date, time);
 
         assertThat(result).isNotNull();
         assertThat(result.getHermandadId()).isEqualTo(hermandadId);
-        assertThat(result.getEstado()).isEqualTo(ProcesionEstado.PLANIFICADA);
+        assertThat(result.getStatus()).isEqualTo(ProcesionStatus.PLANNED);
         verify(procesionRepository).save(any());
         verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue()).isInstanceOf(ProcesionCreatedEvent.class);
     }
 
     @Test
-    void obtenerProcesionReturnsWhenFound() {
+    void getProcesionReturnsWhenFound() {
         var id = UUID.randomUUID();
-        var procesion = Procesion.crear(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
+        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
 
         when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
 
-        var result = procesionService.obtenerProcesion(id);
+        var result = procesionService.getProcesion(id);
 
         assertThat(result).isEqualTo(procesion);
     }
 
     @Test
-    void obtenerProcesionThrowsWhenNotFound() {
+    void getProcesionThrowsWhenNotFound() {
         var id = UUID.randomUUID();
 
         when(procesionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(ProcesionNotFoundException.class, () -> procesionService.obtenerProcesion(id));
+        assertThrows(ProcesionNotFoundException.class, () -> procesionService.getProcesion(id));
     }
 
     @Test
-    void cambiarEstadoTransitionsCorrectly() {
+    void changeStatusTransitionsCorrectly() {
         var id = UUID.randomUUID();
-        var procesion = Procesion.crear(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
+        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
 
         when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
         when(procesionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var result = procesionService.cambiarEstado(id, ProcesionEstado.EN_CURSO);
+        var result = procesionService.changeStatus(id, ProcesionStatus.IN_PROGRESS);
 
-        assertThat(result.getEstado()).isEqualTo(ProcesionEstado.EN_CURSO);
+        assertThat(result.getStatus()).isEqualTo(ProcesionStatus.IN_PROGRESS);
         verify(eventPublisher).publish(eventCaptor.capture());
-        var event = (ProcesionEstadoChangedEvent) eventCaptor.getValue();
-        assertThat(event.estadoAnterior()).isEqualTo(ProcesionEstado.PLANIFICADA);
-        assertThat(event.nuevoEstado()).isEqualTo(ProcesionEstado.EN_CURSO);
+        var event = (ProcesionStatusChangedEvent) eventCaptor.getValue();
+        assertThat(event.previousStatus()).isEqualTo(ProcesionStatus.PLANNED);
+        assertThat(event.newStatus()).isEqualTo(ProcesionStatus.IN_PROGRESS);
     }
 
     @Test
-    void cambiarEstadoRejectsInvalidTransition() {
+    void changeStatusRejectsInvalidTransition() {
         var id = UUID.randomUUID();
-        var procesion = Procesion.crear(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
+        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
 
         when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
 
-        // PLANIFICADA -> FINALIZADA is invalid
+        // PLANNED -> COMPLETED is invalid
         assertThrows(IllegalArgumentException.class,
-                () -> procesionService.cambiarEstado(id, ProcesionEstado.FINALIZADA));
+                () -> procesionService.changeStatus(id, ProcesionStatus.COMPLETED));
     }
 
     @Test
-    void listarPorHermandadReturnsPage() {
+    void listByHermandadReturnsPage() {
         var hermandadId = UUID.randomUUID();
         var pageRequest = PageRequest.of(0, 10);
-        var page = new PageImpl<>(List.of(Procesion.crear(hermandadId, LocalDate.now(), LocalTime.now())));
+        var page = new PageImpl<>(List.of(Procesion.create(hermandadId, LocalDate.now(), LocalTime.now())));
 
         when(procesionRepository.findByHermandadId(hermandadId, pageRequest)).thenReturn(page);
 
-        var result = procesionService.listarPorHermandad(hermandadId, pageRequest);
+        var result = procesionService.listByHermandad(hermandadId, pageRequest);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test
-    void eliminarProcesionDeletesWhenFound() {
+    void deleteProcesionDeletesWhenFound() {
         var id = UUID.randomUUID();
-        var procesion = Procesion.crear(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
+        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
 
         when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
 
-        procesionService.eliminarProcesion(id);
+        procesionService.deleteProcesion(id);
 
         verify(procesionRepository).deleteById(id);
     }
 
     @Test
-    void eliminarProcesionThrowsWhenNotFound() {
+    void deleteProcesionThrowsWhenNotFound() {
         var id = UUID.randomUUID();
 
         when(procesionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(ProcesionNotFoundException.class, () -> procesionService.eliminarProcesion(id));
+        assertThrows(ProcesionNotFoundException.class, () -> procesionService.deleteProcesion(id));
     }
 }

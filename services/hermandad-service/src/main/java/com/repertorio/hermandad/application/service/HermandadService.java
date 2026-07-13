@@ -80,6 +80,7 @@ public class HermandadService {
         return HermandadResponse.from(hermandad);
     }
 
+    @Transactional
     @CacheEvict(value = HERMANDAD_MEMBER, key = "#hermandadId")
     public HermandadMember addMember(UUID hermandadId, AddMemberRequest addMemberRequest) {
         if (!hermandadRepository.existsById(hermandadId)) {
@@ -106,6 +107,7 @@ public class HermandadService {
         return hermandadMemberRepository.findByHermandadId(hermandadId, pageable);
     }
 
+    @Transactional
     public HermandadMember changeRole(UUID hermandadId, String userId, HermandadRole newRole) {
         HermandadMember member = hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId)
                 .orElseThrow(() -> new HermandadMemberNotFoundException(hermandadId, userId));
@@ -119,6 +121,7 @@ public class HermandadService {
         return member;
     }
 
+    @Transactional
     public void removeMember(UUID hermandadId, String userId) {
         HermandadMember member = hermandadMemberRepository.findByUserIdAndHermandadId(userId, hermandadId)
                 .orElseThrow(() -> new HermandadMemberNotFoundException(hermandadId, userId));
