@@ -1,0 +1,263 @@
+name: repertorio-dev
+
+services:
+
+  # ─── Single Postgres for all bounded contexts ────────────────────
+  postgres:
+    container_name: postgres-dev
+    image: postgres:16-alpine
+    mem_limit: 512m
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_dev_data:/var/lib/postgresql/data
+      - ./docker/init-dev-dbs.sql:/docker-entrypoint-initdb.d/init-dev-dbs.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "psql -U postgres -d hermandad_db -c 'SELECT 1' > /dev/null 2>&1 || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── Identity & Access Management ────────────────────────────────
+  keycloak:
+    container_name: keycloak-dev
+    image: quay.io/keycloak/keycloak:24.0.3
+    mem_limit: 512m
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+    ports:
+      - "8180:8080"
+    volumes:
+      - keycloak_dev_data:/opt/keycloak/data
+      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./infrastructure/keycloak/seed-qa-users.sh:/opt/keycloak/bin/seed-qa-users.sh:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin --password admin 2>&1 | grep -q 'Logging into'" ]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    restart: unless-stopped
+
+  # ─── Event Streaming ─────────────────────────────────────────────
+  zookeeper:
+    container_name: zookeeper-dev
+    image: confluentinc/cp-zookeeper:7.4.0
+    mem_limit: 128m
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: [ "CMD-SHELL", "zookeeper-shell localhost:2181 ls / > /dev/null 2>&1 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  kafka:
+    container_name: kafka-dev
+    image: confluentinc/cp-kafka:7.4.0
+    mem_limit: 512m
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-dev:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-dev:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  kafka-init:
+    container_name: kafka-init-dev
+    image: confluentinc/cp-kafka:7.4.0
+    mem_limit: 128m
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+    healthcheck:
+      test: [ "CMD-SHELL", "exit 0" ]
+      interval: 5s
+      timeout: 5s
+      retries: 1
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo 'Creating Kafka topics...'
+        kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic hermandad-events           --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic hermandad-member-events     --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic procesion-events      --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic notification-commands --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic tracking-events       --partitions 6 --replication-factor 1
+        echo 'All topics created.'
+
+  kafka-ui:
+    container_name: kafka-ui-dev
+    image: provectuslabs/kafka-ui
+    mem_limit: 256m
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8086:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-dev:29092
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8080 || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ─── Cache ───────────────────────────────────────────────────────
+  redis:
+    container_name: redis-dev
+    image: redis:7-alpine
+    mem_limit: 128m
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── Service Registry ───────────────────────────────────────────
+  discovery-server:
+    container_name: discovery-server-dev
+    build:
+      context: ./infrastructure/discovery-server
+      dockerfile: Dockerfile
+    mem_limit: 256m
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8761/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─── API Gateway ────────────────────────────────────────────────
+  api-gateway:
+    container_name: api-gateway-dev
+    build:
+      context: ./infrastructure/api-gateway
+      dockerfile: Dockerfile
+    mem_limit: 256m
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─── Hermandad Service ──────────────────────────────────────────
+  hermandad-service:
+    container_name: hermandad-service-dev
+    build:
+      context: ./services/hermandad-service
+      dockerfile: Dockerfile
+    mem_limit: 256m
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-dev:5432/hermandad_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-dev:29092
+      SPRING_DATA_REDIS_HOST: redis-dev
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
+      SPRING_KEYCLOAK_ADMIN_SERVER_URL: http://keycloak-dev:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+    restart: unless-stopped
+
+  # ─── Procesion Service ──────────────────────────────────────────
+  procesion-service:
+    container_name: procesion-service-dev
+    build:
+      context: ./services/procesion-service
+      dockerfile: Dockerfile
+    mem_limit: 256m
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-dev:5432/procesion_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
+      SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka-dev:29092
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  pg_dev_data:
+  keycloak_dev_data:
