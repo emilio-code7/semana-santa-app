@@ -2,9 +2,9 @@ spring:
   application:
     name: procesion-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/procesion-db
-    username: procesion
-    password: procesion
+    url: jdbc:postgresql://localhost:5434/procesion_db
+    username: postgres
+    password: postgres
   jpa:
     hibernate:
       ddl-auto: validate
@@ -21,8 +21,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8084/realms/semana-santa
-          jwk-set-uri: http://keycloak:8084/realms/semana-santa/protocol/openid-connect/certs
+          issuer-uri: http://localhost:8180/realms/semana-santa
+          jwk-set-uri: http://keycloak:8180/realms/semana-santa/protocol/openid-connect/certs
 
 server:
   port: 8082
@@ -31,3 +31,13 @@ eureka:
   client:
     serviceUrl:
       defaultZone: http://localhost:8761/eureka/
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs/procesion
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /v3/api-docs/procesion
+  servers:
+    - url: http://localhost:8080
+      description: API Gateway
