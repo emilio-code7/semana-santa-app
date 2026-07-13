@@ -12,26 +12,24 @@ spring:
           jwk-set-uri: http://localhost:8180/realms/semana-santa/protocol/openid-connect/certs
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: false
-      routes:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+          routes:
             - id: hermandad-service
               uri: lb://hermandad-service
               predicates:
                 - Path=/api/hermandades/**
-            - id: hermandad-service-swagger
+            - id: hermandad-v3-api-docs
               uri: lb://hermandad-service
               predicates:
-                - Path=/swagger-ui/**
-            - id: hermandad-service-swagger-ui-html
-              uri: lb://hermandad-service
+                - Path=/v3/api-docs/hermandad
+            - id: procesion-v3-api-docs
+              uri: lb://procesion-service
               predicates:
-                - Path=/swagger-ui.html
-            - id: hermandad-service-swagger-api-docs
-              uri: lb://hermandad-service
-              predicates:
-                - Path=/v3/api-docs/**
+                - Path=/v3/api-docs/procesion
             - id: repertorio-service
               uri: lb://repertorio-service
               predicates:
@@ -67,6 +65,14 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: Hermandad Service
+        url: /v3/api-docs/hermandad
+      - name: Procesion Service
+        url: /v3/api-docs/procesion
 
 logging:
   level:
