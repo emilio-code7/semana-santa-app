@@ -5,6 +5,7 @@ import com.repertorio.hermandad.domain.repository.HermandadRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,5 +33,10 @@ public class HermandadRepositoryAdapter implements HermandadRepository {
     @Override
     public boolean existsByName(String name) {
         return jpaRepository.existsByName(name);
+    }
+
+    @Override
+    public List<Hermandad> findAll() {
+        return jpaRepository.findAll();
     }
 }

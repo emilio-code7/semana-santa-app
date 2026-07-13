@@ -24,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -45,6 +46,15 @@ public class HermandadController {
         var auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         HermandadResponse hermandad = hermandadService.createHermandad(createHermandadRequest, auth.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(hermandad);
+    }
+
+    @GetMapping
+    @Operation(summary = "List all hermandades")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of hermandades")
+    })
+    public ResponseEntity<List<HermandadResponse>> getAllHermandades() {
+        return ResponseEntity.ok(hermandadService.findAllHermandades());
     }
 
     @GetMapping("/{hermandadId}")

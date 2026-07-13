@@ -4,6 +4,8 @@ import com.repertorio.hermandad.adapter.config.RedisConfig;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.HermandadResponse;
+import java.util.List;
+import java.util.stream.Collectors;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
 import com.repertorio.hermandad.application.port.UserExistencePort;
 import org.springframework.data.domain.Page;
@@ -62,6 +64,12 @@ public class HermandadService {
         domainEventPublisher.publish(event);
 
         return HermandadResponse.from(hermandad);
+    }
+
+    public List<HermandadResponse> findAllHermandades() {
+        return hermandadRepository.findAll().stream()
+                .map(HermandadResponse::from)
+                .collect(Collectors.toList());
     }
 
     @Cacheable(RedisConfig.HERMANDAD)
