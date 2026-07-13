@@ -197,7 +197,7 @@ services:
     build:
       context: ./services/hermandad-service
       dockerfile: Dockerfile
-    mem_limit: 256m
+    mem_limit: 512m
     ports:
       - "8081:8081"
     environment:
@@ -207,6 +207,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-dev:29092
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
       SPRING_DATA_REDIS_HOST: redis-dev
       SPRING_DATA_REDIS_PORT: 6379
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
@@ -232,7 +233,7 @@ services:
     build:
       context: ./services/procesion-service
       dockerfile: Dockerfile
-    mem_limit: 256m
+    mem_limit: 512m
     ports:
       - "8082:8082"
     environment:
@@ -243,6 +244,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
       SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka-dev:29092
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
     depends_on:
       postgres:
         condition: service_healthy
