@@ -9,6 +9,7 @@ import com.repertorio.hermandad.application.service.HermandadService;
 import com.repertorio.hermandad.domain.model.HermandadAlreadyExistsException;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
+import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
 import com.repertorio.hermandad.domain.model.HermandadRole;
 import com.repertorio.hermandad.domain.repository.HermandadMemberRepository;
 import org.junit.jupiter.api.Test;
@@ -175,15 +176,24 @@ class HermandadControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // --- Auth: public endpoints don't need auth ---
+    // --- Auth: endpoints require authentication ---
 
     @Test
-    void getHermandadReturns200WithoutAuth() throws Exception {
+    void getHermandadReturns200WithAuth() throws Exception {
         when(hermandadService.findHermandadById(hermandadId))
                 .thenReturn(new HermandadResponse(hermandadId, "Test", "Sevilla", 2020, null, Instant.now()));
 
-        mockMvc.perform(get("/api/hermandades/{id}", hermandadId))
+        mockMvc.perform(get("/api/hermandades/{id}", hermandadId)
+                        .with(jwt()))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getHermandadReturns404WhenUnauthenticated() throws Exception {
+        when(hermandadService.findHermandadById(hermandadId))
+                .thenThrow(new HermandadNotFoundException(hermandadId));
+        mockMvc.perform(get("/api/hermandades/{id}", hermandadId))
+                .andExpect(status().isNotFound());
     }
 
     // --- Error responses ---
@@ -208,7 +218,8 @@ class HermandadControllerTest {
         when(hermandadService.findHermandadById(hermandadId))
                 .thenThrow(new com.repertorio.hermandad.domain.model.HermandadNotFoundException(hermandadId));
 
-        mockMvc.perform(get("/api/hermandades/{id}", hermandadId))
+        mockMvc.perform(get("/api/hermandades/{id}", hermandadId)
+                        .with(jwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("not found")));
     }
