@@ -170,16 +170,320 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 ---
 
-### Sprint 8 — Pre-MVP Cleanup ✅
+### Sprint 9 — Repertorio Service
 
-| Pri | Task | Effort | Status |
-|-----|------|--------|--------|
-| 🔴 1 | **Hermandad constructor validation** — `Hermandad.java`: null/empty checks for name, city; valid foundedYear | ~1 file | ✅ |
-| 🔴 2 | **Remove dead `@EnableFeignClients`** — `ProcesionServiceApplication.java:12` + `build.gradle.kts:18` `spring-cloud-starter-openfeign` | 2 files, cleanup | ✅ |
-| 🔴 3 | **Flyway index alignment** — add `@Table(indexes = @Index(...))` to `Procesion.java` to match existing `idx_procesion_hermandad_id` | 1 file | ✅ |
-| 🔴 4 | **Guard gateway stub routes** — 3 routes (`/api/marchas/**`, `/api/tracking/**`, `/api/notifications/**`) currently 503; fallback or comment out | 1 file | ✅ |
-| 🟡 5 | **API Gateway + Discovery Server tests** — zero test coverage for infrastructure | Medium | ✅ |
-| 🟡 6 | **Stub service cleanup** — 3 of 5 services still empty skeletons | Medium | ✅
+> Build the final MVP service: global marcha catalog + cruceta (ordered marcha list per procession).
+> **Package**: `com.repertorio.marcha` · **Port**: 8083 · **DB**: `postgres-repertorio:5433/repertorio_db`
+
+---
+
+#### TASK-1: Project Scaffold
+
+**Description:** Create the repertorio-service project skeleton — Gradle build with Spring Boot 4.1, app main class with `@EnableDiscoveryClient` + `@EnableScheduling` + `@EnableMethodSecurity`, config files (application.yml, bootstrap.yml), and module registration.
+
+**Acceptance Criteria:**
+- [ ] `build.gradle.kts` has correct plugins, dependencies, and version (Spring Boot 4.1, Spring Cloud 2025.1.2, Java 21)
+- [ ] `RepertorioServiceApplication.java` compiles with `@EnableDiscoveryClient`, `@EnableScheduling`, `@EnableMethodSecurity`
+- [ ] `application.yml` configures Postgres (port 5433), Flyway (`ddl-auto: validate`), Kafka (`localhost:9092`), server port 8083, Eureka
+- [ ] `bootstrap.yml` sets `spring.application.name: repertorio-service`
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+
+**Technical Notes:** 
+- Copy dep list from procesion-service (same stack: webmvc, data-jpa, flyway, kafka, security, oauth2, eureka, actuator, lombok, springdoc, test deps)
+- Do NOT include `spring-boot-starter-web` (use modular `spring-boot-starter-webmvc`)
+- Bring `spring-cloud-starter-netflix-eureka-client` for service discovery registration
+- Version catalog already has all needed versions from root BOM — no new entries
+
+**Effort:** 4 files · **Dependencies:** None
+
+---
+
+#### TASK-2: Domain Model — Marcha Aggregate
+
+**Description:** Implement the Marcha aggregate — the core domain entity representing a Semana Santa musical march (marcha procesional). Includes the `BandType` enum (BANDA_PALIO, AGRUPACION_MUSICAL, BANDA_CORNETAS), domain events, and validation.
+
+**Acceptance Criteria:**
+- [ ] `BandType` enum with 3 values matching Semana Santa band types
+- [ ] `Marcha` entity with: id, title, composer, bandType, durationSeconds, compositionYear, youtubeUrl, createdAt, updatedAt
+- [ ] Constructor validates: blank title/composer throws, negative duration throws
+- [ ] Static factory or constructor-based creation (follow Procesion pattern)
+- [ ] `MarchaNotFoundException` — runtime exception with message including ID
+- [ ] `MarchaAddedEvent` / `MarchaRemovedEvent` — domain event records implementing `DomainEvent` interface
+- [ ] `DomainEvent` marker interface: eventId, occurredAt, aggregateType, aggregateId
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+
+**Technical Notes:**
+- Domain must be pure Java — no JPA, no Spring annotations
+- `compositionYear` is `Integer` (nullable, not all marchas have known year)
+- `youtubeUrl` is `String` (nullable)
+- Event topic naming: `aggregateType()` returns `"marcha"` for Kafka topic routing
+- Match the package structure: `com.repertorio.marcha.domain.model/` and `com.repertorio.marcha.domain.event/`
+
+**Effort:** 6 files · **Dependencies:** TASK-1
+
+---
+
+#### TASK-3: Domain Model — Cruceta Aggregate
+
+**Description:** Implement the Cruceta aggregate — an ordered list of marchas assigned to a specific procesion. A cruceta represents what a band will play during a procession and in what order. Includes CrucetaItem value object and validation rules.
+
+**Acceptance Criteria:**
+- [ ] `Cruceta` entity with: id, procesionId, items list, createdAt, updatedAt
+- [ ] `CrucetaItem` value object: id, marchaId, orderIndex, notes (nullable)
+- [ ] Constructor validates: null items throws, duplicate orderIndex values throws
+- [ ] `redefine(List<CrucetaItem>)` method replaces all items and increments updatedAt
+- [ ] `containsMarcha(UUID marchaId)` — returns true if any item references that marcha
+- [ ] `CrucetaNotFoundException` — runtime exception with message including procesionId
+- [ ] `CrucetaDefinedEvent` — domain event record implementing `DomainEvent` interface
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+
+**Technical Notes:**
+- Cruceta is 1:1 with procesion — one procesion has exactly one cruceta
+- `redefine()` replaces the entire marcha list (not incremental add/remove)
+- `orderIndex` is 0-based: 0 = first marcha to play
+- Use `List.copyOf()` in getter to maintain immutability
+- Event topic: `aggregateType()` returns `"cruceta"`
+
+**Effort:** 4 files · **Dependencies:** TASK-1
+
+---
+
+#### TASK-4: Database Migrations (Flyway)
+
+**Description:** Create 4 Flyway migrations: V1 (marcha table), V2 (cruceta + cruceta_item tables with FK + unique constraints), V3 (seed 15 iconic Semana Santa marchas), and the outbox table V4. All migrations must be idempotent and match the domain model.
+
+**Acceptance Criteria:**
+- [ ] `V1__create_marcha_table.sql`: marcha table with UUID PK, title, composer, band_type (VARCHAR), duration_seconds, composition_year (nullable), youtube_url (nullable), created_at, updated_at. Indexes on band_type and composer.
+- [ ] `V2__create_cruceta_tables.sql`: cruceta table (id, procesion_id UNIQUE, timestamps) + cruceta_item table (id, cruceta_id FK CASCADE, marcha_id, order_index, UNIQUE(cruceta_id, order_index)). Indexes on cruceta_id and marcha_id.
+- [ ] `V3__seed_global_marchas.sql`: INSERT 15 iconic marchas with deterministic UUIDs (a0000001-...-01 through 15), diverse band types, real composers and durations
+- [ ] `V4__create_outbox_table.sql`: outbox_event table matching procesion-service pattern
+- [ ] `./gradlew :services:repertorio-service:flywayMigrate` passes (or migrations classpath is valid)
+
+**Technical Notes:**
+- Use hardcoded UUIDs for seed marchas so they're referenceable across environments
+- All 4 migrations are independent of each other (V1-V4 can run in sequence)
+- Use `TIMESTAMP WITH TIME ZONE` for all timestamps, `VARCHAR(30)` for band_type
+- `ON DELETE CASCADE` on cruceta_item FK — deleting a cruceta removes all its items
+- Match the exact same outbox table schema from procesion-service V3
+
+**Effort:** 4 files · **Dependencies:** None (can run parallel to TASK-1)
+
+---
+
+#### TASK-5: JPA Entities + Repository Adapters
+
+**Description:** Implement the persistence layer — JPA entity classes mirroring the DB tables, Spring Data repositories, domain port interfaces, and adapter classes that map between domain entities and JPA entities. This bridges hexagonal architecture's domain and infrastructure.
+
+**Acceptance Criteria:**
+- [ ] `MarchaEntity` — JPA entity with `@Table(name = "marcha")`, `@Enumerated(STRING)` for bandType
+- [ ] `CrucetaEntity` + `CrucetaItemEntity` — JPA entities with `@OneToMany(cascade = ALL)` for items
+- [ ] `MarchaJpaRepository` — extends `JpaRepository<MarchaEntity, UUID>`
+- [ ] `CrucetaJpaRepository` — extends `JpaRepository<CrucetaEntity, UUID>`, has `findByProcesionId(UUID)`
+- [ ] `MarchaRepository` (domain port interface) — `findAll()`, `findById()`, `save()`, `deleteById()`, `existsById()`
+- [ ] `CrucetaRepository` (domain port interface) — `findByProcesionId()`, `save()`, `deleteByProcesionId()`
+- [ ] `MarchaRepositoryAdapter` — implements `MarchaRepository`, maps between `Marcha` ↔ `MarchaEntity`
+- [ ] `CrucetaRepositoryAdapter` — implements `CrucetaRepository`, maps between `Cruceta` ↔ `CrucetaEntity` (including items)
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+
+**Technical Notes:**
+- Domain entities (`Marcha`, `Cruceta`) are NOT JPA-annotated — keep domain pure
+- JPA entities are package-private (adapter layer only)
+- Mapping logic in adapters: `toDomain()`, `toEntity()` methods
+- `CrucetaItemEntity` uses `@ManyToOne` back-reference to `CrucetaEntity` with `@JsonIgnore`
+- Use `@UuidGenerator` on JPA entity IDs (NOT `@GeneratedValue` — matches procesion fix)
+- No `@DynamicUpdate` or Hibernate-specific optimizations for MVP
+
+**Effort:** 8 files · **Dependencies:** TASK-1, TASK-4
+
+---
+
+#### TASK-6: Application Services
+
+**Description:** Implement the application service layer — `MarchaService` for CRUD operations on the global marcha catalog (with delete validation checking cruceta references), and `CrucetaService` for managing per-procession marcha lists. Both services publish domain events.
+
+**Acceptance Criteria:**
+- [ ] `MarchaService.listMarchas(bandType?, composer?, query?)` — filter by optional params, no pagination for MVP
+- [ ] `MarchaService.getMarcha(id)` — returns marcha or throws MarchaNotFoundException
+- [ ] `MarchaService.createMarcha(fields)` — creates, saves, publishes MarchaAddedEvent
+- [ ] `MarchaService.updateMarcha(id, fields)` — updates, saves, does NOT publish event (no update event for MVP)
+- [ ] `MarchaService.deleteMarcha(id)` — checks no cruceta references it, deletes, publishes MarchaRemovedEvent
+- [ ] `CrucetaService.getCruceta(procesionId)` — returns cruceta or throws CrucetaNotFoundException
+- [ ] `CrucetaService.defineCruceta(procesionId, items)` — creates or replaces cruceta, publishes CrucetaDefinedEvent
+- [ ] Integration: `./gradlew :services:repertorio-service:compileJava` passes
+
+**Technical Notes:**
+- Delete validation: inject `CrucetaRepository`, call `findByProcesionId(procesionId)` for all processions... wait — for MVP, simpler: CrucetaRepository has `existsByMarchaId()` or check all crucetas. Actually simplest approach: `crucetaRepository.listAll().stream().anyMatch(c -> c.containsMarcha(marchaId))`. `ponytail`: full-scan, add DB index if perf matters.
+- Use `@Transactional` on write methods
+- Both services use `DomainEventPublisher` port (not direct Kafka) — events go through outbox
+- `createMarcha` uses the static factory or constructor from TASK-2
+
+**Effort:** 2 files · **Dependencies:** TASK-5
+
+---
+
+#### TASK-7: REST Controllers + Security + DTOs
+
+**Description:** Implement the HTTP layer — REST controllers for Marcha (global catalog) and Cruceta (per-procession), request/response DTOs, security configuration (JWT auth with `@PreAuthorize`), custom `JwtAuthenticationConverter`, `RepertorioSecurityService`, `GlobalExceptionHandler`, and `OpenApiConfig` for Swagger.
+
+**Acceptance Criteria:**
+- [ ] `MarchaController` — `GET /api/marchas` (public), `GET /api/marchas/{id}` (public), `POST /api/marchas` (auth'd), `PUT /api/marchas/{id}` (auth'd), `DELETE /api/marchas/{id}` (auth'd)
+- [ ] `CrucetaController` — `GET /api/hermandades/{hid}/procesiones/{pid}/cruceta` (public), `PUT /api/hermandades/{hid}/procesiones/{pid}/cruceta` (HERMANDAD_ADMIN only)
+- [ ] `MarchaRequest`/`MarchaResponse` DTOs — match Marcha fields, validation annotations on request
+- [ ] `CrucetaRequest`/`CrucetaResponse` DTOs — items with marchaId, orderIndex, notes
+- [ ] `SecurityConfig` — `anyRequest().authenticated()`, public GET for `/api/marchas/**, /swagger-ui/**, /v3/api-docs/**, /actuator/**`
+- [ ] `JwtAuthenticationConverter` — extracts `hermandad_memberships` claim into authorities (copy from hermandad-service)
+- [ ] `RepertorioSecurityService` — `@Component("repertorioSecurity")` checks JWT authorities for `HERMANDAD_{id}_HERMANDAD_ADMIN` (no DB fallback for MVP)
+- [ ] `GlobalExceptionHandler` — returns `ApiError` JSON, same pattern as hermandad/procesion
+- [ ] `OpenApiConfig` — bearer JWT security scheme pointing at gateway (localhost:8080)
+- [ ] `ApiError` record — same as other services
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+
+**Technical Notes:**
+- Copy `JwtAuthenticationConverter` from hermandad-service, update package to `com.repertorio.marcha.adapter.config.security`
+- `RepertorioSecurityService` is JWT-only (fast path) — no DB fallback call for MVP
+- `@PreAuthorize("@repertorioSecurity.isAdmin(#hermandadId)")` on cruceta mutation endpoints
+- Cruceta controller path includes `hermandadId` for auth scope, even though cruceta lives in repertorio-service
+- DTO validation: `@NotBlank`, `@NotNull`, `@Positive`, `@Size` where applicable
+
+**Effort:** 12 files · **Dependencies:** TASK-6
+
+---
+
+#### TASK-8: Outbox + Event Publishing
+
+**Description:** Implement the outbox pattern for reliable event publishing — mirror the exact same pattern from procesion-service. Domain events flow: entity → `DomainEventPublisherAdapter` → `ApplicationEventPublisher` (in-process) + `OutboxEventEntity` (DB) → `OutboxPoller` (@Scheduled 5s) → Kafka topic.
+
+**Acceptance Criteria:**
+- [ ] `OutboxPublisher` (port interface) — `publish(DomainEvent)`
+- [ ] `OutboxEventEntity` — JPA entity for `outbox_event` table with `@UuidGenerator` (no `@GeneratedValue`)
+- [ ] `OutboxEventJpaRepository` — `findTop100ByProcessedFalseOrderByCreatedAtAsc`
+- [ ] `OutboxEventPublisher` — serializes domain event to JSON via `ObjectMapper`, saves entity
+- [ ] `OutboxPoller` — `@Scheduled(fixedDelayString = "PT5S")`, sends to Kafka topic `{aggregateType}-events`
+- [ ] `DomainEventPublisherAdapter` — `@Component` that calls `ApplicationEventPublisher` + `OutboxPublisher`
+- [ ] `V4__create_outbox_table.sql` already exists (from TASK-4) — verify it matches
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+- [ ] Confirm `@EnableScheduling` is on `RepertorioServiceApplication` (from TASK-1)
+
+**Technical Notes:**
+- Copy-paste exact implementation from `procesion-service/.../adapter/outbound/outbox/`, update package to `com.repertorio.marcha.adapter.outbound.outbox`
+- Spring Boot 4.1 uses `tools.jackson.databind.ObjectMapper` (not `com.fasterxml.jackson`)
+- Poller sends to topic name derived from `domainEvent.aggregateType()` + `"-events"` suffix (e.g., `marcha-events`, `cruceta-events`)
+- No idempotent consumer needed for MVP — repertorio only produces, doesn't consume its own events
+- Catch `JacksonException` (not `JsonProcessingException`) — matches Spring Boot 4.1 Jackson 3 API
+
+**Effort:** 6 files · **Dependencies:** TASK-4, TASK-6
+
+---
+
+#### TASK-9: Docker + Gateway Integration
+
+**Description:** Containerize repertorio-service and integrate it into the existing Docker Compose stack. Add Dockerfile, docker-compose service definition (both full and dev profiles), cruceta gateway route, and create the `marcha-events` Kafka topic in the init script.
+
+**Acceptance Criteria:**
+- [ ] `Dockerfile` — `eclipse-temurin:21-jre-alpine`, copies JAR, `ENTRYPOINT ["java", "-jar", "app.jar"]`
+- [ ] `docker-compose.yml` — repertorio-service container: port 8083, depends_on postgres-repertorio + kafka + redis + discovery-server, env vars for DB + Kafka + Eureka
+- [ ] `docker-compose.dev.yml` — same service with memory limits (256m)
+- [ ] Gateway route for cruceta: `/api/hermandades/{hid}/procesiones/{pid}/cruceta/**` → `lb://repertorio-service` (existing `/api/marchas/**` route already exists)
+- [ ] `marcha-events` topic (3 partitions) added to kafka-init topic creation in both compose files
+- [ ] `docker compose build repertorio-service` passes
+- [ ] `docker compose up -d repertorio-service` starts without errors
+
+**Technical Notes:**
+- Dockerfile same pattern as procesion-service (multi-stage not needed for MVP)
+- Env vars override application.yml for container environment: `SPRING_DATASOURCE_URL` uses `postgres-repertorio:5432`, `SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS` uses `kafka:29092`
+- Gateway already has `/api/marchas/**` route from initial setup — just verify it still exists
+- Add cruceta route as a new route ID `repertorio-cruceta` before `repertorio-service` in the route list
+- Kafka init: add `marcha-events` before the final `echo 'All topics created.'` in both `docker-compose.yml` and `docker-compose.dev.yml`
+
+**Effort:** 5 files (1 create, 4 modify) · **Dependencies:** TASK-1
+
+---
+
+#### TASK-10: Domain Unit Tests
+
+**Description:** Write pure JUnit 5 unit tests (no Spring context) for the Marcha and Cruceta domain entities — covering construction validation, mutation behavior, edge cases.
+
+**Acceptance Criteria:**
+- [ ] `MarchaTest`:
+  - `createWithValidFields` — succeeds
+  - `createWithBlankTitle` — throws IllegalArgumentException
+  - `createWithBlankComposer` — throws
+  - `createWithNegativeDuration` — throws
+  - `updateChangesFields` — title, composer, bandType updated
+  - `updateWithBlankTitle` — throws
+- [ ] `CrucetaTest`:
+  - `createWithValidItems` — succeeds
+  - `createWithNullItems` — throws
+  - `createWithDuplicateOrderIndex` — throws
+  - `redefineReplacesItems` — items replaced, updatedAt ticks
+  - `containsMarchaReturnsTrue` — when marchaId present in items
+  - `containsMarchaReturnsFalse` — when marchaId absent
+- [ ] All tests pass: `./gradlew :services:repertorio-service:test --tests "*MarchaTest" --tests "*CrucetaTest"`
+
+**Technical Notes:**
+- Pure JUnit 5 — no `@SpringBootTest`, no Mockito
+- `assertThrows` for validation, `assertEquals`/`assertTrue`/`assertFalse` for behavior
+- Write tests first (TDD), then implement domain to make them pass
+
+**Effort:** 2 files · **Dependencies:** TASK-2, TASK-3
+
+---
+
+#### TASK-11: Service Layer Unit Tests
+
+**Description:** Write Mockito-based unit tests for `MarchaService` and `CrucetaService` — mocking repository and event publisher dependencies, verifying business logic and event publication.
+
+**Acceptance Criteria:**
+- [ ] `MarchaServiceTest`:
+  - `listMarchas` — returns filtered results
+  - `getMarcha_found` — returns marcha
+  - `getMarcha_notFound` — throws
+  - `createMarcha` — saves and publishes `MarchaAddedEvent`
+  - `deleteMarcha_noReferences` — deletes and publishes `MarchaRemovedEvent`
+  - `deleteMarcha_referencedInCruceta` — throws (delete validation)
+- [ ] `CrucetaServiceTest`:
+  - `getCruceta_found` — returns cruceta
+  - `getCruceta_notFound` — throws
+  - `defineCruceta_new` — saves new and publishes `CrucetaDefinedEvent`
+  - `defineCruceta_replace` — replaces existing and publishes event
+- [ ] All tests pass: `./gradlew :services:repertorio-service:test --tests "*ServiceTest"`
+
+**Technical Notes:**
+- Use `@ExtendWith(MockitoExtension.class)` + `@Mock` + `@InjectMocks`
+- Use `ArgumentCaptor` to verify domain events were published with correct fields
+- Mock `DomainEventPublisher` (the port interface), not the adapter
+
+**Effort:** 2 files · **Dependencies:** TASK-6
+
+---
+
+#### TASK-12: Controller Slice Tests
+
+**Description:** Write `@WebMvcTest` controller tests for `MarchaController` and `CrucetaController` — verifying HTTP status codes, response bodies, auth enforcement (public GET works, mutations require JWT).
+
+**Acceptance Criteria:**
+- [ ] `MarchaControllerTest`:
+  - `GET /api/marchas` (no auth) → 200
+  - `GET /api/marchas/{id}` (no auth) → 200
+  - `POST /api/marchas` (no auth) → 401
+  - `POST /api/marchas` (with JWT) → 201
+  - `DELETE /api/marchas/{id}` (with JWT) → 204
+  - `DELETE /api/marchas/{id}` (no auth) → 401
+- [ ] `CrucetaControllerTest`:
+  - `GET .../cruceta` (no auth) → 200
+  - `PUT .../cruceta` (no auth) → 401
+  - `PUT .../cruceta` (with non-admin JWT) → 403
+  - `PUT .../cruceta` (with admin JWT) → 200
+- [ ] All tests pass: `./gradlew :services:repertorio-service:test --tests "*ControllerTest"`
+
+**Technical Notes:**
+- Use `@WebMvcTest(controllers = {MarchaController.class, CrucetaController.class})`
+- `@MockitoBean` for services and security service
+- Use `with(jwt())` from `spring-security-test` for authenticated requests
+- Use `@WithMockUser(authorities = "HERMANDAD_{id}_HERMANDAD_ADMIN")` or `MockMvcRequestPostProcessors.jwt()` for admin tests
+- Test JSON response body structure with `jsonPath` for key fields
+
+**Effort:** 2 files · **Dependencies:** TASK-7
 
 ---
 
@@ -214,13 +518,14 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 
 ### Repertorio Service
 
-- Model `Marcha` aggregate (musical piece): title, composer, genre, duration
-- Model `Repertorio` aggregate: year, list of marches selected by a hermandad
-- CRUD REST endpoints for marches
-- Assign marches to a hermandad's repertorio
-- Publish events: `MarchaAdded`, `MarchaRemoved`
-- Kafka consumer for hermandad events
-- Docker Compose integration
+*(Items below tracked in Sprint 9 above. Kept here for visibility.)*
+
+- ✅ Model `Marcha` aggregate: title, composer, `BandType` enum, durationSeconds, compositionYear, youtubeUrl
+- ✅ Model `Cruceta` + `CrucetaItem`: ordered marcha list per procesionId
+- CRUD REST endpoints for global marcha catalog
+- Cruceta management by procesionId (get + replace)
+- Outbox pattern: `MarchaAdded`, `MarchaRemoved`, `CrucetaDefined` → Kafka
+- Docker Compose + Gateway route integration
 
 ### Tracking Service
 
