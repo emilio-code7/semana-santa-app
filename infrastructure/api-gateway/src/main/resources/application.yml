@@ -18,6 +18,15 @@ spring:
             locator:
               enabled: false
           routes:
+            # Cruceta routes must precede hermandad's generic /api/hermandades/**
+            - id: repertorio-cruceta
+              uri: lb://repertorio-service
+              predicates:
+                - Path=/api/hermandades/*/procesiones/*/cruceta/**
+            - id: repertorio-service
+              uri: lb://repertorio-service
+              predicates:
+                - Path=/api/marchas/**
             - id: hermandad-service
               uri: lb://hermandad-service
               predicates:
@@ -26,6 +35,10 @@ spring:
               uri: lb://hermandad-service
               predicates:
                 - Path=/v3/api-docs/hermandad
+            - id: repertorio-v3-api-docs
+              uri: lb://repertorio-service
+              predicates:
+                - Path=/v3/api-docs/repertorio
             - id: procesion-v3-api-docs
               uri: lb://procesion-service
               predicates:
@@ -34,20 +47,6 @@ spring:
               uri: lb://procesion-service
               predicates:
                 - Path=/api/procesiones/**
-            # repertorio-service, tracking-service, notification-service are stubs.
-            # Uncomment when the corresponding service is implemented.
-            # - id: repertorio-service
-            #   uri: lb://repertorio-service
-            #   predicates:
-            #     - Path=/api/marchas/**
-            # - id: tracking-service
-            #   uri: lb://tracking-service
-            #   predicates:
-            #     - Path=/api/tracking/**
-            # - id: notification-service
-            #   uri: lb://notification-service
-            #   predicates:
-            #     - Path=/api/notifications/**
 
 eureka:
   client:
@@ -75,6 +74,8 @@ springdoc:
         url: /v3/api-docs/hermandad
       - name: Procesion Service
         url: /v3/api-docs/procesion
+      - name: Repertorio Service
+        url: /v3/api-docs/repertorio
 
 logging:
   level:
