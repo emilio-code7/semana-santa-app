@@ -1,0 +1,22 @@
+package com.repertorio.marcha.domain.model;
+
+import java.util.UUID;
+
+public class CrucetaItem {
+    private final UUID id;
+    private final UUID marchaId;
+    private final int orderIndex;
+    private final String notes;
+
+    public CrucetaItem(UUID marchaId, int orderIndex, String notes) {
+        this.id = UUID.randomUUID();
+        this.marchaId = marchaId;
+        this.orderIndex = orderIndex;
+        this.notes = notes;
+    }
+
+    public UUID getId() { return id; }
+    public UUID getMarchaId() { return marchaId; }
+    public int getOrderIndex() { return orderIndex; }
+    public String getNotes() { return notes; }
+}
