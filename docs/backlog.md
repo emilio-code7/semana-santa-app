@@ -487,6 +487,211 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 ---
 
+### Sprint 10 — AWS Migration
+
+> Migrate from self-managed Kafka/Keycloak/Postgres containers to AWS-managed services (SQS, Cognito, RDS, ElastiCache). Target: free tier ($0/mo).
+> **Architecture**: Single EC2 t2.micro → 3 Spring Boot services + nginx. SQS replaces Kafka, Cognito replaces Keycloak, RDS replaces container Postgres, ElastiCache replaces container Redis.
+> **Stack**: Spring Cloud AWS 4.0.2, AWS CDK, Cognito Lambda triggers
+
+---
+
+#### AWS-TASK-1: AWS Infrastructure Stack
+
+**Description:** Deploy the base infrastructure — EC2 instance, RDS Postgres, ElastiCache Redis, SQS queues, Cognito user pool, IAM roles, and security groups. Use AWS CDK for infrastructure-as-code.
+
+**Acceptance Criteria:**
+- [ ] EC2 t2.micro with Amazon Linux 2023, security group (HTTP:80, SSH:22 from trusted IPs)
+- [ ] RDS db.t2.micro, 20GB gp2, Postgres 16 — single instance with 5 databases (hermandad_db, procesion_db, repertorio_db, tracking_db, notification_db)
+- [ ] ElastiCache t2.micro, Redis 7 — security group restricted to EC2 security group
+- [ ] 3 SQS Standard queues created: `hermandad-events`, `hermandad-member-events`, `procesion-events` — each with DLQ + RedrivePolicy (maxReceiveCount=3)
+- [ ] Cognito user pool + app client + pre-token generation Lambda V2.0 configured
+- [ ] IAM instance profile with permissions for SQS (SendMessage, ReceiveMessage, DeleteMessage), ECR (pull), ElastiCache (connect)
+- [ ] ECR repository for each service's Docker images
+- [ ] Default VPC or new VPC with public subnet
+- [ ] `infrastructure/aws/stack.ts` — CDK app compiling and deployable
+
+**Technical Notes:**
+- Use Cognito group naming convention `HERMANDAD_{id}_{role}` — Lambda parses these into the `hermandad_memberships` JSON claim (same format as current Keycloak)
+- Pre-token generation Lambda uses Lambda V2.0 runtime (ensures access token customization)
+- Queue creation: `aws sqs create-queue` for each queue + DLQ
+- Use AWS-managed policies where possible, scope down to least-privilege after initial setup
+- RDS initial database creation via `psql` after stack deploy
+
+**Effort:** 2-3 files (CDK stack + Lambda + seed script) · **Dependencies:** None
+
+---
+
+#### AWS-TASK-2: nginx Reverse Proxy + EC2 Bootstrap
+
+**Description:** Replace API Gateway + Eureka with nginx path-based routing on the EC2 instance. Services run on localhost and nginx proxies external requests. Includes EC2 bootstrap/user-data script, Docker Compose for AWS, and nginx config.
+
+**Acceptance Criteria:**
+- [ ] `infrastructure/nginx/nginx.conf` — proxies `/api/hermandades/*` → `localhost:8081`, `/api/procesiones/*` → `localhost:8082`, `/api/marchas/*` → `localhost:8083`
+- [ ] nginx container (or direct install) runs on EC2, binds port 80
+- [ ] `docker-compose.aws.yml` — uses ECR images + env vars for RDS/SQS/Cognito config, no Eureka/Gateway/Keycloak/Kafka containers
+- [ ] EC2 user-data script: installs Docker + Compose, pulls images, runs `docker compose up`
+- [ ] `curl http://<ec2-public-ip>/health` returns `200 OK`
+- [ ] `curl http://<ec2-public-ip>/api/hermandades` → proxied to hermandad-service (requires JWT)
+- [ ] No Gateway no Eureka dependencies on the deployed stack
+
+**Technical Notes:**
+- nginx config is static (not generated), included in the repo
+- EC2 user-data mounts ECR auth via `aws ecr get-login-password`
+- Services don't discover each other — direct localhost communication only
+- No `kafka-init`, no `kafka-ui`, no observability containers on the minimal deploy
+
+**Effort:** 3 files (nginx.conf, docker-compose.aws.yml, user-data.sh) · **Dependencies:** AWS-TASK-1 (EC2 running)
+
+---
+
+#### AWS-TASK-3: SQS Outbox Migration (All Services)
+
+**Description:** Replace Kafka with SQS in the outbox pattern across all 3 active services. OutboxPoller sends to SQS instead of Kafka. Hermandad's IdempotentEventConsumer switches from `@KafkaListener` to `@SqsListener`. Keep the `processed_event` dedup table unchanged.
+
+**Acceptance Criteria:**
+- [ ] `spring-cloud-aws-starter-sqs` 4.0.2 replaces `spring-boot-starter-kafka` in all 3 services
+- [ ] OutboxPoller (hermandad + procesion + repertorio): `SqsTemplate.send(queueName, payload)` replaces `KafkaTemplate.send(topic, payload)`
+- [ ] Hermandad `IdempotentEventConsumer`: `@SqsListener("hermandad-events")` + `@SqsListener("hermandad-member-events")` replace `@KafkaListener`
+- [ ] Dedup still uses `processed_event` table (SQS Standard doesn't have built-in dedup)
+- [ ] `@SqsListener` uses `@Header(SqsHeaders.SQS_MESSAGE_ID_HEADER)` for dedup key
+- [ ] Kafka config removed from `application.yml` (bootstrap-servers, consumer/producer props)
+- [ ] SQS region config in `application.yml`: `spring.cloud.aws.region.static`
+- [ ] Services use instance profile credentials on EC2, env vars locally
+- [ ] `./gradlew :services:hermandad-service:compileJava` passes
+- [ ] `./gradlew :services:procesion-service:compileJava` passes
+- [ ] `./gradlew :services:repertorio-service:compileJava` passes
+- [ ] All existing unit/integration tests pass (adapters mocked)
+
+**Technical Notes:**
+- No code change to domain or application layers — only adapter layer changes
+- SQS Standard queues (not FIFO) — matches current Kafka ordering (best-effort)
+- SQS `@SqsListener` auto-deletes messages on successful return; thrown exception returns to queue after visibility timeout
+- Keep Kafka starter removed from all build.gradle.kts — no dual-transport
+- Repertorio (if built with Kafka in Sprint 9) applies same migration pattern
+- DLQ handled at queue level via RedrivePolicy — no Spring-side config needed
+
+**Effort:** ~8 files across 3 services · **Dependencies:** AWS-TASK-1 (queues exist)
+
+---
+
+#### AWS-TASK-4: Cognito JWT Integration
+
+**Description:** Switch JWT authentication from Keycloak to Cognito. Update issuer-uri in all 3 services. Deploy the pre-token generation Lambda that injects `hermandad_memberships` claim into access tokens. No changes to JwtAuthenticationConverter — same claim structure.
+
+**Acceptance Criteria:**
+- [ ] Pre-token generation Lambda deployed (Node.js or Java) — reads Cognito groups `HERMANDAD_{id}_{role}`, injects `hermandad_memberships` JSON array into access token
+- [ ] `application.yml` in all 3 services: `spring.security.oauth2.resourceserver.jwt.issuer-uri` points to Cognito URL
+- [ ] `JwtAuthenticationConverter` unchanged — reads same `hermandad_memberships` claim
+- [ ] `JwtMembershipExtractor` unchanged — parses same JSON format
+- [ ] Cognito groups created per user: `HERMANDAD_{hermandadId}_{role}` format
+- [ ] `curl -H "Authorization: Bearer <cognito-token>" http://localhost:8081/api/hermandades` → 200
+- [ ] `curl` without token → 401
+- [ ] `spring-boot-starter-oauth2-resource-server` still works with Cognito OIDC config
+
+**Technical Notes:**
+- Cognito access tokens don't include custom claims by default — Lambda trigger V2.0 is required
+- The Lambda must use `event.response.claimsAndScopeOverrideDetails.accessTokenGeneration.claimsToAddOrOverride`
+- Cognito does NOT accept `/.well-known/openid-configuration` appended to issuer-uri — Spring adds it automatically
+- Keycloak issuer format: `http://keycloak:8080/realms/semana-santa`
+- Cognito issuer format: `https://cognito-idp.{region}.amazonaws.com/{poolId}`
+- Token validation (expiration, signature, issuer) handled by Spring Security's Nimbus library — identical behavior
+
+**Effort:** ~5 files (Lambda + 3 application.yml + deploy script) · **Dependencies:** AWS-TASK-1 (Cognito pool exists)
+
+---
+
+#### AWS-TASK-5: Cognito Admin Adapter (Replace Keycloak Admin Client)
+
+**Description:** Replace `KeycloakUserExistenceAdapter` and `KeycloakMembershipAdapter` with Cognito SDK equivalents. The new adapters use `CognitoIdentityProviderClient` for user existence checks and group management.
+
+**Acceptance Criteria:**
+- [ ] `CognitoUserAdapter` implements `UserExistencePort` — calls `cognitoClient.adminGetUser()`, returns false on `UserNotFoundException`
+- [ ] `CognitoMembershipAdapter` replaces `KeycloakMembershipAdapter` — `addUserToGroup()` for role assignment, group cleanup for member removal
+- [ ] `build.gradle.kts` in hermandad-service: add `software.amazon.awssdk:cognitoidentityprovider`, remove `keycloak-admin-client`
+- [ ] `application.yml`: add cognito user-pool-id config
+- [ ] All tests pass: `KeycloakUserExistenceAdapterTest` → renamed to `CognitoUserAdapterTest`, mocks updated to Cognito SDK
+- [ ] `hermandad-service:compileJava` passes
+
+**Technical Notes:**
+- SDK v2 `CognitoIdentityProviderClient` is auto-closeable — use constructor injection (Spring creates one bean)
+- Group names match Cognito convention: `HERMANDAD_{hermandadId}_{role}`
+- For user removal: list user's groups, filter by hermandadId prefix, remove each
+- The `processed_event` consumer and outbox stay unchanged — this only affects Keycloak admin operations
+- SDK dependency uses Bill of Materials (BOM): `software.amazon.awssdk:bom:2.28.0`
+
+**Effort:** 4 files (2 adapters + build.gradle + test) · **Dependencies:** AWS-TASK-4 (Cognito pool configured)
+
+---
+
+#### AWS-TASK-6: RDS Connection + Docker Compose AWS
+
+**Description:** Point all services from container Postgres to the new RDS instance. Create the docker-compose.aws.yml that runs the full stack on EC2 with managed services. No local Postgres/Kafka/Keycloak containers needed.
+
+**Acceptance Criteria:**
+- [ ] 3 `application.yml` files: datasource URL points to RDS endpoint, credentials from env vars
+- [ ] Docker Compose AWS profile: services + nginx only (no Postgres, no Kafka, no Keycloak, no ZK, no Redis container — everything managed)
+- [ ] Flyway migrations run correctly against RDS databases
+- [ ] `docker compose -f docker-compose.aws.yml up` starts all 3 services + nginx
+- [ ] All services register health check endpoints accessible through nginx
+- [ ] Redis config switches from container host to ElastiCache endpoint
+
+**Technical Notes:**
+- One RDS instance, separate databases (not schemas): `hermandad_db`, `procesion_db`, `repertorio_db`
+- Each service's `flyway_schema_history` table lives in its own database — no migration conflicts
+- `application.yml` uses `jdbc:postgresql://${RDS_ENDPOINT}:5432/{db_name}`
+- RDS initial setup script: `CREATE DATABASE hermandad_db;` etc.
+- RDS is on the free tier — db.t2.micro, 20GB gp2 storage, automated backups enabled
+- If RDS not available locally, services fall back to H2 or skip via `@ConditionalOnProperty`
+
+**Effort:** 5 files (3 application.yml + docker-compose.aws.yml + init script) · **Dependencies:** AWS-TASK-1 (RDS running)
+
+---
+
+#### AWS-TASK-7: CI/CD Pipeline
+
+**Description:** Set up GitHub Actions workflow that builds Docker images, pushes to ECR, and deploys to EC2 via SSH. Zero-touch deployment from push to production.
+
+**Acceptance Criteria:**
+- [ ] `.github/workflows/deploy.yml`: triggers on push to `main` branch
+- [ ] Build step: `./gradlew build -x test` (tests run in a separate CI step)
+- [ ] Docker build: builds all 3 service images using their Dockerfiles
+- [ ] ECR push: authenticates, tags `:latest` and `:{sha}`, pushes
+- [ ] EC2 deploy: SSH into EC2, login to ECR, `docker compose pull && docker compose up -d`
+- [ ] Secrets configured: `AWS_ACCOUNT_ID`, `EC2_HOST`, `EC2_SSH_KEY`, `DB_USERNAME`, `DB_PASSWORD`
+- [ ] Health check step: `curl http://$EC2_HOST/health` returns 200 after deploy
+
+**Technical Notes:**
+- Use `appleboy/ssh-action` for EC2 SSH — simple, proven
+- ECR authentication: `aws ecr get-login-password | docker login ...`
+- Docker Compose file (docker-compose.aws.yml) references ECR images via `${ECR_REGISTRY}/service:latest`
+- Rollback: if health check fails, SSH in and run `docker compose up -d` with previous images
+- GitHub Actions free tier: 2,000 min/mo — plenty for this
+
+**Effort:** 2 files (workflow + env template) · **Dependencies:** AWS-TASK-1 through AWS-TASK-6
+
+---
+
+#### AWS-TASK-8: LocalStack Dev Profile + Documentation
+
+**Description:** Add LocalStack profile for local SQS development (no real AWS needed). Update architecture docs to reflect the new AWS-native architecture.
+
+**Acceptance Criteria:**
+- [ ] `docker-compose.localstack.yml` — runs LocalStack with SQS, creates queues on startup
+- [ ] `application-dev.yml` or `application-localstack.yml` — `spring.cloud.aws.endpoint-override: http://localhost:4566`
+- [ ] `docs/architecture.md` updated: AWS deployment topology diagram, SQS replaces Kafka, Cognito replaces Keycloak, RDS replaces container Postgres
+- [ ] `docs/functional-map.md` updated: update communication section, auth section, infrastructure section
+- [ ] `docs/backlog.md` — Sprint 10 marked complete after verification
+
+**Technical Notes:**
+- LocalStack free tier covers SQS — no license needed
+- Queue order in compose: wait for LocalStack healthy, then create queues via `aws sqs create-queue`
+- Use `test` credentials in LocalStack profile (no real AWS auth)
+- Docker compose: `services: localstack: { image: localstack/localstack, ports: ["4566:4566"] }`
+
+**Effort:** 3 files · **Dependencies:** AWS-TASK-3 (SQS code deployed)
+
+---
+
 ## Backlog (ordered)
 
 ### Technical Debt / Audit Findings
