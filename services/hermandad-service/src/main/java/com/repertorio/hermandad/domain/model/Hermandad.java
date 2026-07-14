@@ -34,6 +34,15 @@ public class Hermandad {
     protected Hermandad() {}
 
     public Hermandad(String name, String city, int foundedYear, String description) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name must not be null or blank");
+        }
+        if (city == null || city.isBlank()) {
+            throw new IllegalArgumentException("city must not be null or blank");
+        }
+        if (foundedYear < 0) {
+            throw new IllegalArgumentException("foundedYear must not be negative");
+        }
         this.name = name;
         this.city = city;
         this.foundedYear = foundedYear;

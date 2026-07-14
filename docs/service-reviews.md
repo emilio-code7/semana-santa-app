@@ -2,39 +2,35 @@
 
 ## Procesion Service
 
-**Files**: 22 Java files | **Tests**: 21 (8 unit + 13 controller), all passing
+**Files**: 22 Java files | **Tests**: 47 (11 domain + 8 service + 13 controller + 4 repository IT + 8 controller IT + 3 exception handler)
 **Hexagonal**: ✅ Full | **DDD**: ✅ | **TDD**: ✅
+**Last review**: 2026-07-13
 
 ### Positive
 
 | Area | Status | Notes |
 |------|--------|-------|
 | Hexagonal Architecture | ✅ | Full ports/adapters split. Domain → Application/Port → Adapter |
-| DDD | ✅ | State machine in `cambiarEstado()`, static factory, domain events |
+| DDD | ✅ | State machine in `changeStatus()`, static factory, domain events |
 | Security | ✅ | `anyRequest().authenticated()`, custom `JwtAuthenticationConverter` extracting `hermandad_memberships` |
-| Testing | ✅ | Service unit (Mockito) + controller slice (MockMvc + JWT). Auth path tested |
-| Build | ✅ | Modular `spring-boot-starter-webmvc`, Flyway, Kafka, OpenFeign |
+| Testing | ✅ | Domain unit tests (11), service unit (8), controller slice (13), integration (12), exception handler (3) |
+| Event reliability | ✅ | Outbox pattern (table + poller → Kafka `procesion-events` topic). Mirror of hermandad-service |
+| Build | ✅ | Modular `spring-boot-starter-webmvc`, Flyway, Kafka |
 
 ### Issues
 
 | # | Severity | Issue | Location |
 |---|----------|-------|----------|
-| 1 | Medium | **No outbox pattern** — events published via `ApplicationEventPublisher` (sync, in-process). If listener fails or app crashes after DB save, event is lost. Hermandad-service has an outbox | `DomainEventPublisherAdapter.java` |
-| 2 | Medium | **`UUID.randomUUID()` in factory + `@GeneratedValue @UuidGenerator` on entity** — redundant ID generation. Pick one | `Procesion.java:16-17, 55` |
-| 3 | Low | **Duplicate Kafka deps** — both `spring-kafka` and `spring-boot-starter-kafka` declared (starter includes the former) | `build.gradle.kts:20-21` |
-| 4 | Low | **Double lookup in `eliminarProcesion()`** — `findById` then `deleteById`. Use `existsById()` or let delete throw | `ProcesionService.java:58-62` |
-| 5 | Low | **No domain unit tests** — `Procesion.cambiarEstado()` state machine (5 transition rules, 4 states) tested only through service | `/domain/model/` |
-| 6 | Low | **Plain text error responses** — same pattern as hermandad, should return structured `{code, message}` JSON | `GlobalExceptionHandler.java` |
-| 7 | Low | **Flyway index not mirrored on entity** — `idx_procesion_hermandad_id` exists in SQL but not declared via `@Table(indexes = ...)` | `Procesion.java` |
-| 8 | Note | **No Redis caching** — hermandad-service has it, could benefit read-heavy listings | — |
+| 1 | Low | ✅ ~~**Flyway index not mirrored on entity** — `idx_procesion_hermandad_id` exists in SQL but not declared via `@Table(indexes = ...)`~~ | `Procesion.java` |
+| 2 | Low | **No `@PreAuthorize` on controller** — `@EnableMethodSecurity` declared but unused; all controller methods rely on blanket `anyRequest().authenticated()` | `ProcesionController.java` |
+| 3 | Low | ✅ ~~**Dead `@EnableFeignClients`** — annotation present with zero `@FeignClient` interfaces in codebase~~ | `ProcesionServiceApplication.java:12` + `build.gradle.kts:18` |
+| 4 | Note | **No Redis caching** — hermandad-service has it, could benefit read-heavy listings | — |
 
 ### Recommendations
 
-1. **Critical before production**: Add outbox pattern (copy from hermandad-service: `OutboxEventEntity` + `OutboxPoller` + `OutboxEventPublisher`)
-2. Remove `@GeneratedValue` from `Procesion.id` (let `@UuidGenerator` handle it)
-3. Drop `spring-kafka` from `build.gradle.kts` (starter covers it)
-4. Write direct domain tests for `Procesion.cambiarEstado()` — all valid/invalid transitions
-5. Add `@Table(indexes = @Index(...))` to match Flyway index
+1. ✅ ~~Add `@Table(indexes = @Index(...))` to `Procesion.java` to match Flyway index~~
+2. ✅ ~~Remove `@EnableFeignClients` + `spring-cloud-starter-openfeign` (dead config)~~
+3. Optionally add `@PreAuthorize` for consistent method-level security
 
 ---
 
@@ -74,11 +70,18 @@
 
 | # | Severity | Issue | Location |
 |---|----------|-------|----------|
-| 1 | Low | **Plain text error responses** — `ResponseEntity<String>` instead of structured JSON `{code, message}`. Same across both services | `GlobalExceptionHandler.java` |
-| 2 | Low | **Hermandad entity has no `updatedAt`** — only `createdAt`. Unlike Procesion which tracks both | `Hermandad.java:29-30` |
-| 3 | Low | **`HermandadService.changeRole()` lacks `@Transactional`** — all other mutation methods have it | `HermandadService.java:109` |
-| 4 | Note | **`Hermandad` constructor does not validate args** — name/city could be empty strings | `Hermandad.java:34-39` |
-| 5 | Note | **`KeycloakUserExistenceAdapter.exists()` catches generic `Exception`** — could mask connectivity issues vs actual "not found" | `KeycloakUserExistenceAdapter.java:24` |
+| 1 | Note | ✅ ~~**`Hermandad` constructor does not validate args** — name/city could be empty strings~~ | `Hermandad.java:34-39` |
+| 2 | Note | **Kafka self-consumption** — `IdempotentEventConsumer` listens to hermandad's own topics. Works as dedup audit trail but unusual pattern | `IdempotentEventConsumer.java` |
+
+### Resolved Since Last Review
+
+| Issue | Resolution |
+|-------|-----------|
+| **Plain text error responses** | ✅ Both services now return `ApiError` JSON record with `status, error, message`. Unit tests per handler. |
+| **Hermandad entity missing `updatedAt`** | ✅ Added `updatedAt` field + `@PrePersist`/`@PreUpdate` + Flyway V7 migration. |
+| **`changeRole()` missing `@Transactional`** | ✅ Added `@Transactional` to `addMember()`, `changeRole()`, `removeMember()` (all write operations). |
+| **Hermandad constructor no validation** | ✅ Added null/blank checks for `name`, `city` and negative check for `foundedYear`. 5 tests added. |
+| **`KeycloakUserExistenceAdapter` generic catch** | ✅ Split: `NotFoundException` (debug log, return false) + `Exception` (warn log, return false). `KeycloakMembershipAdapter` now re-throws instead of swallowing. `MemberAddedListener` catches `RuntimeException`. `OutboxEventPublisher` catches `JsonProcessingException`. |
 
 ### Recommendations
 
@@ -86,7 +89,7 @@
 2. Add `@Transactional` to `changeRole()` method
 3. Both services: migrate from plain text to structured error responses with an `ErrorResponse` DTO
 4. `KeycloakUserExistenceAdapter`: catch specific `javax.ws.rs.NotFoundException` for "not found", let other exceptions propagate
-5. Validate constructor params in `Hermandad` (empty strings, negative foundedYear)
+5. ✅ ~~Validate constructor params in `Hermandad` (empty strings, negative foundedYear)~~
 
 ---
 
@@ -96,10 +99,11 @@
 |--------|-----------|-----------|
 | Hexagonal | ✅ | ✅ |
 | DDD | ✅ | ✅ |
-| Tests | 55 (11 classes) | 21 (2 classes) |
-| Security | `anyRequest().authenticated()` + `@PreAuthorize` + custom JWT converter | `anyRequest().authenticated()` + custom JWT converter |
-| Event reliability | Outbox + idempotent consumer | `ApplicationEventPublisher` only |
+| Tests | 50 (11 classes, 2 IT) | 47 (5 classes, 2 IT) |
+| Security | `@PreAuthorize` + custom JWT converter | `anyRequest().authenticated()` + custom JWT converter |
+| Event reliability | Outbox + idempotent consumer | Outbox (mirror of hermandad) |
 | Caching | Redis | None |
-| Spring Boot | 4.1 (tools.jackson) | 3.5.x |
-| Error responses | Plain text `String` | Plain text `String` |
-| Domain tests | ✅ (HermandadTest, HermandadMemberTest) | ❌ |
+| Spring Boot | 4.1 (tools.jackson) | 4.1 (tools.jackson) |
+| Error responses | ✅ `ApiError` JSON | ✅ `ApiError` JSON |
+| Domain tests | ✅ (HermandadTest, HermandadMemberTest) | ✅ (ProcesionTest, 11 state machine tests) |
+| Integration tests | ✅ Repository + Controller | ✅ Repository + Controller |

@@ -9,7 +9,7 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "procesion")
+@Table(name = "procesion", indexes = @Index(name = "idx_procesion_hermandad_id", columnList = "hermandad_id"))
 public class Procesion {
 
     @Id

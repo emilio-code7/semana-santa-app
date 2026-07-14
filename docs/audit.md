@@ -73,30 +73,29 @@ Only `HermandadNotFoundException` was handled. Missing handlers:
 
 **Resolution (Sprint 2/4/5):** All handlers implemented. `GlobalExceptionHandlerTest` provides per-handler test coverage for each status code + body format.
 
-**Still open:** Error responses return `ResponseEntity<String>` with plain text (see section 4.2).
+**Resolution (Sprint 7):** Both services now return `ResponseEntity<ApiError>` with structured JSON. `ApiError` record in `adapter/inbound/rest/dto/` with `status`, `error`, `message`. Unit tests assert structured body for each handler.
 
-### 4.2 Non-Structured Error Responses
+### 4.2 Non-Structured Error Responses ✅ RESOLVED
 
-Error responses return `ResponseEntity<String>` with plain text. The OpenAPI spec defines a structured `{code, message}` format:
-```json
-{"code": "HERMANDAD_NOT_FOUND", "message": "Hermandad with ID ... was not found"}
-```
+Error responses previously returned `ResponseEntity<String>` with plain text.
+
+**Resolution (Sprint 7):** Both services migrated to `ApiError` record. Processing: `ErrorResponse` is the consistent format across all services.
 
 ---
 
 ## 5. Infrastructure Gaps
 
-### 5.1 Four of Five Services Are Empty Skeletons
+### 5.1 Three of Five Services Are Still Empty Skeletons
 
 | Service | Status |
 |---------|--------|
-| hermandad-service | ✅ Implemented |
+| hermandad-service | ✅ Implemented (59 Java files, 50 tests) |
+| procesion-service | ✅ Implemented (22 Java files, 47 tests) |
 | repertorio-service | ❌ `// placeholder` build.gradle.kts, no source |
-| procesion-service | ❌ `// placeholder` build.gradle.kts, no source |
 | tracking-service | ❌ `// placeholder` build.gradle.kts, no source |
 | notification-service | ❌ `// placeholder` build.gradle.kts, no source |
 
-The API Gateway has routes pointing to services that don't exist — `lb://repertorio-service`, `lb://procesion-service`, etc. At runtime, Eureka won't find them.
+The API Gateway previously had routes pointing to the 3 stub services — `lb://repertorio-service`, `lb://tracking-service`, `lb://notification-service`. These routes have been commented out in `api-gateway/application.yml:33-48` to avoid 503 errors. Uncomment when each service is implemented. Procesion-service route is active and working.
 
 ### 5.2 `kafka-init` Healthcheck Is a No-Op
 
@@ -112,7 +111,7 @@ The `infrastructure/keycloak/seed-qa-users.sh` file exists but was not verified 
 
 ### 6.1 No Integration Tests ✅ RESOLVED
 
-**Resolution (Sprint 4):** `HermandadRepositoryIntegrationTest` covers JPA repository CRUD + constraints against real PostgreSQL. Connects to running `docker-compose` Postgres, skips gracefully if unavailable.
+**Resolution (Sprint 4/7):** Hermandad: `HermandadRepositoryIntegrationTest` covers JPA repository CRUD + constraints against real PostgreSQL. ✅ Procesion: `ProcesionRepositoryIntegrationTest` (4 tests) + `ProcesionControllerIntegrationTest` (8 tests) added. Both follow the same pattern: connects to running Docker Postgres, skips gracefully if unavailable.
 
 ### 6.2 Shared Library Has No Tests
 
@@ -120,9 +119,7 @@ The `shared/common` module has zero tests despite having logic (`JwtMembershipEx
 
 ### 6.3 No Controller Tests ✅ RESOLVED
 
-`HermandadController` had no MockMvc or WebMvcTest tests. Only the service layer was tested.
-
-**Resolution (Sprint 5):** `HermandadControllerTest` covers error paths (409 conflict, 404 not found, 400 same-role). `GlobalExceptionHandlerTest` covers all exception handlers with status + body assertions.
+Hermandad: `HermandadControllerTest` covers error paths (409 conflict, 404 not found, 400 same-role) + `GlobalExceptionHandlerTest`. ✅ Procesion: `ProcesionControllerTest` (13 tests) + `ProcesionControllerIntegrationTest` (8 tests) + `GlobalExceptionHandlerTest` cover all endpoints. Both services have structured JSON error assertions.
 
 ---
 
@@ -132,13 +129,13 @@ The following endpoints from the backlog and OpenAPI spec are not implemented:
 
 | Endpoint | Status |
 |----------|--------|
-| `PATCH /api/hermandades/{id}/members/{userId}/role` | ❌ Missing |
-| `DELETE /api/hermandades/{id}/members/{userId}` | ❌ Missing |
+| `PATCH /api/hermandades/{id}/members/{userId}/role` | ✅ Implemented (`changeRole()`) |
+| `DELETE /api/hermandades/{id}/members/{userId}` | ✅ Implemented (`removeMember()`) |
 | `PUT /api/hermandades/{id}` | ❌ Missing |
-| `GET /api/hermandades` (list all public) | ❌ Missing |
+| `GET /api/hermandades` (list all public) | ✅ Implemented (`findAllHermandades()`) |
 | `GET /api/hermandades/{id}/with-members` | ❌ Missing |
-| Member removal (soft/hard delete) | ❌ Missing |
-| Pagination for members list | ❌ Missing |
+| Member removal (soft/hard delete) | ✅ Implemented (hard delete) |
+| Pagination for members list | ✅ Implemented (Pageable) |
 
 ---
 

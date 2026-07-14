@@ -30,22 +30,24 @@ spring:
               uri: lb://procesion-service
               predicates:
                 - Path=/v3/api-docs/procesion
-            - id: repertorio-service
-              uri: lb://repertorio-service
-              predicates:
-                - Path=/api/marchas/**
             - id: procesion-service
               uri: lb://procesion-service
               predicates:
                 - Path=/api/procesiones/**
-            - id: tracking-service
-              uri: lb://tracking-service
-              predicates:
-                - Path=/api/tracking/**
-            - id: notification-service
-              uri: lb://notification-service
-              predicates:
-                - Path=/api/notifications/**
+            # repertorio-service, tracking-service, notification-service are stubs.
+            # Uncomment when the corresponding service is implemented.
+            # - id: repertorio-service
+            #   uri: lb://repertorio-service
+            #   predicates:
+            #     - Path=/api/marchas/**
+            # - id: tracking-service
+            #   uri: lb://tracking-service
+            #   predicates:
+            #     - Path=/api/tracking/**
+            # - id: notification-service
+            #   uri: lb://notification-service
+            #   predicates:
+            #     - Path=/api/notifications/**
 
 eureka:
   client:

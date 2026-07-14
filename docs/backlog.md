@@ -137,65 +137,49 @@ Complete remaining hermandad-service gaps: pagination, CAPATAZ role in OpenAPI, 
 
 ---
 
-### Sprint 7 — MVP Foundation: Member Removal + Procesión Service
+### Sprint 7 — MVP Foundation: Member Removal + Procesión Service ✅
 
-Build the remaining hermandad-service feature (member removal) and bootstrap the Procesión service at MVP scope. Deployment prep not yet — focus on getting a second service running.
+Build the remaining hermandad-service feature (member removal), bootstrap the Procesión service, and apply polish across both services.
 
 **Implementation plan:** `docs/plans/2026-07-10-sprint-07-mvp-foundation.md`
 
-**Tasks:**
+**Completed:**
+1. **Member Removal (Hermandad Service)** ✅
+2. **Procesión Service — Project Skeleton** ✅
+3. **Procesión Service — Domain Aggregate + Repository Port** ✅
+4. **Procesión Service — JPA Adapter + Flyway** ✅
+5. **Procesión Service — Service Layer + Outbox** ✅
+6. **Procesión Service — REST Controller + Auth** ✅
+7. **Docker Compose — Procesión Service + DB** ✅
+8. **API Gateway — Procesión Routes** ✅
+9. **Spanish→English refactor** — Procesión internal API anglicized ✅
+10. **Procesión outbox pattern** — events now reach Kafka via outbox table + poller ✅
+11. **Structured error responses (both services)** — `ApiError` JSON replacing plain text ✅
+12. **Catch block narrowing** — Keycloak adapters, listeners, outbox ✅
+13. **Hermandad entity `updatedAt`** — added + Flyway V7 ✅
+14. **`@Transactional` on Hermandad write methods** — `addMember()`, `changeRole()`, `removeMember()` ✅
+15. **Procesión domain unit tests** — 11 state machine tests ✅
+16. **Procesión integration tests** — 4 repository + 8 controller integration tests ✅
+17. **Spring Boot 4.1 compilation** — both services compile on 4.1 with tools.jackson ✅
 
-1. **Member Removal (Hermandad Service)**
-   - Add `deleteById` to `HermandadMemberRepository` port + adapter
-   - Add `removeMember` service method (with event publishing)
-   - Add `DELETE /api/hermandades/{hermandadId}/members/{memberId}` endpoint
-   - Tests: service test (success + not-found) + controller test (204 + 404)
-   - **AC**: Members can be removed; 404 if not found; 204 on success
-
-2. **Procesión Service — Project Skeleton**
-   - `build.gradle.kts`, `settings.gradle.kts`, `Application.java`, `application.yml`, `Dockerfile`
-   - **AC**: `./gradlew :services:procesion-service:compileJava` succeeds
-
-3. **Procesión Service — Domain Aggregate + Repository Port**
-   - `Procesion` aggregate (hermandadId, fecha, hora, estado state machine)
-   - `ProcesionEstado` enum (PLANIFICADA, EN_CURSO, FINALIZADA, CANCELADA)
-   - `ProcesionCreatedEvent`, `ProcesionEstadoChangedEvent`
-   - **AC**: Domain model compiles, state transitions validated
-
-4. **Procesión Service — JPA Adapter + Flyway**
-   - `ProcesionEntity`, `ProcesionJpaRepository`, `ProcesionRepositoryAdapter`
-   - `V1__create_procesion_table.sql` migration
-   - Tests: adapter test with Mockito
-   - **AC**: Persistence layer passes tests
-
-5. **Procesión Service — Service Layer + Outbox**
-   - `ProcesionService` (create, get, change state, list by hermandad, delete)
-   - Outbox event publishing via `DomainEventPublisher`
-   - Tests: service test covering all operations + state transitions
-   - **AC**: Service logic passes tests, events published on create/state-change
-
-6. **Procesión Service — REST Controller + Auth**
-   - `ProcesionController` (POST/GET/PATCH/DELETE endpoints)
-   - DTOs: `CreateProcesionRequest`, `ProcesionResponse`, `EstadoChangeRequest`
-   - `GlobalExceptionHandler`, `SecurityConfig`
-   - Tests: controller test with `@WebMvcTest`
-   - **AC**: All endpoints return correct status codes, auth enforced
-
-7. **Docker Compose — Procesión Service + DB**
-   - `procesion-db` PostgreSQL service (port 5433)
-   - `procesion-service` container
-   - Networks, volumes, environment variables
-   - **AC**: Docker Compose starts procesion-service without errors
-
-8. **API Gateway — Procesión Routes**
-   - Route for `/api/procesiones/**` → `lb://procesion-service`
-   - **AC**: Requests reach procesion-service through gateway
-
-**Backlog items deferred:**
+**Deferred:**
 - Audit rename (`keycloak_group_id` → `keycloak_group_id_refs`)
 - Shared lib unit tests
 - Outbox→Kafka integration test (EmbeddedKafka)
 - Repertorio Service, Tracking Service, Notification Service
+
+---
+
+### Sprint 8 — Pre-MVP Cleanup ✅
+
+| Pri | Task | Effort | Status |
+|-----|------|--------|--------|
+| 🔴 1 | **Hermandad constructor validation** — `Hermandad.java`: null/empty checks for name, city; valid foundedYear | ~1 file | ✅ |
+| 🔴 2 | **Remove dead `@EnableFeignClients`** — `ProcesionServiceApplication.java:12` + `build.gradle.kts:18` `spring-cloud-starter-openfeign` | 2 files, cleanup | ✅ |
+| 🔴 3 | **Flyway index alignment** — add `@Table(indexes = @Index(...))` to `Procesion.java` to match existing `idx_procesion_hermandad_id` | 1 file | ✅ |
+| 🔴 4 | **Guard gateway stub routes** — 3 routes (`/api/marchas/**`, `/api/tracking/**`, `/api/notifications/**`) currently 503; fallback or comment out | 1 file | ✅ |
+| 🟡 5 | **API Gateway + Discovery Server tests** — zero test coverage for infrastructure | Medium | ✅ |
+| 🟡 6 | **Stub service cleanup** — 3 of 5 services still empty skeletons | Medium | ✅
 
 ---
 
@@ -206,10 +190,6 @@ Build the remaining hermandad-service feature (member removal) and bootstrap the
 Items from `docs/audit.md` — small-effort fixes that should be picked up early.
 
 - Rename `keycloak_group_id` to `keycloak_group_id_refs` (audit finding — naming)
-
-### Hermandad Service
-
-- Member removal (soft delete or hard delete?)
 
 ### Hermandad Tests
 
@@ -222,14 +202,15 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 
 ### Procesión Service
 
-- Model `Procesion` aggregate with DDD + TDD
-  - Core attributes: hermandadId, date, time, state (PLANNED, IN_PROGRESS, FINISHED, CANCELLED)
+- ✅ ~~Model `Procesion` aggregate with DDD + TDD~~
 - `Recorrido` value object: ordered list of waypoints with timestamps
-- CRUD REST endpoints for processions
-- Assign hermandad to procession
-- Publish events: `ProcesionCreated`, `ProcesionStateChanged`, `ProcesionCancelled`
+- ✅ ~~CRUD REST endpoints for processions~~
+- ✅ ~~Assign hermandad to procession~~
+- ✅ ~~Publish events: `ProcesionCreated`, `ProcesionStatusChanged`~~
 - Kafka consumer for hermandad events (react when hermandad is modified)
-- Docker Compose integration (procesion-db, service registration)
+- ✅ ~~Docker Compose integration (procesion-db, service registration)~~
+- ✅ ~~Outbox pattern for event publishing~~
+- `@PreAuthorize` method-level security guards
 
 ### Repertorio Service
 
