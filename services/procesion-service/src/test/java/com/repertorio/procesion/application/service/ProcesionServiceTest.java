@@ -135,7 +135,7 @@ class ProcesionServiceTest {
 
         procesionService.deleteProcesion(id);
 
-        verify(procesionRepository).deleteById(id);
+        verify(procesionRepository).delete(procesion);
     }
 
     @Test

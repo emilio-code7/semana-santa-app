@@ -35,4 +35,9 @@ public class ProcesionRepositoryAdapter implements ProcesionRepository {
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public void delete(Procesion procesion) {
+        jpaRepository.delete(procesion);
+    }
 }

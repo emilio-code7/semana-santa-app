@@ -12,4 +12,5 @@ public interface ProcesionRepository {
     Optional<Procesion> findById(UUID id);
     Page<Procesion> findByHermandadId(UUID hermandadId, Pageable pageable);
     void deleteById(UUID id);
+    void delete(Procesion procesion);
 }

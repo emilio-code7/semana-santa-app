@@ -2,6 +2,7 @@ package com.repertorio.procesion.adapter.outbound.events;
 
 import com.repertorio.procesion.application.port.DomainEvent;
 import com.repertorio.procesion.application.port.DomainEventPublisher;
+import com.repertorio.procesion.application.port.OutboxPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DomainEventPublisherAdapter implements DomainEventPublisher {
 
+    private final OutboxPublisher outboxPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
@@ -19,5 +21,6 @@ public class DomainEventPublisherAdapter implements DomainEventPublisher {
         log.info("Publishing domain event: aggregateType={}, aggregateId={}, eventType={}",
                 domainEvent.aggregateType(), domainEvent.aggregateId(), domainEvent.eventType());
         applicationEventPublisher.publishEvent(domainEvent);
+        outboxPublisher.publish(domainEvent);
     }
 }
