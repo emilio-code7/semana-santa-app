@@ -45,6 +45,21 @@ public class Cruceta {
         return items.stream().anyMatch(item -> item.getMarchaId().equals(marchaId));
     }
 
+    // ponytail: reconstruct for adapter mapping
+    private Cruceta(UUID id, UUID procesionId, List<CrucetaItem> items,
+                    Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.procesionId = procesionId;
+        this.items = new ArrayList<>(items);
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public static Cruceta reconstruct(UUID id, UUID procesionId, List<CrucetaItem> items,
+                                       Instant createdAt, Instant updatedAt) {
+        return new Cruceta(id, procesionId, items, createdAt, updatedAt);
+    }
+
     public UUID getId() { return id; }
     public UUID getProcesionId() { return procesionId; }
     public List<CrucetaItem> getItems() { return List.copyOf(items); }

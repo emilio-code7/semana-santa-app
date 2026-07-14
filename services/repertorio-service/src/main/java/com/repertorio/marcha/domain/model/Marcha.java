@@ -70,6 +70,28 @@ public class Marcha {
         return value;
     }
 
+    // ponytail: reconstruct for adapter mapping — private all-args, only reachable via static factory
+    private Marcha(UUID id, String title, String composer, BandType bandType,
+                   int durationSeconds, Integer compositionYear, String youtubeUrl,
+                   Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.title = title;
+        this.composer = composer;
+        this.bandType = bandType;
+        this.durationSeconds = durationSeconds;
+        this.compositionYear = compositionYear;
+        this.youtubeUrl = youtubeUrl;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public static Marcha reconstruct(UUID id, String title, String composer, BandType bandType,
+                                      int durationSeconds, Integer compositionYear, String youtubeUrl,
+                                      Instant createdAt, Instant updatedAt) {
+        return new Marcha(id, title, composer, bandType, durationSeconds, compositionYear,
+                youtubeUrl, createdAt, updatedAt);
+    }
+
     // Getters
     public UUID getId() { return id; }
     public String getTitle() { return title; }

@@ -15,6 +15,18 @@ public class CrucetaItem {
         this.notes = notes;
     }
 
+    // ponytail: reconstruct for adapter mapping
+    private CrucetaItem(UUID id, UUID marchaId, int orderIndex, String notes) {
+        this.id = id;
+        this.marchaId = marchaId;
+        this.orderIndex = orderIndex;
+        this.notes = notes;
+    }
+
+    public static CrucetaItem reconstruct(UUID id, UUID marchaId, int orderIndex, String notes) {
+        return new CrucetaItem(id, marchaId, orderIndex, notes);
+    }
+
     public UUID getId() { return id; }
     public UUID getMarchaId() { return marchaId; }
     public int getOrderIndex() { return orderIndex; }
