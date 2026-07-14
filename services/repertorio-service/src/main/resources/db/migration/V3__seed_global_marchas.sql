@@ -1,0 +1,16 @@
+INSERT INTO marcha (id, title, composer, band_type, duration_seconds, composition_year, youtube_url, created_at, updated_at) VALUES
+    ('a0000001-0000-0000-0000-000000000001', 'Amarguras', 'Manuel López Farfán', 'BANDA_PALIO', 420, 1919, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000002', 'Saeta', 'Joaquín Turina', 'BANDA_PALIO', 300, 1930, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000003', 'Virgen de la Macarena', 'Pedro Morales', 'BANDA_CORNETAS', 360, 1950, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000004', 'El Amor de Dios', 'Manuel López Farfán', 'BANDA_PALIO', 400, 1920, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000005', 'La Madrugá', 'Abel Moreno', 'BANDA_CORNETAS', 380, 1987, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000006', 'Coronación de la Macarena', 'Pedro Gámez Laserna', 'BANDA_PALIO', 450, 1964, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000007', 'Pasan los Campanilleros', 'Manuel López Farfán', 'AGRUPACION_MUSICAL', 350, 1925, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000008', 'Semana Santa en Sevilla', 'Manuel Font de Anta', 'BANDA_PALIO', 320, 1925, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000009', 'Cristo de la Expiración', 'Manuel Font Fernández', 'BANDA_CORNETAS', 280, 1945, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000010', 'Mektub', 'Abel Moreno', 'AGRUPACION_MUSICAL', 420, 1992, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000011', 'Al Santísimo Cristo del Calvario', 'Manuel Marvizón Carvallo', 'AGRUPACION_MUSICAL', 390, 2010, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000012', 'Nuestro Padre Jesús', 'José Albero Francés', 'BANDA_CORNETAS', 340, 2007, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000013', 'Hermanos Costaleros', 'Sergio Bueno', 'BANDA_PALIO', 370, 2015, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000014', 'Soleá dame la mano', 'Francisco Jesús Flores Matute', 'BANDA_PALIO', 410, 1999, NULL, NOW(), NOW()),
+    ('a0000001-0000-0000-0000-000000000015', 'Reina de San Fernando', 'José de la Vega Sánchez', 'BANDA_PALIO', 330, 2014, NULL, NOW(), NOW());
