@@ -493,6 +493,10 @@ Items from `docs/audit.md` — small-effort fixes that should be picked up early
 
 ### Cross-cutting / Infrastructure
 
+- MCP server exposing 3 services as tools (Spring AI MCP). Low priority — portfolio polish.
+  - `spring-ai-mcp-server-hermandad`, `spring-ai-mcp-server-procesion`, `spring-ai-mcp-server-repertorio`
+  - Any AI assistant (Claude Code, Cursor) could then: "Add a marcha called Amarguras" or "Create a cruceta for tomorrow"
+  - ~50 lines per service, Spring AI v2.x starter with MCP server transport
 - Idempotent Kafka consumer pattern (one service as reference, then apply everywhere)
 - Structured logging with correlation IDs across services
 - Circuit breaker with Resilience4j
