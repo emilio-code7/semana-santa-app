@@ -25,6 +25,27 @@ Cross-service workflow: Hermandad → Procesion → Repertorio (cruceta) with Ka
 
 ---
 
+## Next Product Priority — Route-Aware Cruceta
+
+**Product outcome:** a capataz can create a route-aware musical plan: which marcha should be played at each meaningful point or segment of a specific procession.
+
+**Detailed plan:** [`2026-07-15-sprint-10-route-aware-cruceta.md`](plans/2026-07-15-sprint-10-route-aware-cruceta.md)
+
+**Scope for the first vertical slice:**
+- Add an ordered route with named points to a procession. Do not require map rendering, coordinates, GPS, tracking, or notifications.
+- Associate each `CrucetaItem` with a route point or segment, while preserving marcha, order, and notes.
+- Provide a route-ordered run sheet with manual "current" and "next" progression.
+
+**Correctness work required before or within this slice:**
+- [ ] Validate that `KnownProcesion.hermandadId` matches `{hermandadId}` before defining or replacing a Cruceta. Authorization currently checks the path ID but the service only checks that the procession exists.
+- [ ] Add tests proving that an administrator of Hermandad A cannot mutate a Cruceta for a procession of Hermandad B.
+- [ ] Make `ProcesionEventConsumer` surface failures to Kafka or implement explicit retry/dead-letter handling. Its current catch-and-log behavior can acknowledge a failed message and lose the update.
+- [ ] Add the producer-generated event envelope and stable `eventId` planned for reliable delivery; payload-hash deduplication can incorrectly treat distinct identical events as duplicates.
+
+**Explicitly deferred:** GPS-triggered progression, public live tracking, push notifications, and map integration.
+
+---
+
 ### Sprint 4 — Hermandad Service Hardening ✅
 
 Complete the hermandad service: auth, tests, missing fields, and outbox quality.

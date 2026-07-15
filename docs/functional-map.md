@@ -249,6 +249,8 @@ domain/
 | **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache. Validates cruceta definition against known procesions. |
 | **SB4** | Migrated (`tools.jackson`) |
 
+**Current product boundary and risks:** A Cruceta is currently an ordered, procession-specific setlist. The intended product is route-aware: a marcha assigned to a named route point or segment. Before adding that capability, Cruceta mutation must verify that `KnownProcesion.hermandadId` equals the `{hermandadId}` authorized in the request path. `ProcesionEventConsumer` also catches failures and returns normally, which can acknowledge a failed Kafka record; reliable retry/DLQ handling and producer-generated event IDs are planned work.
+
 **Key directories:**
 ```
 adapter/

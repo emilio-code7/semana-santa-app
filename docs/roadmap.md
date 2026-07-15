@@ -11,15 +11,22 @@ This roadmap turns Repertorio from a collection of well-structured services into
 - Preserve at-least-once delivery; make business processing idempotent.
 - Build vertical slices and tests first, following the development workflow.
 
+## Product North Star
+
+Repertorio is a procession music-planning product, not a general-purpose Hermandad-management system. Its core value is helping a Hermandad decide and execute **which marcha is played at which meaningful moment of a procession route**.
+
+The current `Cruceta` is the intentional first step: an ordered, procession-specific musical plan. It is not yet route-aware. The next product capability should add a lightweight ordered route (named points first; coordinates and GPS are optional later) and allow each Cruceta item to reference a route point or segment. Tracking and notifications remain multipliers on that trusted plan, not prerequisites for it.
+
 ## Roadmap at a Glance
 
 | Phase | Outcome | Primary interview theme |
 |---|---|---|
 | 1. Operational procession | ✅ One end-to-end business workflow | Service boundaries and eventual consistency |
-| 2. Reliable event delivery | Explicit, recoverable event processing | Outbox, idempotency, failure recovery |
-| 3. Observable system | A failure is visible from request to consumer | Logs, metrics, traces, SLO thinking |
-| 4. Contract and tenancy maturity | Services evolve safely and enforce consistent access | API/event contracts and multi-tenancy |
-| 5. Portfolio readiness | A reviewer can run and understand the project quickly | Technical communication and trade-offs |
+| 2. Route-aware Cruceta | Music is tied to meaningful route moments | Domain modelling and user-centred MVP scope |
+| 3. Reliable event delivery | Explicit, recoverable event processing | Outbox, idempotency, failure recovery |
+| 4. Observable system | A failure is visible from request to consumer | Logs, metrics, traces, SLO thinking |
+| 5. Contract and tenancy maturity | Services evolve safely and enforce consistent access | API/event contracts and multi-tenancy |
+| 6. Portfolio readiness | A reviewer can run and understand the project quickly | Technical communication and trade-offs |
 
 ---
 
@@ -40,7 +47,7 @@ Create one complete, meaningful workflow across the existing Hermandad, Procesio
 
 - ✅ A documented demo uses only the API gateway and seeded Keycloak users.
 - ✅ The demo crosses at least two services and one Kafka topic.
-- ✅ Authorization is enforced using the relevant hermandad membership.
+- ⚠️ Authorization is present, but the Hermandad in the path is not yet verified against the persisted procession; Phase 2 closes this tenant-binding gap.
 - ✅ The system handles an unavailable referenced resource with a clear, intentional response or documented eventual-consistency rule.
 - ✅ Unit, controller, and at least one integration test cover the happy path and a meaningful failure path.
 
@@ -52,7 +59,30 @@ Create one complete, meaningful workflow across the existing Hermandad, Procesio
 
 ---
 
-## Phase 2 — Reliable Event Delivery
+## Phase 2 — Route-Aware Cruceta
+
+### Goal
+
+Turn the ordered Cruceta into the product's core promise: a route-aware musical plan that tells the team what should play at each meaningful point in the procession.
+
+### Work items
+
+- Model an ordered route for a procession using named route points; avoid maps and GPS automation in the first version.
+- Allow a `CrucetaItem` to reference a route point or route segment, while retaining its marcha and operational notes.
+- Provide a mobile-friendly run sheet ordered by route progression, including the current/next marcha.
+- Add a manual live-progress control for the active route point and marcha.
+- Enforce the invariant that a Cruceta may only be defined for a procession belonging to the Hermandad in the request path.
+
+### Acceptance criteria
+
+- A capataz can define named route points for a procession.
+- A Cruceta can associate each marcha with a route point or segment.
+- The application can show a clear "now / next" musical plan without GPS.
+- An administrator of Hermandad A cannot define or alter the Cruceta of a procession belonging to Hermandad B.
+
+---
+
+## Phase 3 — Reliable Event Delivery
 
 ### Goal
 
@@ -81,7 +111,7 @@ Make the event contract explicit and show how the system recovers from publish a
 
 ---
 
-## Phase 3 — Observable System
+## Phase 4 — Observable System
 
 ### Goal
 
@@ -104,7 +134,7 @@ Make normal operation and failure behaviour visible across HTTP, Kafka, and the 
 
 ---
 
-## Phase 4 — Contract and Tenancy Maturity
+## Phase 5 — Contract and Tenancy Maturity
 
 ### Goal
 
@@ -126,7 +156,7 @@ Allow services to evolve independently while applying the same tenancy and autho
 
 ---
 
-## Phase 5 — Portfolio Readiness
+## Phase 6 — Portfolio Readiness
 
 ### Goal
 
@@ -150,6 +180,6 @@ Make the repository easy for an interviewer or reviewer to run, understand, and 
 
 ## Suggested Sequence
 
-Complete the phases in order. Phase 1 creates the business value; Phase 2 makes it reliable; Phase 3 proves that reliability operationally. Phases 4 and 5 turn the implementation into a maintainable, convincing portfolio artifact.
+Complete the phases in order. Phase 1 establishes the musical plan; Phase 2 makes it route-aware; Phase 3 makes event delivery reliable; and Phase 4 proves that reliability operationally. The remaining phases turn the implementation into a maintainable, convincing portfolio artifact.
 
-Tracking and Notification should remain deferred until Phase 3 is complete. They become useful then as consumers of the established event contract, rather than additional services that dilute focus.
+Tracking and Notification should remain deferred until Phase 4 is complete. They become useful then as consumers of an established, observable event contract, rather than additional services that dilute focus.

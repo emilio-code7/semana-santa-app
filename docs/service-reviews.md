@@ -22,7 +22,7 @@
 | # | Severity | Issue | Location |
 |---|----------|-------|----------|
 | 1 | Low | ✅ ~~**Flyway index not mirrored on entity** — `idx_procesion_hermandad_id` exists in SQL but not declared via `@Table(indexes = ...)`~~ | `Procesion.java` |
-| 2 | Low | **No `@PreAuthorize` on controller** — `@EnableMethodSecurity` declared but unused; all controller methods rely on blanket `anyRequest().authenticated()` | `ProcesionController.java` |
+| 2 | 🔴 High | **Hermandad authorization is not enforced** — all Procesion mutations and reads rely on blanket authentication. Any authenticated user can act on another Hermandad's procession if they know its ID. | `ProcesionController.java`, `ProcesionService.java` |
 | 3 | Low | ✅ ~~**Dead `@EnableFeignClients`** — annotation present with zero `@FeignClient` interfaces in codebase~~ | `ProcesionServiceApplication.java:12` + `build.gradle.kts:18` |
 | 4 | Note | **No Redis caching** — hermandad-service has it, could benefit read-heavy listings | — |
 
@@ -120,15 +120,20 @@
 | 1 | 🔴 High | ✅ ~~**No integration tests** — unlike hermandad and procesion, repertorio had zero repository or controller integration tests~~ | `src/test/` |
 | 2 | 🟡 Medium | ✅ ~~**No Kafka consumer** — `procesion-events` topic had no consumer~~ | `ProcesionEventConsumer.java` |
 | 3 | 🟡 Medium | **Hibernate 7 UUID issue may affect repertorio too** — Procesion needed `Persistable` interface fix. Repertorio original entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) use same `@UuidGenerator` pattern. KnownProcesionEntity and ProcessedEventEntity use manual UUIDs — not affected. | All repertorio entities |
-| 4 | 🟠 Low | **No `@PreAuthorize`** — `@EnableMethodSecurity` + `RepertorioSecurityService` declared but unused | `MarchaController.java`, `CrucetaController.java` |
-| 5 | 🟠 Low | **No Redis caching** — consistent with procesion but missing compared to hermandad | — |
+| 4 | 🔴 High | **Cruceta tenant mismatch is not validated** — authorization checks `{hermandadId}` from the path, while `CrucetaService` only checks that `procesionId` exists. An admin of Hermandad A can target a known procession of Hermandad B. | `CrucetaController.java`, `CrucetaService.java`, `KnownProcesion.java` |
+| 5 | 🟡 Medium | **Consumer failures are swallowed** — the listener catches and logs exceptions, then returns normally. Kafka can acknowledge the failed record, losing the `KnownProcesion` update. | `ProcesionEventConsumer.java` |
+| 6 | 🟡 Medium | **Payload-hash idempotency is not a stable event identity** — two distinct events with identical payloads can be treated as duplicates. | `ProcesionEventConsumer.java` |
+| 7 | Product gap | **Cruceta is procession-specific but not route-aware** — it is an ordered setlist and cannot yet associate a marcha with a route point or segment. | `Cruceta.java`, `CrucetaItem.java` |
+| 8 | 🟠 Low | **No Redis caching** — consistent with procesion but missing compared to hermandad | — |
 
 ### Recommendations
 
 1. ✅ ~~Write integration tests (repository + controller) to match hermandad/procesion pattern~~
 2. ✅ ~~Add Kafka consumer for `procesion-events` to clean up cruceta on procesion deletion~~
 3. Verify repertorio entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) don't hit the same Hibernate 7 UUID save issue
-4. Optionally add `@PreAuthorize` for consistent method-level security across all services
+4. Enforce the procession's persisted `hermandadId` for Cruceta authorization; do not trust the path hierarchy alone.
+5. Let consumer failures trigger retry/DLQ handling, then move deduplication to a producer-generated `eventId`.
+6. Add named route points and route-point assignments to the Cruceta before investing in tracking or notifications.
 
 ---
 
@@ -137,7 +142,7 @@
 | Hexagonal | ✅ | ✅ | ✅ |
 | DDD | ✅ | ✅ | ✅ |
 | Tests | 56 (12 classes, 2 IT) | 47 (6 classes, 2 IT) | 75 (12 classes, 4 IT) |
-| Security | `@PreAuthorize` + custom JWT converter + SecurityService | `anyRequest().authenticated()` + custom JWT converter | `anyRequest().authenticated()` + custom JWT converter + RepertorioSecurityService (unused) |
+| Security | `@PreAuthorize` + custom JWT converter + SecurityService | Authentication only; Hermandad ownership not enforced | `@PreAuthorize` protects Cruceta writes, but the path Hermandad is not yet bound to the persisted procession |
 | Event reliability | Outbox + idempotent consumer | Outbox | Outbox + idempotent consumer |
 | Cross-service events | Self-consumption only | None (produces `procesion-events`) | ✅ Consumes `procesion-events` (local cache) |
 | Caching | Redis | None | None |
