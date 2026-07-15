@@ -1,0 +1,26 @@
+meta {
+  name: Fetch QA User IDs from Keycloak
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{keycloak_url}}/admin/realms/{{realm}}/users?username=qa-musician-user&exact=true
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{kc_token}}
+  Content-Type: application/json
+}
+
+script:post-response {
+  const data = res.getBody();
+  const user = data[0];
+  if (user) {
+    bru.setVar("musician_user_id", user.id);
+    console.log("Set musician_user_id:", user.id);
+  }
+  // Also fetch admin user ID
+  // Can't do two requests - we'll add it via another approach
+}

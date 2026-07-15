@@ -1,0 +1,24 @@
+meta {
+  name: Get Admin User ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{keycloak_url}}/admin/realms/{{realm}}/users?username={{admin_user}}&exact=true
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{kc_token}}
+  Content-Type: application/json
+}
+
+script:post-response {
+  const data = res.getBody();
+  const adminUser = data[0];
+  if (adminUser) {
+    bru.setVar("admin_kc_id", adminUser.id);
+  }
+}
+

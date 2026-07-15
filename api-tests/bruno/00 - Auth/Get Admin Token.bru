@@ -1,0 +1,23 @@
+meta {
+  name: Get Keycloak Admin Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{keycloak_url}}/realms/master/protocol/openid-connect/token
+  body: form-urlencoded
+  auth: none
+}
+
+body:form-urlencoded {
+  grant_type: password
+  client_id: admin-cli
+  username: {{kc_admin_user}}
+  password: {{kc_admin_password}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("kc_token", data.access_token);
+}

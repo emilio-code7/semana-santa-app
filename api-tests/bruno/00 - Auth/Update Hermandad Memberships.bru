@@ -1,0 +1,24 @@
+meta {
+  name: Update Hermandad Memberships Claim
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{keycloak_url}}/admin/realms/{{realm}}/users/{{admin_kc_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{kc_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "attributes": {
+      "hermandad_memberships": ["[{\"hermandadId\":\"{{hermandad_id}}\",\"role\":\"HERMANDAD_ADMIN\"}]"]
+    }
+  }
+}
