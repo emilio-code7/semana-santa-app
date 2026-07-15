@@ -1,0 +1,22 @@
+meta {
+  name: Change Member Role
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/members/{{member_userId}}/role
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "role": "BAND_DIRECTOR"
+  }
+}

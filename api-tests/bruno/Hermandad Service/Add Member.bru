@@ -1,0 +1,29 @@
+meta {
+  name: Add Member
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/members
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "userId": "{{member_user_id}}",
+    "role": "MUSICIAN"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("member_id", data.id);
+  bru.setVar("member_userId", data.userId);
+}

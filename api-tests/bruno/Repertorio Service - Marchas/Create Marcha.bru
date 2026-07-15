@@ -1,0 +1,32 @@
+meta {
+  name: Create Marcha
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{base_url}}/api/marchas
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "title": "Marcha de Prueba {{$randUid}}",
+    "composer": "Compositor de Prueba",
+    "bandType": "BANDA_PALIO",
+    "durationSeconds": 420,
+    "compositionYear": 2020,
+    "youtubeUrl": "https://youtube.com/watch?v=test"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("marcha_id", data.id);
+}

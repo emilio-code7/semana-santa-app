@@ -1,0 +1,14 @@
+{
+  "name": "Local",
+  "variables": [
+    { "name": "base_url", "value": "http://localhost:8080", "enabled": true },
+    { "name": "keycloak_url", "value": "http://localhost:8180", "enabled": true },
+    { "name": "realm", "value": "semana-santa", "enabled": true },
+    { "name": "client_id", "value": "semana-santa-client", "enabled": true },
+    { "name": "client_secret", "value": "secret", "enabled": true },
+    { "name": "admin_user", "value": "qa-admin-user", "enabled": true },
+    { "name": "admin_password", "value": "test", "enabled": true },
+    { "name": "regular_user", "value": "qa-user-no-hermandad", "enabled": true },
+    { "name": "regular_password", "value": "test", "enabled": true }
+  ]
+}

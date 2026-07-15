@@ -1,0 +1,14 @@
+meta {
+  name: List Members
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/members?size=20
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,14 @@
+meta {
+  name: List Marchas
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{base_url}}/api/marchas
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

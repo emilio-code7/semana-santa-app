@@ -1,0 +1,27 @@
+meta {
+  name: Update Marcha
+  type: http
+  seq: 18
+}
+
+put {
+  url: {{base_url}}/api/marchas/{{marcha_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "title": "Marcha Actualizada {{$randUid}}",
+    "composer": "Compositor de Prueba",
+    "bandType": "AGRUPACION_MUSICAL",
+    "durationSeconds": 480,
+    "compositionYear": 2021,
+    "youtubeUrl": null
+  }
+}

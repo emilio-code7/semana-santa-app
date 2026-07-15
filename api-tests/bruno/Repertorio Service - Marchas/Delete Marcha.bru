@@ -1,0 +1,14 @@
+meta {
+  name: Delete Marcha
+  type: http
+  seq: 19
+}
+
+delete {
+  url: {{base_url}}/api/marchas/{{marcha_id}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

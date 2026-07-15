@@ -1,0 +1,14 @@
+meta {
+  name: Get Cruceta
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/cruceta
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

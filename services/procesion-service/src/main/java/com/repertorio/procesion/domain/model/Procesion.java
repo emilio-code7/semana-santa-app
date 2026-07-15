@@ -2,6 +2,7 @@ package com.repertorio.procesion.domain.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -10,7 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "procesion", indexes = @Index(name = "idx_procesion_hermandad_id", columnList = "hermandad_id"))
-public class Procesion {
+public class Procesion implements Persistable<UUID> {
 
     @Id
     @UuidGenerator
@@ -48,10 +49,13 @@ public class Procesion {
         this.updatedAt = updatedAt;
     }
 
+    @Override
+    public boolean isNew() { return id == null; }
+
     public static Procesion create(UUID hermandadId, LocalDate date, LocalTime time) {
         var now = Instant.now();
         return new Procesion(
-                UUID.randomUUID(),
+                null,
                 hermandadId,
                 date,
                 time,

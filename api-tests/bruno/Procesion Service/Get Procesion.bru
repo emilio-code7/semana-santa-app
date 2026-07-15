@@ -1,0 +1,14 @@
+meta {
+  name: Get Procesion
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/api/procesiones/{{procesion_id}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

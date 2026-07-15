@@ -1,0 +1,31 @@
+meta {
+  name: Create Hermandad
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/hermandades
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Hermandad de {{$randUid}}",
+    "city": "Sevilla",
+    "foundedYear": 1850,
+    "description": "Test hermandad created via Bruno"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("hermandad_id", data.id);
+  bru.setVar("hermandad_name", data.name);
+}

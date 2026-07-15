@@ -1,0 +1,29 @@
+meta {
+  name: Create Procesion
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/procesiones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "hermandadId": "{{hermandad_id}}",
+    "date": "2026-04-01",
+    "time": "18:00:00"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("procesion_id", data.id);
+}

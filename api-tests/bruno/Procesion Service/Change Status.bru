@@ -1,0 +1,22 @@
+meta {
+  name: Change Status
+  type: http
+  seq: 13
+}
+
+patch {
+  url: {{base_url}}/api/procesiones/{{procesion_id}}/status
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "newStatus": "IN_PROGRESS"
+  }
+}

@@ -1,0 +1,14 @@
+meta {
+  name: List Procesiones
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url}}/api/procesiones?hermandadId={{hermandad_id}}&size=20
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,14 @@
+meta {
+  name: Delete Procesion
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{base_url}}/api/procesiones/{{procesion_id}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

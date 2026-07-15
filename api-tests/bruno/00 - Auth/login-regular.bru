@@ -1,0 +1,24 @@
+meta {
+  name: Login as Regular User
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{keycloak_url}}/realms/{{realm}}/protocol/openid-connect/token
+  body: form-urlencoded
+  auth: none
+}
+
+body:form-urlencoded {
+  grant_type: password
+  client_id: {{client_id}}
+  client_secret: {{client_secret}}
+  username: {{regular_user}}
+  password: {{regular_password}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("regular_token", data.access_token);
+}

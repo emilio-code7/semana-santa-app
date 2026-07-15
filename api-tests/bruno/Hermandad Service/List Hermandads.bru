@@ -1,0 +1,14 @@
+meta {
+  name: List Hermandads
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/hermandades
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
