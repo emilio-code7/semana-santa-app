@@ -62,6 +62,10 @@ PROCESION=$(curl -s -X POST "$BASE_URL/api/procesiones" \
 PID=$(echo "$PROCESION" | jq -r '.id')
 check "Create procesion → $PID" $([ "$PID" != "null" ] && [ -n "$PID" ] && echo 0 || echo 1)
 
+# Wait for outbox poller (5s) + Kafka consumer: max 12s should be enough
+echo "  Waiting for procesion event to propagate (outbox→Kafka→consumer)..."
+sleep 12
+
 curl -s -o /dev/null "$BASE_URL/api/procesiones/$PID" -H "Authorization: Bearer $ADMIN_TOKEN"
 check "Get procesion" $?
 
@@ -89,20 +93,50 @@ curl -s -o /dev/null -X PUT "$BASE_URL/api/marchas/$MID" \
   -d '{"title":"Updated Marcha","composer":"Test Composer","bandType":"AGRUPACION_MUSICAL","durationSeconds":480}'
 check "Update marcha" $?
 
-echo "=== 6. Repertorio Service — Cruceta ==="
-# Admin defines cruceta — but qa-admin-user lacks hermandad-specific admin claim
-# so this correctly returns 403
+echo "=== 6. Update Admin Claim ==="
+KC_TOKEN=$(curl -sf -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password&client_id=admin-cli&username=admin&password=admin" \
+  | jq -r '.access_token')
+check "Get KC admin token" $([ -n "$KC_TOKEN" ] && echo 0 || echo 1)
+
+ADMIN_KC_ID=$(curl -sf "$KEYCLOAK_URL/admin/realms/semana-santa/users?username=$ADMIN_USER&exact=true" \
+  -H "Authorization: Bearer $KC_TOKEN" | jq -r '.[0].id')
+check "Get admin KC user ID" $([ -n "$ADMIN_KC_ID" ] && [ "$ADMIN_KC_ID" != "null" ] && echo 0 || echo 1)
+
+UPDATE_BODY=$(python3 -c "
+import json
+hid = '$HID'
+payload = json.dumps([{'hermandadId': hid, 'role': 'HERMANDAD_ADMIN'}])
+body = {'attributes': {'hermandad_memberships': [payload]}}
+print(json.dumps(body))
+")
+curl -s -X PUT "$KEYCLOAK_URL/admin/realms/semana-santa/users/$ADMIN_KC_ID" \
+  -H "Authorization: Bearer $KC_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$UPDATE_BODY" \
+  -o /dev/null
+check "Update admin membership claim for new hermandad" $?
+
+echo "=== 7. Re-login as Admin (fresh token with claim) ==="
+ADMIN_TOKEN=$(curl -sf -X POST "$KEYCLOAK_URL/realms/semana-santa/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password&client_id=semana-santa-client&client_secret=secret&username=$ADMIN_USER&password=$ADMIN_PASSWORD" \
+  | jq -r '.access_token')
+check "Get fresh admin token" $([ -n "$ADMIN_TOKEN" ] && echo 0 || echo 1)
+
+echo "=== 8. Repertorio Service — Cruceta ==="
 HC=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$BASE_URL/api/hermandades/$HID/procesiones/$PID/cruceta" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d "{\"items\":[{\"marchaId\":\"$MID\",\"orderIndex\":1,\"notes\":\"opening\"}]}")
-check "Define cruceta (expect 403 — no admin membership for this hermandad)" $([ "$HC" = "403" ] && echo 0 || echo 1)
+  -d "{\"items\":[{\"marchaId\":\"$MID\",\"orderIndex\":0,\"notes\":\"Salida\"}]}")
+check "Define cruceta (expect 200)" $([ "$HC" = "200" ] && echo 0 || echo 1)
 
 curl -s -o /dev/null "$BASE_URL/api/hermandades/$HID/procesiones/$PID/cruceta" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 check "Get cruceta" $?
 
-echo "=== 7. Auth Enforcement ==="
+echo "=== 9. Auth Enforcement ==="
 HC=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$BASE_URL/api/hermandades/$HID/procesiones/$PID/cruceta" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $REGULAR_TOKEN" \

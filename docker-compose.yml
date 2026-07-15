@@ -352,10 +352,12 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/semana-santa/protocol/openid-connect/certs
-      SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     depends_on:
       postgres-repertorio:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       keycloak:
         condition: service_healthy
