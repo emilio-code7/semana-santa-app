@@ -9,6 +9,8 @@
     { "name": "admin_user", "value": "qa-admin-user", "enabled": true },
     { "name": "admin_password", "value": "test", "enabled": true },
     { "name": "regular_user", "value": "qa-user-no-hermandad", "enabled": true },
-    { "name": "regular_password", "value": "test", "enabled": true }
+    { "name": "regular_password", "value": "test", "enabled": true },
+    { "name": "kc_admin_user", "value": "admin", "enabled": true },
+    { "name": "kc_admin_password", "value": "admin", "enabled": true }
   ]
 }
