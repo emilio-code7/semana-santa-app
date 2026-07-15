@@ -8,19 +8,20 @@ Process:
 
 ---
 
-## Current Sprint
+## Recently Completed
 
-### Sprint 3 — Spring Boot 4.1 Migration ✅
+### Phase 1 — Operational Procession ✅ (2026-07-15)
 
-Upgrade platform to Boot 4.1. Bump versions, migrate modular starters, Jackson 3 packages, Redis serializers.
+Cross-service workflow: Hermandad → Procesion → Repertorio (cruceta) with Kafka-based eventual consistency.
 
-- ~~Version catalog: Spring Boot 4.1.0, Spring Cloud 2025.0.0, tools.jackson~~ ✅
-- ~~Build files: all services migrated to Boot 4.1 / tools.jackson~~ ✅
-- ~~Jackson imports: RedisConfig, shared/common, test factories migrated~~ ✅
-- ~~Test packages: autoconfigure paths, @MockitoBean, jakarta.persistence~~ ✅
-- ~~TestCacheConfig: fix slice test CacheManager failures~~ ✅
-- ~~Flyway V4 + service-level unique name constraint on Hermandad~~ ✅
-- ~~HermandadAlreadyExistsException → 409 CONFLICT~~ ✅
+**Deliverables:** 8 commits, 71 files, 76 tests
+- KnownProcesion domain model (entity + port + JPA adapters + Flyway V5)
+- ProcessedEventEntity for consumer dedup (Flyway V6)
+- ProcesionEventConsumer — Kafka listener on `procesion-events`
+- CrucetaService validation — rejects unknown procesionIds → 404
+- 4 integration test files (17 Testcontainers tests)
+- e2e demo script at `docs/demo/phase-1.sh`
+- Security config fix: `/api/marchas/**` no longer public
 
 ---
 
@@ -187,19 +188,11 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 - ✅ TASK-9: Dockerfile + docker-compose.yml entry + Gateway routes
 - ✅ TASK-10: Controller tests (MarchaControllerTest 13 tests, CrucetaControllerTest 6 tests)
 - ✅ TASK-11: Service + domain unit tests (44 total — 6 domain + 17 service + 19 controller)
-- ✅ TASK-12: Kafka consumer for Procesion events + cross-service validation (cruceta check against KnownProcesion)
-- ✅ TASK-13: KnownProcesion domain model + repository port + JPA adapter + Flyway V5
-- ✅ TASK-14: Idempotent consumer infrastructure (ProcessedEventEntity + V6 migration + ProcesionEventConsumer)
-- ✅ TASK-15: Integration tests — 4 IT files (repository + controller), Testcontainers PG+Kafka
-- ✅ TASK-16: CrucetaService validates procesionId against local KnownProcesion cache → 404 if unknown
 
 **Deferred:**
 - ❌ Auto-assign hermandad creator as admin member on creation (so they have the hermandad_memberships JWT claim without manual Keycloak setup)
 
-
 ---
-
-
 ### Phase 1 — Operational Procession ✅
 
 **Goal:** Create one complete, meaningful workflow across Hermandad, Procesion, and Repertorio services.
@@ -216,9 +209,7 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 - ✅ All acceptance criteria met: end-to-end demo across 2 services + 1 Kafka topic, authorization enforced, documented eventual-consistency rule
 - ✅ Updated docs: roadmap, functional-map, service-reviews, backlog
 
-
 ---
-
 
 ### Sprint 10 — AWS Migration
 
