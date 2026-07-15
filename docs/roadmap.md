@@ -134,16 +134,16 @@ Make the repository easy for an interviewer or reviewer to run, understand, and 
 
 ### Work items
 
-- Add a root `README.md` with project purpose, architecture diagram, prerequisites, startup, seeded users, URLs, and the main demo workflow.
+- ✅ ~~Add a root `README.md` with project purpose, architecture diagram, prerequisites, startup, seeded users, URLs, and the main demo workflow.~~ (done in Phase 1)
 - Refresh `docs/audit.md` and `docs/backlog.md` so completed Repertorio work and current risks are accurate.
 - Create concise architecture decision records for the outbox approach, event choreography, and authorization design.
-- Add a repeatable demo script: successful workflow, intentional Kafka failure, recovery, and trace/metric inspection.
+- ✅ ~~Add a repeatable demo script: successful workflow, intentional Kafka failure, recovery, and trace/metric inspection.~~ (done: `docs/demo/phase-1.sh`)
 - Record three or four interview stories based on real decisions and incidents encountered while building the project.
 
 ### Acceptance criteria
 
-- A new developer can start the stack and run the main demo from the README.
-- The README links to the dashboard, API documentation, event topics, and architecture decisions.
+- ✅ A new developer can start the stack and run the main demo from the README. (README + demo script exist)
+- ✅ The README links to the dashboard, API documentation, event topics, and architecture decisions.
 - Every major architectural choice includes its rationale and trade-off.
 
 ---

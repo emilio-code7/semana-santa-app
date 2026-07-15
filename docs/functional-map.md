@@ -100,10 +100,11 @@ Every change that touches any of these **must** update the corresponding documen
 repertorio/
 ├── build.gradle.kts                          # Root: Spring Boot 4.1.0 + Spring Cloud 2025.1.2 BOM
 ├── settings.gradle.kts                       # 7 modules: 2 infra, 5 services, 1 shared
+├── README.md                                 # Project overview, quick start, architecture, demo
 ├── gradle/
 │   ├── libs.versions.toml                    # Version catalog (Java 21, SB 4.1.0, Testcontainers 1.20.1)
 │   └── properties                            # -Xmx2g, auto-download JDK
-├── docker-compose.yml                        # Full stack: Keycloak, Kafka, Redis, 5×Postgres, Eureka, Gateway, 2 services, observability
+├── docker-compose.yml                        # Full stack: Keycloak, Kafka, Redis, 5×Postgres, Eureka, Gateway, 3 services, observability
 ├── docker-compose.dev.yml                    # Dev variant: single Postgres, lighter mem limits, no observability
 │
 ├── infrastructure/
@@ -124,9 +125,13 @@ repertorio/
 └── docs/
     ├── architecture.md                       # Hexagonal + DDD design doc
     ├── audit.md                              # Historical audit trail
-    ├── backlog.md                            # Sprint backlog
+    ├── backlog.md                            # Sprint backlog + completed sprints
+    ├── roadmap.md                            # 5-phase development roadmap with milestones
     ├── service-reviews.md                    # Per-service reviews + cross-service comparison
     ├── functional-map.md                     # ← THIS FILE
+    ├── openapi.yaml                          # Complete OpenAPI 3.0 spec
+    ├── demo/
+    │   └── phase-1.sh                        # End-to-end cross-service workflow demo
     └── plans/                                # Sprint plans
 ```
 
