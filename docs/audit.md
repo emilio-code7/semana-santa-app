@@ -85,17 +85,19 @@ Error responses previously returned `ResponseEntity<String>` with plain text.
 
 ## 5. Infrastructure Gaps
 
-### 5.1 Three of Five Services Are Still Empty Skeletons
+### 5.1 Two of Five Services Are Still Empty Skeletons
 
 | Service | Status |
 |---------|--------|
-| hermandad-service | ✅ Implemented (59 Java files, 50 tests) |
-| procesion-service | ✅ Implemented (22 Java files, 47 tests) |
-| repertorio-service | ❌ `// placeholder` build.gradle.kts, no source |
+| hermandad-service | ✅ Implemented (48 Java files, 56 tests) |
+| procesion-service | ✅ Implemented (27 Java files, 47 tests) |
+| repertorio-service | ✅ Implemented (42 Java files, 44 tests) |
 | tracking-service | ❌ `// placeholder` build.gradle.kts, no source |
 | notification-service | ❌ `// placeholder` build.gradle.kts, no source |
 
-The API Gateway previously had routes pointing to the 3 stub services — `lb://repertorio-service`, `lb://tracking-service`, `lb://notification-service`. These routes have been commented out in `api-gateway/application.yml:33-48` to avoid 503 errors. Uncomment when each service is implemented. Procesion-service route is active and working.
+**Achieved (Sprint 9):** repertorio-service went from stub to full implementation — Marcha catalog + Cruceta with hexagonal architecture, outbox pattern, 4 Flyway migrations. Gateway routes for `/api/marchas/**` and `/api/hermandades/*/procesiones/*/cruceta/**` are active.
+
+The API Gateway still has routes for stub services — `lb://tracking-service`, `lb://notification-service` — these will 503 until implemented.
 
 ### 5.2 `kafka-init` Healthcheck Is a No-Op
 

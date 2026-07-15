@@ -114,7 +114,7 @@ repertorio/
 ├── services/
 │   ├── hermandad-service/    ✅ Active       # Brotherhoods + members, port 8081 (59 Java files, 50 tests)
 │   ├── procesion-service/    ✅ Active       # Processions + state machine, port 8082 (22 Java files, 47 tests)
-│   ├── repertorio-service/   ⚠️ Stub         # Musical repertoire — build.gradle.kts only, no src/
+│   ├── repertorio-service/   ✅ Active       # Marcha catalog + Cruceta, port 8083 (42 Java files, 44 tests)
 │   ├── tracking-service/     ⚠️ Stub         # GPS tracking — build.gradle.kts only, no src/
 │   └── notification-service/ ⚠️ Stub         # Push notifications — build.gradle.kts only, no src/
 │
@@ -134,10 +134,12 @@ repertorio/
 
 ```
 shared/common  ←────── hermandad-service ←────── api-gateway ←──→ discovery-server
-                          ↓ Kafka ↑ (self)              ↓
+                          ↓ Kafka ↑ (self)
                       procesion-service (→ Kafka, no consumer yet)
+                          ↓ Kafka (procesion-events — no consumer)
+                      repertorio-service (→ Kafka: marcha-events, no consumer yet)
                           ↓
-                      (3 stub services: repertorio, tracking, notification)
+                      (2 stub services: tracking, notification)
 ```
 
 ---
@@ -225,11 +227,50 @@ domain/
   repository/     ProcesionRepository
 ```
 
+#### repertorio-service (`✅ Active`)
+
+| Attribute | Value |
+|-----------|-------|
+| **Port** | 8083 |
+| **Package** | `com.repertorio.marcha` |
+| **DB** | PostgreSQL `repertorio_db` (port 5433) |
+| **Flyway** | 4 migrations (V1–V4) |
+| **Java files** | 42 main + 6 test = 48 total |
+| **Tests** | 44 (6 domain + 2 service + 2 controller slice — no integration tests) |
+| **Security** | `anyRequest().authenticated()` + custom JWT converter + `RepertorioSecurityService` |
+| **Caching** | None |
+| **Messaging** | Kafka producer (outbox to `marcha-events`) — no consumer |
+| **Events** | `MarchaAddedEvent`, `MarchaRemovedEvent`, `CrucetaDefinedEvent` |
+| **SB4** | Migrated (`tools.jackson`) |
+
+**Key directories:**
+```
+adapter/
+  config/
+    security/      JwtAuthenticationConverter, RepertorioSecurityService, SecurityConfig
+    OpenApiConfig.java
+  inbound/
+    rest/
+      controller/  MarchaController, CrucetaController
+      dto/         MarchaRequest, MarchaResponse, CrucetaRequest, CrucetaItemRequest, CrucetaResponse, ApiError
+      GlobalExceptionHandler.java
+  outbound/
+    events/        DomainEventPublisherAdapter
+    outbox/        OutboxEventEntity, OutboxEventJpaRepository, OutboxEventPublisher, OutboxPoller
+    persistence/   MarchaEntity, MarchaJpaRepository, MarchaRepositoryAdapter, CrucetaEntity, CrucetaItemEntity, CrucetaJpaRepository, CrucetaRepositoryAdapter
+application/
+  port/            DomainEventPublisher, OutboxPublisher
+  service/         MarchaService, CrucetaService
+domain/
+  event/           DomainEvent, MarchaAddedEvent, MarchaRemovedEvent, CrucetaDefinedEvent
+  model/           BandType, Marcha, MarchaNotFoundException, Cruceta, CrucetaItem, CrucetaNotFoundException
+  port/            MarchaRepository, CrucetaRepository
+```
+
 ### 2.2 Stub Services (build.gradle.kts only — no src/)
 
 | Service | Port (Docker) | Purpose | Status |
 |---------|--------------|---------|--------|
-| **repertorio-service** | 8083 (5433 DB) | Musical marches CRUD | ⚠️ Stub |
 | **tracking-service** | 8084 (5435 DB) | GPS tracking during processions | ⚠️ Stub |
 | **notification-service** | 8085 (5436 DB) | Push/email notifications | ⚠️ Stub |
 
@@ -254,7 +295,8 @@ Client ──HTTP──► api-gateway:8080
                   │
                   ├── /api/hermandades/** ──lb://──► hermandad-service:8081
                   ├── /api/procesiones/** ──lb://──► procesion-service:8082
-                  ├── /api/marchas/**     ──lb://──► ⚠️ 503 (stub)
+                  ├── /api/marchas/**     ──lb://──► repertorio-service:8083
+                  ├── /api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta/** ──lb://──► repertorio-service:8083
                   ├── /api/tracking/**    ──lb://──► ⚠️ 503 (stub)
                   ├── /api/notifications/**─lb://──► ⚠️ 503 (stub)
                   │
@@ -263,7 +305,7 @@ Client ──HTTP──► api-gateway:8080
 
 Gateway public routes: `GET /api/hermandades`, `GET /api/hermandades/{id}`, Swagger, actuator. All other routes require JWT.
 
-### 3.2 Event Publishing Flow (Hermandad and Procesion — Outbox Pattern)
+### 3.2 Event Publishing Flow (All Active Services — Outbox Pattern)
 
 ```
 Domain Event (e.g. HermandadCreatedEvent)
@@ -302,7 +344,7 @@ Kafka topic: hermandad-events / hermandad-member-events
             └──► ⚠️ No downstream processing — currently a sink (audit/self-consumption)
 ```
 
-**Note**: `procesion-events` topic exists but has **no consumer** — procesion-service only produces to it.
+**Note**: `procesion-events` and `marcha-events` topics exist but have **no consumer** — these services only produce to Kafka.
 
 ### 3.4 Kafka Topology
 
@@ -311,6 +353,7 @@ Kafka topic: hermandad-events / hermandad-member-events
 | `hermandad-events` | 3 | hermandad-service (outbox) | hermandad-service (self) | ✅ |
 | `hermandad-member-events` | 3 | hermandad-service (outbox) | hermandad-service (self) | ✅ |
 | `procesion-events` | 3 | procesion-service (outbox) | none | ⚠️ Orphan topic |
+| `marcha-events` | 3 | repertorio-service (outbox) | none | ⚠️ Orphan topic |
 | `notification-commands` | 3 | none (planned) | none | ⚠️ No producer/consumer |
 | `tracking-events` | 6 | none (planned) | none | ⚠️ No producer/consumer |
 
@@ -365,7 +408,21 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 
 **Note**: Procesion service has no `@PreAuthorize` — only `anyRequest().authenticated()`. `@EnableMethodSecurity` is declared but unused.
 
-### 4.3 Public Routes (Gateway-level)
+### 4.3 Repertorio Service (`/api/marchas`, `/api/.../cruceta`)
+
+| Method | Path | Auth | Endpoint | File |
+|--------|------|------|----------|------|
+| `POST` | `/api/marchas` | authenticated | `createMarcha()` | `MarchaController.java:32` |
+| `GET` | `/api/marchas` | authenticated | `listMarchas()` | `MarchaController.java:42` |
+| `GET` | `/api/marchas/{id}` | authenticated | `getMarcha()` | `MarchaController.java:52` |
+| `DELETE` | `/api/marchas/{id}` | authenticated | `deleteMarcha()` | `MarchaController.java:62` |
+| `GET` | `/api/marchas/search?q={query}` | authenticated | `searchMarchas()` | `MarchaController.java:72` |
+| `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta` | authenticated | `getCruceta()` | `CrucetaController.java:28` |
+| `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta` | authenticated | `defineCruceta()` | `CrucetaController.java:38` |
+
+**Note**: Repertorio service has no `@PreAuthorize` — same as procesion. `RepertorioSecurityService` exists but unused.
+
+### 4.4 Public Routes (Gateway-level)
 
 | Path | Service |
 |------|---------|
@@ -373,6 +430,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `GET /api/hermandades/{id}` | hermandad-service |
 | `GET /v3/api-docs/hermandad` | hermandad-service |
 | `GET /v3/api-docs/procesion` | procesion-service |
+| `GET /v3/api-docs/repertorio` | repertorio-service |
 | `GET /swagger-ui/**` | — |
 | `GET /actuator/**` | — |
 
@@ -469,14 +527,58 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 
 **Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload)
 
-### 5.3 Domain Entity ↔ DB Mapping
+### 5.3 Repertorio DB (`repertorio_db`)
+
+#### `marcha` table
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `title` | VARCHAR(255) | NOT NULL |
+| `composer` | VARCHAR(255) | NOT NULL |
+| `band_type` | VARCHAR(50) | NOT NULL (BANDA_PALIO, AGRUPACION_MUSICAL, BANDA_CORNETAS) |
+| `duration_seconds` | INTEGER | NOT NULL |
+| `composition_year` | INTEGER | nullable |
+| `youtube_url` | VARCHAR(500) | nullable |
+| `created_at` | TIMESTAMPTZ | NOT NULL |
+| `updated_at` | TIMESTAMPTZ | NOT NULL |
+| | | INDEX idx_marcha_band_type, idx_marcha_composer |
+
+#### `cruceta` table
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `procesion_id` | UUID | NOT NULL, UNIQUE |
+| `created_at` | TIMESTAMPTZ | NOT NULL |
+| `updated_at` | TIMESTAMPTZ | NOT NULL |
+
+#### `cruceta_item` table
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `cruceta_id` | UUID | FK → cruceta(id) CASCADE, NOT NULL |
+| `marcha_id` | UUID | NOT NULL |
+| `order_index` | INTEGER | NOT NULL |
+| `notes` | TEXT | nullable |
+| | | UNIQUE(cruceta_id, order_index), INDEX idx_cruceta_item_cruceta_id, INDEX idx_cruceta_item_marcha_id |
+
+#### `outbox_event` table (same schema as procesion with TEXT payload)
+
+**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table)
+
+### 5.4 Domain Entity ↔ DB Mapping
 
 | Entity | Table | Key Generator |
 |--------|-------|---------------|
 | `Hermandad` | `hermandad` | `@UuidGenerator` (Hibernate) |
 | `HermandadMember` | `hermandad_member` | `@UuidGenerator` |
 | `Procesion` | `procesion` | `@UuidGenerator` |
-| `OutboxEventEntity` (both) | `outbox_event` | `@UuidGenerator` |
+| `MarchaEntity` | `marcha` | `@UuidGenerator` |
+| `CrucetaEntity` | `cruceta` | `@UuidGenerator` |
+| `CrucetaItemEntity` | `cruceta_item` | `@UuidGenerator` |
+| `OutboxEventEntity` (all) | `outbox_event` | `@UuidGenerator` |
 | `ProcessedEventEntity` | `processed_event` | manual UUID |
 
 ---
@@ -505,11 +607,11 @@ Request with Bearer JWT
 
 ### 6.2 Endpoint Protection by Service
 
-| Level | Hermandad | Procesion |
-|-------|-----------|-----------|
-| **Public** | `GET /api/hermandades` + `GET /api/hermandades/{id}` | none |
-| **Authenticated** | `POST /api/hermandades` | all endpoints |
-| **Admin-only** (`@PreAuthorize`) | member CRUD endpoints | none |
+| Level | Hermandad | Procesion | Repertorio |
+|-------|-----------|-----------|------------|
+| **Public** | `GET /api/hermandades` + `GET /api/hermandades/{id}` | none | none |
+| **Authenticated** | `POST /api/hermandades` | all endpoints | all endpoints |
+| **Admin-only** (`@PreAuthorize`) | member CRUD endpoints | none | none |
 
 ### 6.3 Key Classes
 
@@ -520,6 +622,7 @@ Request with Bearer JWT
 | `JwtMembershipExtractor` | shared/common | Parses `hermandad_memberships` JSON claim |
 | `HermandadMembership` | shared/common | `record(hermandadId, role, pasoId)` |
 | `HermandadSecurityService` | hermandad | `isAdmin(hermandadId)` — JWT fast path → DB fallback |
+| `RepertorioSecurityService` | repertorio | `isSameUser(userId)` — exists but unused |
 | `KeycloakConfig` | hermandad | Admin client for Keycloak REST API |
 
 ### 6.4 Roles (Hermandad)
@@ -542,6 +645,7 @@ Request with Bearer JWT
 | API Gateway | 8080 | 8080 |
 | Hermandad Service | 8081 | 8081 |
 | Procesion Service | 8082 | 8082 |
+| Repertorio Service | 8083 | 8083 |
 | Eureka | 8761 | 8761 |
 | Keycloak | 8080 (container) | 8180 |
 | Kafka | 29092 (internal) / 9092 (external) | 9092 |
@@ -560,9 +664,11 @@ Request with Bearer JWT
 | `gradle/libs.versions.toml` | Central version catalog (Spring Boot 4.1.0, Spring Cloud 2025.1.2) |
 | `build.gradle.kts` (root) | BOM overrides, Java 21 toolchain, common plugins |
 | `hermandad-service/build.gradle.kts` | Dependencies: persistence, security, Kafka, Redis, Flyway, caching, OpenAPI |
-| `procesion-service/build.gradle.kts` | Dependencies: persistence, security, Kafka, Flyway, OpenAPI, Feign (dead) |
+| `procesion-service/build.gradle.kts` | Dependencies: persistence, security, Kafka, Flyway, OpenAPI |
+| `repertorio-service/build.gradle.kts` | Dependencies: persistence, security, Kafka, Flyway, OpenAPI |
 | `hermandad-service/src/main/resources/application.yml` | Port 8081, postgres, redis, kafka:29092, eureka, keycloak admin |
 | `procesion-service/src/main/resources/application.yml` | Port 8082, postgres:5434, kafka producer localhost:9092, eureka, no Redis |
+| `repertorio-service/src/main/resources/application.yml` | Port 8083, postgres:5433, kafka localhost:9092, eureka, no Redis |
 | `infrastructure/api-gateway/src/main/resources/application.yml` | Port 8080, routes, JWT validation, Eureka client |
 | `infrastructure/discovery-server/src/main/resources/application.yml` | Standalone Eureka, port 8761 |
 
@@ -570,7 +676,7 @@ Request with Bearer JWT
 
 | Profile | Mode | Includes |
 |---------|------|----------|
-| `core` | docker-compose.yml | Keycloak, Kafka+init+UI, Redis, 5×Postgres, Eureka, Gateway, hermandad, procesion |
+| `core` | docker-compose.yml | Keycloak, Kafka+init+UI, Redis, 5×Postgres, Eureka, Gateway, hermandad, procesion, repertorio |
 | `full` | docker-compose.yml | `core` + Zipkin, ELK (ES+Logstash+Kibana), Prometheus, Grafana |
 | `dev` | docker-compose.dev.yml | Single Postgres + init, all services with 256m mem limits, no observability |
 
@@ -582,13 +688,14 @@ Request with Bearer JWT
 
 | Module | Test Files | `@Test` Count | Integration Tests | Infrastructure |
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
-| **hermandad-service** | 11 | **50** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
+| **hermandad-service** | 12 | **56** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
 | **procesion-service** | 6 | **47** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
+| **repertorio-service** | 6 | **44** | 0 | No integration tests yet |
 | **shared/common** | 2 | 7 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
-| **3 stub services** | 0 | 0 | 0 | ❌ |
-| **Total** | **19** | **104** | **4** | |
+| **2 stub services** | 0 | 0 | 0 | ❌ |
+| **Total** | **26** | **154** | **4** | |
 
 ### 8.2 Hermandad Tests
 
@@ -617,7 +724,20 @@ Request with Bearer JWT
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
 | `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 8 | HTTP lifecycle, status transitions, 401 |
 
-### 8.4 Shared Tests
+### 8.4 Repertorio Tests
+
+| Test File | Type | Tests | What it covers |
+|-----------|------|:-----:|----------------|
+| `MarchaTest.java` | Domain unit | 6 | Entity creation, validation (blank title/composer, negative duration), MarchaNotFoundException |
+| `CrucetaTest.java` | Domain unit | 8 | Entity creation, item validation, duplicate order_index rejection, `redefine()`, `containsMarcha()` |
+| `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
+| `CrucetaServiceTest.java` | Unit (mock service) | 7 | Get cruceta, define cruceta, item validation, MarchaNotFoundException on missing marcha |
+| `MarchaControllerTest.java` | Web slice (MockMvc) | 13 | All endpoints, 401 scenarios, search |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 6 | Get/define cruceta, 401 scenarios |
+
+**Missing**: No integration tests (no `IntegrationTest` files exist — unlike hermandad/procesion which have repository + controller ITs). No Kafka consumer tests.
+
+### 8.5 Shared Tests
 
 | Test File | Tests | What it covers |
 |-----------|:-----:|----------------|
@@ -640,15 +760,18 @@ Request with Bearer JWT
 | # | Severity | Issue | File(s) | Status |
 |---|----------|-------|---------|--------|
 | 1 | 🟠 Low | ✅ ~~**Flyway index not mirrored on entity** — `idx_procesion_hermandad_id` exists in SQL but `@Table(indexes = ...)` missing on entity~~ | `Procesion.java`, `V1__create_procesion_table.sql` | Done |
-| 2 | 🟠 Low | **No `@PreAuthorize` on procesion controller** — `@EnableMethodSecurity` declared but unused | `ProcesionController.java`, `SecurityConfig.java` | Open |
+| 2 | 🟠 Low | **No `@PreAuthorize` on procesion or repertorio controllers** — `@EnableMethodSecurity` declared but unused in both | `ProcesionController.java`, `MarchaController.java`, `RepertorioSecurityService.java` | Open |
 | 3 | 🟠 Low | ✅ ~~**Dead `@EnableFeignClients`** — annotation + `spring-cloud-starter-openfeign` with zero `@FeignClient`~~ | `ProcesionServiceApplication.java:12`, `build.gradle.kts:18` | Done |
-| 4 | 🟠 Low | **No Redis caching on procesion** — hermandad has it, procesion doesn't. Read-heavy listings would benefit | — | Open |
-| 5 | 🟡 Medium | ✅ ~~**3 ghost gateway routes** — repertorio, tracking, notification routes point to stub services → 503~~ | `api-gateway/application.yml:33-48` | Done (commented out) |
-| 6 | 🟡 Medium | **No consumers for 3 Kafka topics** — `procesion-events`, `notification-commands`, `tracking-events` have no handlers | Kafka init | Open |
+| 4 | 🟠 Low | **No Redis caching on procesion or repertorio** — hermandad has it, read-heavy listings would benefit | — | Open |
+| 5 | 🟠 Low | ✅ ~~**3 ghost gateway routes** — repertorio, tracking, notification routes point to stub services → 503~~ | `api-gateway/application.yml:33-48` | Done (repertorio fixed, 2 remain) |
+| 6 | 🟡 Medium | **No consumers for 4 Kafka topics** — `procesion-events`, `marcha-events`, `notification-commands`, `tracking-events` have no handlers | Kafka init | Open |
 | 7 | 🟠 Low | **Hermandad self-consumption** — `IdempotentEventConsumer` consumes hermandad's own topics, no downstream logic | `IdempotentEventConsumer.java` | Open (maybe intentional) |
 | 8 | 🟡 Medium | ✅ ~~**Infrastructure zero tests** — `api-gateway` + `discovery-server` have no test coverage at all~~ | — | Done |
 | 9 | 🟠 Low | ✅ ~~**Hermandad constructor no validation** — `name`/`city` could be empty strings~~ | `Hermandad.java:34-39` | Done |
 | 10 | 🟠 Low | **Gateway routes for `/api/hermandades/{id}/procesiones`** defined in gateway but don't exist in hermandad (legacy from initial design) | `api-gateway/SecurityConfig.java:21-23` | Open (stale routes) |
+| 11 | 🟡 Medium | **Repertorio has no integration tests** — missing repository + controller integration tests unlike hermandad and procesion | `repertorio-service/src/test/` | Open |
+| 12 | 🟡 Medium | **Procesion service Hibernate 7 fix** — `Procesion` entity needed `Persistable` interface for UUID save. Check if repertorio entities need same fix | `Procesion.java`, repertorio entities | Open |
+| 13 | 🔴 High | **Procesion Hibernate 7 UUID regression** — commit 0577a09 added `Persistable` to `Procesion` to fix save. Root cause unclear — Hibernate 7 may have same issue on all entities | `Procesion.java:1-8` | 🔴 Open |
 
 ---
 
@@ -768,6 +891,70 @@ domain/
   repository/ProcesionRepository.java
 ```
 
+### repertorio-service (42 main files)
+
+```
+RepertorioServiceApplication.java
+adapter/
+  config/
+    OpenApiConfig.java
+    security/
+      JwtAuthenticationConverter.java
+      RepertorioSecurityService.java
+      SecurityConfig.java
+  inbound/
+    rest/
+      GlobalExceptionHandler.java
+      controller/
+        CrucetaController.java
+        MarchaController.java
+      dto/
+        ApiError.java
+        CrucetaItemRequest.java
+        CrucetaRequest.java
+        CrucetaResponse.java
+        MarchaRequest.java
+        MarchaResponse.java
+  outbound/
+    events/DomainEventPublisherAdapter.java
+    outbox/
+      OutboxEventEntity.java
+      OutboxEventJpaRepository.java
+      OutboxEventPublisher.java
+      OutboxPoller.java
+    persistence/
+      CrucetaEntity.java
+      CrucetaItemEntity.java
+      CrucetaJpaRepository.java
+      CrucetaRepositoryAdapter.java
+      MarchaEntity.java
+      MarchaJpaRepository.java
+      MarchaRepositoryAdapter.java
+application/
+  port/
+    DomainEventPublisher.java
+    OutboxPublisher.java
+  service/
+    CrucetaService.java
+    MarchaService.java
+domain/
+  event/
+    CrucetaDefinedEvent.java
+    DomainEvent.java
+    MarchaAddedEvent.java
+    MarchaRemovedEvent.java
+  model/
+    BandType.java
+    Cruceta.java
+    CrucetaItem.java
+    CrucetaNotFoundException.java
+    Marcha.java
+    MarchaNotFoundException.java
+  port/
+    CrucetaRepository.java
+    MarchaRepository.java
+```
+
 ### infrastructure (4 main files)
 
 ```
@@ -793,4 +980,4 @@ tenant/
 
 ---
 
-*Generated 2026-07-14. Keep in sync with codebase after significant changes.*
+*Generated 2026-07-15. Keep in sync with codebase after significant changes.*
