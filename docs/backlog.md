@@ -191,6 +191,7 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 **Deferred:**
 - ❌ TASK-12: Kafka consumer for Procesion events (cruceta cleanup on procesion deletion)
 - ❌ Integration tests (repository + controller) to match hermandad/procesion pattern
+- ❌ Auto-assign hermandad creator as admin member on creation (so they have the hermandad_memberships JWT claim without manual Keycloak setup)
 
 
 ---
