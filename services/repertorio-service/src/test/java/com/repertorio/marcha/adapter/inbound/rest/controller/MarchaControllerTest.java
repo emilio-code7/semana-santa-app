@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -52,6 +53,7 @@ class MarchaControllerTest {
         when(marchaService.createMarcha(anyString(), anyString(), any(), anyInt(), any(), any())).thenReturn(marcha);
 
         mockMvc.perform(post("/api/marchas")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Amarguras","composer":"Manuel López Farfán",\
@@ -65,7 +67,8 @@ class MarchaControllerTest {
     void getMarchaReturns200() throws Exception {
         when(marchaService.getMarcha(marchaId)).thenReturn(Optional.of(buildMarcha()));
 
-        mockMvc.perform(get("/api/marchas/{id}", marchaId))
+        mockMvc.perform(get("/api/marchas/{id}", marchaId)
+                        .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Amarguras"));
     }
@@ -74,7 +77,8 @@ class MarchaControllerTest {
     void getMarchaReturns404WhenNotFound() throws Exception {
         when(marchaService.getMarcha(marchaId)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/marchas/{id}", marchaId))
+        mockMvc.perform(get("/api/marchas/{id}", marchaId)
+                        .with(jwt()))
                 .andExpect(status().isNotFound());
     }
 
@@ -82,7 +86,8 @@ class MarchaControllerTest {
     void listMarchasReturns200() throws Exception {
         when(marchaService.listMarchas()).thenReturn(List.of(buildMarcha()));
 
-        mockMvc.perform(get("/api/marchas"))
+        mockMvc.perform(get("/api/marchas")
+                        .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1));
@@ -95,6 +100,7 @@ class MarchaControllerTest {
                 .thenReturn(marcha);
 
         mockMvc.perform(put("/api/marchas/{id}", marchaId)
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Updated","composer":"NewComposer",\
@@ -108,7 +114,8 @@ class MarchaControllerTest {
     void deleteMarchaReturns204() throws Exception {
         doNothing().when(marchaService).deleteMarcha(marchaId);
 
-        mockMvc.perform(delete("/api/marchas/{id}", marchaId))
+        mockMvc.perform(delete("/api/marchas/{id}", marchaId)
+                        .with(jwt()))
                 .andExpect(status().isNoContent());
     }
 }
