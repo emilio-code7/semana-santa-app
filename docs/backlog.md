@@ -187,11 +187,34 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 - ✅ TASK-9: Dockerfile + docker-compose.yml entry + Gateway routes
 - ✅ TASK-10: Controller tests (MarchaControllerTest 13 tests, CrucetaControllerTest 6 tests)
 - ✅ TASK-11: Service + domain unit tests (44 total — 6 domain + 17 service + 19 controller)
+- ✅ TASK-12: Kafka consumer for Procesion events + cross-service validation (cruceta check against KnownProcesion)
+- ✅ TASK-13: KnownProcesion domain model + repository port + JPA adapter + Flyway V5
+- ✅ TASK-14: Idempotent consumer infrastructure (ProcessedEventEntity + V6 migration + ProcesionEventConsumer)
+- ✅ TASK-15: Integration tests — 4 IT files (repository + controller), Testcontainers PG+Kafka
+- ✅ TASK-16: CrucetaService validates procesionId against local KnownProcesion cache → 404 if unknown
 
 **Deferred:**
-- ❌ TASK-12: Kafka consumer for Procesion events (cruceta cleanup on procesion deletion)
-- ❌ Integration tests (repository + controller) to match hermandad/procesion pattern
 - ❌ Auto-assign hermandad creator as admin member on creation (so they have the hermandad_memberships JWT claim without manual Keycloak setup)
+
+
+---
+
+
+### Phase 1 — Operational Procession ✅
+
+**Goal:** Create one complete, meaningful workflow across Hermandad, Procesion, and Repertorio services.
+
+**Architecture decision:** Cross-service validation uses Kafka-based eventual consistency (repertorio consumes `procesion-events` to maintain a local `KnownProcesion` cache). Synchronous REST lookup was rejected because it couples repertorio to procesion availability.
+
+**Completed:**
+- ✅ Procesion publishes `ProcesionCreatedEvent` and `ProcesionStatusChangedEvent` via outbox to `procesion-events`
+- ✅ Repertorio consumes `procesion-events` via `ProcesionEventConsumer` with idempotency (`processed_event` table)
+- ✅ `KnownProcesion` domain model with `KnownProcesionRepository` port + JPA adapter + Flyway V5
+- ✅ `ProcessedEventEntity` for consumer-side dedup + Flyway V6
+- ✅ Cross-service validation: `CrucetaService.defineCruceta()` checks `KnownProcesion` before creating cruceta → 404 if unknown
+- ✅ 4 integration test files: MarchaRepositoryIT, KnownProcesionRepositoryIT, MarchaControllerIT, CrucetaControllerIT
+- ✅ All acceptance criteria met: end-to-end demo across 2 services + 1 Kafka topic, authorization enforced, documented eventual-consistency rule
+- ✅ Updated docs: roadmap, functional-map, service-reviews, backlog
 
 
 ---

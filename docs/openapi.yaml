@@ -463,6 +463,90 @@
           }
         }
       }
+    },
+    "/api/marchas": {
+      "post": {
+        "tags": ["marcha-controller"],
+        "summary": "Create a new marcha",
+        "operationId": "createMarcha",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MarchaRequest" } } } },
+        "responses": {
+          "201": { "description": "Marcha created", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/MarchaResponse" } } } },
+          "400": { "description": "Invalid input (validation error)" }
+        }
+      },
+      "get": {
+        "tags": ["marcha-controller"],
+        "summary": "List all marchas",
+        "operationId": "listMarchas",
+        "responses": {
+          "200": { "description": "List of marchas", "content": { "*/*": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/MarchaResponse" } } } } }
+        }
+      }
+    },
+    "/api/marchas/{id}": {
+      "get": {
+        "tags": ["marcha-controller"],
+        "summary": "Get a marcha by ID",
+        "operationId": "getMarcha",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "200": { "description": "Marcha found", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/MarchaResponse" } } } },
+          "404": { "description": "Marcha not found" }
+        }
+      },
+      "put": {
+        "tags": ["marcha-controller"],
+        "summary": "Update a marcha",
+        "operationId": "updateMarcha",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MarchaRequest" } } } },
+        "responses": {
+          "200": { "description": "Marcha updated", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/MarchaResponse" } } } },
+          "400": { "description": "Invalid input (validation error)" },
+          "404": { "description": "Marcha not found" }
+        }
+      },
+      "delete": {
+        "tags": ["marcha-controller"],
+        "summary": "Delete a marcha",
+        "operationId": "deleteMarcha",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "204": { "description": "Marcha deleted" },
+          "404": { "description": "Marcha not found" }
+        }
+      }
+    },
+    "/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta": {
+      "get": {
+        "tags": ["cruceta-controller"],
+        "summary": "Get cruceta for a procesion",
+        "operationId": "getCruceta",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Cruceta found", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/CrucetaResponse" } } } },
+          "404": { "description": "Cruceta not found" }
+        }
+      },
+      "put": {
+        "tags": ["cruceta-controller"],
+        "summary": "Define or replace cruceta for a procesion",
+        "operationId": "defineCruceta",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CrucetaRequest" } } } },
+        "responses": {
+          "200": { "description": "Cruceta defined", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/CrucetaResponse" } } } },
+          "400": { "description": "Invalid input (validation error)" },
+          "403": { "description": "Forbidden — not admin of this hermandad" }
+        }
+      }
     }
   },
   "components": {
@@ -623,6 +707,67 @@
               "MUSICIAN"
             ]
           }
+        }
+      },
+      "MarchaRequest": {
+        "required": ["title", "composer", "bandType", "durationSeconds"],
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "composer": { "type": "string" },
+          "bandType": { "type": "string", "enum": ["BANDA_PALIO", "AGRUPACION_MUSICAL", "BANDA_CORNETAS"] },
+          "durationSeconds": { "type": "integer", "format": "int32", "minimum": 1 },
+          "compositionYear": { "type": "integer", "format": "int32", "nullable": true },
+          "youtubeUrl": { "type": "string", "nullable": true }
+        }
+      },
+      "MarchaResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "composer": { "type": "string" },
+          "bandType": { "type": "string", "enum": ["BANDA_PALIO", "AGRUPACION_MUSICAL", "BANDA_CORNETAS"] },
+          "durationSeconds": { "type": "integer", "format": "int32" },
+          "compositionYear": { "type": "integer", "format": "int32", "nullable": true },
+          "youtubeUrl": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CrucetaRequest": {
+        "required": ["items"],
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/CrucetaItemRequest" }, "minItems": 1 }
+        }
+      },
+      "CrucetaItemRequest": {
+        "required": ["marchaId", "orderIndex"],
+        "type": "object",
+        "properties": {
+          "marchaId": { "type": "string", "format": "uuid" },
+          "orderIndex": { "type": "integer", "format": "int32", "minimum": 0 },
+          "notes": { "type": "string", "nullable": true }
+        }
+      },
+      "CrucetaResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "procesionId": { "type": "string", "format": "uuid" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/CrucetaItemResponse" } },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CrucetaItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "marchaId": { "type": "string", "format": "uuid" },
+          "orderIndex": { "type": "integer", "format": "int32" },
+          "notes": { "type": "string", "nullable": true }
         }
       }
     },

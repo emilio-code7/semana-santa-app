@@ -95,7 +95,7 @@
 
 ## Repertorio Service
 
-**Files**: 42 Java files | **Tests**: 44 (6 domain + 17 service + 19 controller + 0 integration)
+**Files**: 51 Java files | **Tests**: 75 (28 domain + 14 service + 11 controller slice + 5 consumer + 17 integration)
 **Hexagonal**: ✅ Full | **DDD**: ✅ | **TDD**: ✅
 **Last review**: 2026-07-15
 
@@ -106,8 +106,10 @@
 | Hexagonal Architecture | ✅ | Full ports/adapters split. Domain → Application/Port → Adapter |
 | DDD | ✅ | State in `Marcha` constructor validation, `Cruceta.redefine()`, domain events |
 | Security | ✅ | `anyRequest().authenticated()`, custom `JwtAuthenticationConverter` extracting `hermandad_memberships` |
-| Testing | ✅ | Domain unit tests (14), service tests (17), controller slice (19) |
-| Event reliability | ✅ | Outbox pattern (table + poller → Kafka `marcha-events` topic) |
+| Testing | ✅ | Domain unit tests (28), service tests (14), controller slice (11), consumer tests (5), integration tests (17) across 12 test files |
+| Event reliability | ✅ | Outbox pattern (table + poller → Kafka `marcha-events` topic) + idempotent consumer for `procesion-events` |
+| Cross-service events | ✅ | `ProcesionEventConsumer` listens to `procesion-events`, maintains local `KnownProcesion` cache. Cruceta validation references known procesions. |
+| Integration tests | ✅ | 4 IT files: MarchaRepositoryIT, KnownProcesionRepositoryIT, MarchaControllerIT, CrucetaControllerIT — all use Testcontainers (PG + Kafka) |
 | Build | ✅ | Modular `spring-boot-starter-webmvc`, Flyway, Kafka, Dockerfile |
 | Seed data | ✅ | V3 seeds 15 iconic Semana Santa marchas with diverse band types and composers |
 
@@ -115,17 +117,17 @@
 
 | # | Severity | Issue | Location |
 |---|----------|-------|----------|
-| 1 | 🔴 High | **No integration tests** — unlike hermandad (2 IT) and procesion (2 IT), repertorio has zero repository or controller integration tests | `src/test/` |
-| 2 | 🟡 Medium | **No Kafka consumer** — `procesion-events` topic has no consumer to handle procesion deletion cleanup (cruceta should cascade) | — |
-| 3 | 🟡 Medium | **Hibernate 7 UUID issue may affect repertorio too** — Procesion needed `Persistable` interface fix. Repertorio entities use same `@UuidGenerator` pattern | All repertorio entities |
+| 1 | 🔴 High | ✅ ~~**No integration tests** — unlike hermandad and procesion, repertorio had zero repository or controller integration tests~~ | `src/test/` |
+| 2 | 🟡 Medium | ✅ ~~**No Kafka consumer** — `procesion-events` topic had no consumer~~ | `ProcesionEventConsumer.java` |
+| 3 | 🟡 Medium | **Hibernate 7 UUID issue may affect repertorio too** — Procesion needed `Persistable` interface fix. Repertorio original entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) use same `@UuidGenerator` pattern. KnownProcesionEntity and ProcessedEventEntity use manual UUIDs — not affected. | All repertorio entities |
 | 4 | 🟠 Low | **No `@PreAuthorize`** — `@EnableMethodSecurity` + `RepertorioSecurityService` declared but unused | `MarchaController.java`, `CrucetaController.java` |
 | 5 | 🟠 Low | **No Redis caching** — consistent with procesion but missing compared to hermandad | — |
 
 ### Recommendations
 
-1. Write integration tests (repository + controller) to match hermandad/procesion pattern
-2. Add Kafka consumer for `procesion-events` to clean up cruceta on procesion deletion
-3. Verify repertorio entities don't hit the same Hibernate 7 UUID save issue
+1. ✅ ~~Write integration tests (repository + controller) to match hermandad/procesion pattern~~
+2. ✅ ~~Add Kafka consumer for `procesion-events` to clean up cruceta on procesion deletion~~
+3. Verify repertorio entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) don't hit the same Hibernate 7 UUID save issue
 4. Optionally add `@PreAuthorize` for consistent method-level security across all services
 
 ---
@@ -134,16 +136,17 @@
 |--------|-----------|-----------|------------|
 | Hexagonal | ✅ | ✅ | ✅ |
 | DDD | ✅ | ✅ | ✅ |
-| Tests | 56 (12 classes, 2 IT) | 47 (6 classes, 2 IT) | 44 (6 classes, 0 IT) |
+| Tests | 56 (12 classes, 2 IT) | 47 (6 classes, 2 IT) | 75 (12 classes, 4 IT) |
 | Security | `@PreAuthorize` + custom JWT converter + SecurityService | `anyRequest().authenticated()` + custom JWT converter | `anyRequest().authenticated()` + custom JWT converter + RepertorioSecurityService (unused) |
-| Event reliability | Outbox + idempotent consumer | Outbox | Outbox |
+| Event reliability | Outbox + idempotent consumer | Outbox | Outbox + idempotent consumer |
+| Cross-service events | Self-consumption only | None (produces `procesion-events`) | ✅ Consumes `procesion-events` (local cache) |
 | Caching | Redis | None | None |
 | Spring Boot | 4.1 (tools.jackson) | 4.1 (tools.jackson) | 4.1 (tools.jackson) |
 | Error responses | ✅ `ApiError` JSON | ✅ `ApiError` JSON | ✅ `ApiError` JSON |
-| Domain tests | ✅ (HermandadTest, HermandadMemberTest) | ✅ (ProcesionTest, 11 state machine tests) | ✅ (MarchaTest, CrucetaTest, 14 total) |
-| Integration tests | ✅ Repository + Controller | ✅ Repository + Controller | ❌ None |
-| Flyway migrations | V1–V7 (7) | V1–V4 (4) | V1–V4 (4) |
+| Domain tests | ✅ (HermandadTest, HermandadMemberTest) | ✅ (ProcesionTest, 11 state machine tests) | ✅ (MarchaTest, CrucetaTest, KnownProcesionTest, 28 total) |
+| Integration tests | ✅ Repository + Controller | ✅ Repository + Controller | ✅ Repository + Controller |
+| Flyway migrations | V1–V7 (7) | V1–V4 (4) | V1–V6 (6) |
 | Docker | ✅ Dockerfile + compose entry | ✅ Dockerfile + compose entry | ✅ Dockerfile + compose entry |
 | Gateway routes | ✅ `/api/hermandades/**` | ✅ `/api/procesiones/**` | ✅ `/api/marchas/**` + `/api/hermandades/*/procesiones/*/cruceta/**` |
-| Kafka consumer | ✅ Self-consumption (idempotent) | ❌ None | ❌ None |
+| Kafka consumer | ✅ Self-consumption (idempotent) | ❌ None | ✅ Cross-service (procesion-events) |
 | Port | 8081 | 8082 | 8083 |

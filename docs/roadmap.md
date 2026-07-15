@@ -15,7 +15,7 @@ This roadmap turns Repertorio from a collection of well-structured services into
 
 | Phase | Outcome | Primary interview theme |
 |---|---|---|
-| 1. Operational procession | One end-to-end business workflow | Service boundaries and eventual consistency |
+| 1. Operational procession | ✅ One end-to-end business workflow | Service boundaries and eventual consistency |
 | 2. Reliable event delivery | Explicit, recoverable event processing | Outbox, idempotency, failure recovery |
 | 3. Observable system | A failure is visible from request to consumer | Logs, metrics, traces, SLO thinking |
 | 4. Contract and tenancy maturity | Services evolve safely and enforce consistent access | API/event contracts and multi-tenancy |
@@ -38,15 +38,15 @@ Create one complete, meaningful workflow across the existing Hermandad, Procesio
 
 ### Acceptance criteria
 
-- A documented demo uses only the API gateway and seeded Keycloak users.
-- The demo crosses at least two services and one Kafka topic.
-- Authorization is enforced using the relevant hermandad membership.
-- The system handles an unavailable referenced resource with a clear, intentional response or documented eventual-consistency rule.
-- Unit, controller, and at least one integration test cover the happy path and a meaningful failure path.
+- ✅ A documented demo uses only the API gateway and seeded Keycloak users.
+- ✅ The demo crosses at least two services and one Kafka topic.
+- ✅ Authorization is enforced using the relevant hermandad membership.
+- ✅ The system handles an unavailable referenced resource with a clear, intentional response or documented eventual-consistency rule.
+- ✅ Unit, controller, and at least one integration test cover the happy path and a meaningful failure path.
 
 ### Key decisions to document
 
-- Whether reference validation between Procesion and Repertorio is synchronous or event-driven.
+- ✅ **Cross-service validation**: Kafka-based eventual consistency (repertorio consumes `procesion-events` to maintain local `KnownProcesion` cache). Synchronous REST lookup was rejected because it couples repertorio to procesion availability.
 - What consistency users see when a marcha or cruceta changes.
 - Why this workflow is the smallest useful MVP.
 

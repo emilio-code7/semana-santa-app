@@ -114,7 +114,7 @@ repertorio/
 ├── services/
 │   ├── hermandad-service/    ✅ Active       # Brotherhoods + members, port 8081 (59 Java files, 50 tests)
 │   ├── procesion-service/    ✅ Active       # Processions + state machine, port 8082 (22 Java files, 47 tests)
-│   ├── repertorio-service/   ✅ Active       # Marcha catalog + Cruceta, port 8083 (42 Java files, 44 tests)
+│   ├── repertorio-service/   ✅ Active       # Marcha catalog + Cruceta, port 8083 (51 Java files, 75 tests)
 │   ├── tracking-service/     ⚠️ Stub         # GPS tracking — build.gradle.kts only, no src/
 │   └── notification-service/ ⚠️ Stub         # Push notifications — build.gradle.kts only, no src/
 │
@@ -135,9 +135,9 @@ repertorio/
 ```
 shared/common  ←────── hermandad-service ←────── api-gateway ←──→ discovery-server
                           ↓ Kafka ↑ (self)
-                      procesion-service (→ Kafka, no consumer yet)
-                          ↓ Kafka (procesion-events — no consumer)
-                      repertorio-service (→ Kafka: marcha-events, no consumer yet)
+                      procesion-service (→ Kafka: procesion-events)
+                          ↓ Kafka (procesion-events)
+                      repertorio-service (→ Kafka: marcha-events, ← Kafka: procesion-events)
                           ↓
                       (2 stub services: tracking, notification)
 ```
@@ -234,13 +234,14 @@ domain/
 | **Port** | 8083 |
 | **Package** | `com.repertorio.marcha` |
 | **DB** | PostgreSQL `repertorio_db` (port 5433) |
-| **Flyway** | 4 migrations (V1–V4) |
-| **Java files** | 42 main + 6 test = 48 total |
-| **Tests** | 44 (6 domain + 2 service + 2 controller slice — no integration tests) |
+| **Flyway** | 6 migrations (V1–V6) |
+| **Java files** | 51 main + 12 test = 63 total |
+| **Tests** | 75 (28 domain + 14 service + 11 controller slice + 5 consumer unit + 17 integration) |
 | **Security** | `anyRequest().authenticated()` + custom JWT converter + `RepertorioSecurityService` |
 | **Caching** | None |
-| **Messaging** | Kafka producer (outbox to `marcha-events`) — no consumer |
-| **Events** | `MarchaAddedEvent`, `MarchaRemovedEvent`, `CrucetaDefinedEvent` |
+| **Messaging** | Kafka producer (outbox to `marcha-events`) + consumer (`procesion-events`, idempotent) |
+| **Events** | Produces: `MarchaAddedEvent`, `MarchaRemovedEvent`, `CrucetaDefinedEvent`. Consumes: `ProcesionCreatedEvent`, `ProcesionStatusChangedEvent` |
+| **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache. Validates cruceta definition against known procesions. |
 | **SB4** | Migrated (`tools.jackson`) |
 
 **Key directories:**
@@ -250,21 +251,22 @@ adapter/
     security/      JwtAuthenticationConverter, RepertorioSecurityService, SecurityConfig
     OpenApiConfig.java
   inbound/
+    kafka/         ProcesionEventConsumer
     rest/
       controller/  MarchaController, CrucetaController
       dto/         MarchaRequest, MarchaResponse, CrucetaRequest, CrucetaItemRequest, CrucetaResponse, ApiError
       GlobalExceptionHandler.java
   outbound/
-    events/        DomainEventPublisherAdapter
+    events/        DomainEventPublisherAdapter, ProcessedEventEntity, ProcessedEventJpaRepository
     outbox/        OutboxEventEntity, OutboxEventJpaRepository, OutboxEventPublisher, OutboxPoller
-    persistence/   MarchaEntity, MarchaJpaRepository, MarchaRepositoryAdapter, CrucetaEntity, CrucetaItemEntity, CrucetaJpaRepository, CrucetaRepositoryAdapter
+    persistence/   MarchaEntity, MarchaJpaRepository, MarchaRepositoryAdapter, CrucetaEntity, CrucetaItemEntity, CrucetaJpaRepository, CrucetaRepositoryAdapter, KnownProcesionEntity, KnownProcesionJpaRepository, KnownProcesionRepositoryAdapter
 application/
   port/            DomainEventPublisher, OutboxPublisher
   service/         MarchaService, CrucetaService
 domain/
   event/           DomainEvent, MarchaAddedEvent, MarchaRemovedEvent, CrucetaDefinedEvent
-  model/           BandType, Marcha, MarchaNotFoundException, Cruceta, CrucetaItem, CrucetaNotFoundException
-  port/            MarchaRepository, CrucetaRepository
+  model/           BandType, Marcha, MarchaNotFoundException, Cruceta, CrucetaItem, CrucetaNotFoundException, KnownProcesion, ProcesionNotFoundException
+  port/            MarchaRepository, CrucetaRepository, KnownProcesionRepository
 ```
 
 ### 2.2 Stub Services (build.gradle.kts only — no src/)
@@ -330,8 +332,9 @@ Domain Event (e.g. HermandadCreatedEvent)
                     └──► Kafka topic (e.g. hermandad-events, procesion-events)
 ```
 
-### 3.3 Event Consumption Flow (Hermandad only)
+### 3.3 Event Consumption Flow
 
+**Hermandad (self-consumption):**
 ```
 Kafka topic: hermandad-events / hermandad-member-events
     │
@@ -344,7 +347,24 @@ Kafka topic: hermandad-events / hermandad-member-events
             └──► ⚠️ No downstream processing — currently a sink (audit/self-consumption)
 ```
 
-**Note**: `procesion-events` and `marcha-events` topics exist but have **no consumer** — these services only produce to Kafka.
+**Repertorio (cross-service consumer):**
+```
+Kafka topic: procesion-events
+    │
+    └──► ProcesionEventConsumer (groupId = repertorio-service-group)
+            │
+            ├──► Check processed_event table by deterministic UUID
+            │       ├── Existing → log "duplicate skipped"
+            │       └── New → save processed_event row
+            │
+            └──► Parse event payload:
+                    ├── Has "date" field → ProcesionCreatedEvent
+                    │       └── knownProcesionRepository.save(KnownProcesion(procesionId, hermandadId, "PLANNED"))
+                    └── Has "status" field → ProcesionStatusChangedEvent
+                            └── knownProcesionRepository.updateStatus(procesionId, newStatus)
+```
+
+**Note**: `marcha-events` topic exists but has **no consumer** — repertorio only produces to this topic.
 
 ### 3.4 Kafka Topology
 
@@ -352,7 +372,7 @@ Kafka topic: hermandad-events / hermandad-member-events
 |-------|-----------|----------|----------|--------|
 | `hermandad-events` | 3 | hermandad-service (outbox) | hermandad-service (self) | ✅ |
 | `hermandad-member-events` | 3 | hermandad-service (outbox) | hermandad-service (self) | ✅ |
-| `procesion-events` | 3 | procesion-service (outbox) | none | ⚠️ Orphan topic |
+| `procesion-events` | 3 | procesion-service (outbox) | repertorio-service (local cache) | ✅ |
 | `marcha-events` | 3 | repertorio-service (outbox) | none | ⚠️ Orphan topic |
 | `notification-commands` | 3 | none (planned) | none | ⚠️ No producer/consumer |
 | `tracking-events` | 6 | none (planned) | none | ⚠️ No producer/consumer |
@@ -566,7 +586,25 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 
 #### `outbox_event` table (same schema as procesion with TEXT payload)
 
-**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table)
+#### `known_procesion` table
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `procesion_id` | UUID | PK |
+| `hermandad_id` | UUID | NOT NULL |
+| `status` | VARCHAR(20) | NOT NULL |
+| `updated_at` | TIMESTAMPTZ | NOT NULL |
+| | | INDEX idx_known_procesion_hermandad_id (hermandad_id) |
+
+#### `processed_event` table (idempotency)
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `event_id` | UUID | PK |
+| `consumer_name` | VARCHAR(100) | NOT NULL |
+| `processed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event)
 
 ### 5.4 Domain Entity ↔ DB Mapping
 
@@ -579,7 +617,9 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `CrucetaEntity` | `cruceta` | `@UuidGenerator` |
 | `CrucetaItemEntity` | `cruceta_item` | `@UuidGenerator` |
 | `OutboxEventEntity` (all) | `outbox_event` | `@UuidGenerator` |
-| `ProcessedEventEntity` | `processed_event` | manual UUID |
+| `KnownProcesionEntity` | `known_procesion` | manual UUID (procesion_id is PK) |
+| `ProcessedEventEntity` (hermandad) | `processed_event` | manual UUID |
+| `ProcessedEventEntity` (repertorio) | `processed_event` | manual UUID |
 
 ---
 
@@ -690,12 +730,12 @@ Request with Bearer JWT
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
 | **hermandad-service** | 12 | **56** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
 | **procesion-service** | 6 | **47** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 6 | **44** | 0 | No integration tests yet |
+| **repertorio-service** | 12 | **75** | 4 (Repository IT + Controller IT + KnownProcesion IT + Consumer unit) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
 | **shared/common** | 2 | 7 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
 | **2 stub services** | 0 | 0 | 0 | ❌ |
-| **Total** | **26** | **154** | **4** | |
+| **Total** | **32** | **185** | **8** | |
 
 ### 8.2 Hermandad Tests
 
@@ -728,14 +768,18 @@ Request with Bearer JWT
 
 | Test File | Type | Tests | What it covers |
 |-----------|------|:-----:|----------------|
-| `MarchaTest.java` | Domain unit | 6 | Entity creation, validation (blank title/composer, negative duration), MarchaNotFoundException |
-| `CrucetaTest.java` | Domain unit | 8 | Entity creation, item validation, duplicate order_index rejection, `redefine()`, `containsMarcha()` |
-| `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
-| `CrucetaServiceTest.java` | Unit (mock service) | 7 | Get cruceta, define cruceta, item validation, MarchaNotFoundException on missing marcha |
-| `MarchaControllerTest.java` | Web slice (MockMvc) | 13 | All endpoints, 401 scenarios, search |
-| `CrucetaControllerTest.java` | Web slice (MockMvc) | 6 | Get/define cruceta, 401 scenarios |
-
-**Missing**: No integration tests (no `IntegrationTest` files exist — unlike hermandad/procesion which have repository + controller ITs). No Kafka consumer tests.
+| `MarchaTest.java` | Domain unit | 11 | Entity creation, validation, not-found, BandType string mapping |
+| `CrucetaTest.java` | Domain unit | 9 | Entity creation, item validation, duplicate order_index rejection, `redefine()`, `containsMarcha()` |
+| `KnownProcesionTest.java` | Domain unit | 8 | Creation, validation, reconstruct, status updates |
+| `MarchaServiceTest.java` | Unit (mock service) | 8 | CRUD, events, search, existence check |
+| `CrucetaServiceTest.java` | Unit (mock service) | 6 | Get/define cruceta, item validation, ProcesionNotFoundException on unknown procesion |
+| `MarchaControllerTest.java` | Web slice (MockMvc) | 6 | All endpoints, 401 scenarios, search |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 5 | Get/define cruceta, 401 scenarios |
+| `ProcesionEventConsumerTest.java` | Unit (mock service) | 5 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
+| `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
+| `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
+| `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
+| `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 4 | Get cruceta, define cruceta with known procesion, 404 on unknown procesion |
 
 ### 8.5 Shared Tests
 
@@ -764,13 +808,13 @@ Request with Bearer JWT
 | 3 | 🟠 Low | ✅ ~~**Dead `@EnableFeignClients`** — annotation + `spring-cloud-starter-openfeign` with zero `@FeignClient`~~ | `ProcesionServiceApplication.java:12`, `build.gradle.kts:18` | Done |
 | 4 | 🟠 Low | **No Redis caching on procesion or repertorio** — hermandad has it, read-heavy listings would benefit | — | Open |
 | 5 | 🟠 Low | ✅ ~~**3 ghost gateway routes** — repertorio, tracking, notification routes point to stub services → 503~~ | `api-gateway/application.yml:33-48` | Done (repertorio fixed, 2 remain) |
-| 6 | 🟡 Medium | **No consumers for 4 Kafka topics** — `procesion-events`, `marcha-events`, `notification-commands`, `tracking-events` have no handlers | Kafka init | Open |
+| 6 | 🟡 Medium | ✅ ~~**No consumers for 4 Kafka topics** — `procesion-events` (repertorio consumes), `marcha-events`, `notification-commands`, `tracking-events` have no handlers~~ | Kafka init | Resolved (procesion-events) |
 | 7 | 🟠 Low | **Hermandad self-consumption** — `IdempotentEventConsumer` consumes hermandad's own topics, no downstream logic | `IdempotentEventConsumer.java` | Open (maybe intentional) |
 | 8 | 🟡 Medium | ✅ ~~**Infrastructure zero tests** — `api-gateway` + `discovery-server` have no test coverage at all~~ | — | Done |
 | 9 | 🟠 Low | ✅ ~~**Hermandad constructor no validation** — `name`/`city` could be empty strings~~ | `Hermandad.java:34-39` | Done |
 | 10 | 🟠 Low | **Gateway routes for `/api/hermandades/{id}/procesiones`** defined in gateway but don't exist in hermandad (legacy from initial design) | `api-gateway/SecurityConfig.java:21-23` | Open (stale routes) |
-| 11 | 🟡 Medium | **Repertorio has no integration tests** — missing repository + controller integration tests unlike hermandad and procesion | `repertorio-service/src/test/` | Open |
-| 12 | 🟡 Medium | **Procesion service Hibernate 7 fix** — `Procesion` entity needed `Persistable` interface for UUID save. Check if repertorio entities need same fix | `Procesion.java`, repertorio entities | Open |
+| 11 | 🟡 Medium | ✅ ~~**Repertorio has no integration tests** — missing repository + controller integration tests unlike hermandad and procesion~~ | `repertorio-service/src/test/` | Done |
+| 12 | 🟡 Medium | **Procesion service Hibernate 7 fix** — `Procesion` entity needed `Persistable` interface for UUID save. Check if repertorio entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) need same fix. KnownProcesionEntity and ProcessedEventEntity use manual UUIDs — not affected. | `Procesion.java`, repertorio entities | Open |
 | 13 | 🔴 High | **Procesion Hibernate 7 UUID regression** — commit 0577a09 added `Persistable` to `Procesion` to fix save. Root cause unclear — Hibernate 7 may have same issue on all entities | `Procesion.java:1-8` | 🔴 Open |
 
 ---
@@ -891,7 +935,7 @@ domain/
   repository/ProcesionRepository.java
 ```
 
-### repertorio-service (42 main files)
+### repertorio-service (51 main files)
 
 ```
 RepertorioServiceApplication.java
@@ -903,6 +947,8 @@ adapter/
       RepertorioSecurityService.java
       SecurityConfig.java
   inbound/
+    kafka/
+      ProcesionEventConsumer.java
     rest/
       GlobalExceptionHandler.java
       controller/
@@ -916,7 +962,10 @@ adapter/
         MarchaRequest.java
         MarchaResponse.java
   outbound/
-    events/DomainEventPublisherAdapter.java
+    events/
+      DomainEventPublisherAdapter.java
+      ProcessedEventEntity.java
+      ProcessedEventJpaRepository.java
     outbox/
       OutboxEventEntity.java
       OutboxEventJpaRepository.java
@@ -927,6 +976,9 @@ adapter/
       CrucetaItemEntity.java
       CrucetaJpaRepository.java
       CrucetaRepositoryAdapter.java
+      KnownProcesionEntity.java
+      KnownProcesionJpaRepository.java
+      KnownProcesionRepositoryAdapter.java
       MarchaEntity.java
       MarchaJpaRepository.java
       MarchaRepositoryAdapter.java
@@ -948,10 +1000,13 @@ domain/
     Cruceta.java
     CrucetaItem.java
     CrucetaNotFoundException.java
+    KnownProcesion.java
     Marcha.java
     MarchaNotFoundException.java
+    ProcesionNotFoundException.java
   port/
     CrucetaRepository.java
+    KnownProcesionRepository.java
     MarchaRepository.java
 ```
 
