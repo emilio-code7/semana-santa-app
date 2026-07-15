@@ -5,7 +5,9 @@ import com.repertorio.marcha.domain.event.CrucetaDefinedEvent;
 import com.repertorio.marcha.domain.model.Cruceta;
 import com.repertorio.marcha.domain.model.CrucetaItem;
 import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
+import com.repertorio.marcha.domain.model.ProcesionNotFoundException;
 import com.repertorio.marcha.domain.port.CrucetaRepository;
+import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,13 @@ public class CrucetaService {
 
     private final CrucetaRepository crucetaRepository;
     private final DomainEventPublisher eventPublisher;
+    private final KnownProcesionRepository knownProcesionRepository;
 
     @Transactional
     public Cruceta defineCruceta(UUID procesionId, List<CrucetaItem> items) {
+        if (!knownProcesionRepository.existsByProcesionId(procesionId)) {
+            throw new ProcesionNotFoundException(procesionId);
+        }
         var existing = crucetaRepository.findByProcesionId(procesionId);
         existing.ifPresent(c -> crucetaRepository.deleteByProcesionId(procesionId));
 
