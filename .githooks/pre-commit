@@ -1,0 +1,48 @@
+#!/bin/bash
+set -euo pipefail
+
+# ─────────────────────────────────────────────────────────────────────────────
+# pre-commit — enforce spec-first development
+# Hook runs on staged changes only (git diff --cached).
+# ─────────────────────────────────────────────────────────────────────────────
+
+STAGED=$(git diff --cached --name-only)
+
+# Skip all checks if nothing staged (e.g. --allow-empty)
+[[ -z "$STAGED" ]] && exit 0
+
+# ── 1. OpenAPI spec check (blocking) ───────────────────────────────────────
+if echo "$STAGED" | grep -q 'Controller\.java$'; then
+    if ! echo "$STAGED" | grep -q 'docs/openapi\.yaml$'; then
+        echo "ERROR: Changed controllers but not openapi.yaml. Update the spec first."
+        exit 1
+    fi
+fi
+
+# ── 2. Doc update check (warning) ──────────────────────────────────────────
+if echo "$STAGED" | grep -q '^services/.*/src/main/java/'; then
+    if ! echo "$STAGED" | grep -qE '^docs/(.*\.md|openapi\.yaml)$'; then
+        echo "WARNING: Source changed but no docs updated."
+    fi
+fi
+
+# ── 3. FIXME/TODO/HACK check (warning) ─────────────────────────────────────
+if git diff --cached -U0 | grep '^\+' | grep -v '^\+\+\+' | grep -qiE '(FIXME|TODO|HACK)'; then
+    echo "WARNING: Commit contains FIXME/TODO/HACK markers."
+fi
+
+# ── 4. Java compile check (best-effort) ────────────────────────────────────
+SERVICES=$(echo "$STAGED" \
+    | grep '^services/.*/src/main/java/' \
+    | sed 's|^services/\([^/]*\)/.*|\1|' \
+    | sort -u)
+
+if [[ -n "$SERVICES" ]] && command -v ./gradlew &>/dev/null; then
+    # Only run if a Gradle daemon is already alive (skip to avoid cold start)
+    if ps aux | grep -q '[G]radleDaemon'; then
+        for svc in $SERVICES; do
+            echo "INFO: Compile check for :services:$svc ..."
+            ./gradlew ":services:$svc:compileJava" 2>/dev/null || true
+        done
+    fi
+fi

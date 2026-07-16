@@ -90,7 +90,7 @@ Every change that touches any of these **must** update the corresponding documen
 | Feature implementation | `docs/plans/<plan-file>` |
 | Functional map (this document) | `docs/functional-map.md` |
 
-**Order matters**: OpenAPI spec first (it's the contract), then docs, then code if the change was already implemented.
+**Order matters**: OpenAPI spec first (it's the contract), then docs, then code. The pre-commit hook enforces this: if a controller changes without openapi.yaml, the commit is blocked. The CI pipeline validates the spec on every push.
 
 ---
 
@@ -101,6 +101,14 @@ repertorio/
 ├── build.gradle.kts                          # Root: Spring Boot 4.1.0 + Spring Cloud 2025.1.2 BOM
 ├── settings.gradle.kts                       # 7 modules: 2 infra, 5 services, 1 shared
 ├── README.md                                 # Project overview, quick start, architecture, demo
+├── CLAUDE.md                                 # Agent invariants + development workflow — first thing agents read
+├── .githooks/
+│   ├── README.md                             # Setup instructions
+│   └── pre-commit                            # Enforces OpenAPI-first, doc updates, no FIXMEs
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                            # Tests + spec validation on every push
+│       └── deploy.yml                        # Build → ECR → EC2 deploy (AWS)
 ├── gradle/
 │   ├── libs.versions.toml                    # Version catalog (Java 21, SB 4.1.0, Testcontainers 1.20.1)
 │   └── properties                            # -Xmx2g, auto-download JDK

@@ -19,19 +19,21 @@ Spec (functional-map + OpenAPI) → Plan → Gherkin scenarios → Review → Im
 ### Step-by-step
 
 1. **Read the spec** — `docs/functional-map.md` for project context, `docs/openapi.yaml` for API contracts, the relevant plan in `docs/plans/`
-2. **Extract Gherkin scenarios** — Before writing code, write `Feature:`, `Scenario:`, `Given/When/Then` blocks covering:
+2. **Update OpenAPI spec FIRST** — Before writing any code, update `docs/openapi.yaml` with the new endpoints, request/response schemas, and operationIds. The spec is the contract. Code implements the spec, not the other way around.
+3. **Extract Gherkin scenarios** — Write `Feature:`, `Scenario:`, `Given/When/Then` blocks covering:
    - Happy path
    - Error/edge cases (null, not found, invalid state)
    - Auth/permission boundaries
-3. **Present scenarios for review** — Show the scenarios. Wait for approval before implementing.
-4. **Implement TDD** — Test first, then code. One behavior change per commit.
-5. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
-6. **Verify gate** — Tests pass, build succeeds, no FIXME/TODO/HACK markers.
-7. **Commit** — Conventional commit message.
+4. **Present scenarios for review** — Show the scenarios. Wait for approval before implementing.
+5. **Implement TDD** — Test first, then code. One behavior change per commit.
+6. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
+7. **Update docs** — See functional-map §0.9 for which docs to update per change type. Regenerate Bruno scripts if API changed.
+8. **Verify gate** — Tests pass, build succeeds, no FIXME/TODO/HACK markers, pre-commit hook passes.
+9. **Commit** — Conventional commit message.
 
 ### Why
 
-Gherkin scenarios catch misunderstandings at the text level (easy to fix) instead of the code level (rewrite implementation). Reviewing scenarios before code reduces wasted work.
+The pre-commit hook blocks commits that change controllers without updating OpenAPI. The CI pipeline validates the spec on every push. Gherkin scenarios catch misunderstandings at the text level (easy to fix) instead of the code level (rewrite implementation). Reviewing scenarios before code reduces wasted work.
 
 ## Hard Rules (never violate)
 
