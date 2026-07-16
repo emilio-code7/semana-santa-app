@@ -1,13 +1,74 @@
 # Agent Workflow Optimization Research
 
 > Saved: 2026-07-15. Source: librarian research + oracle analysis.
-> Topic: Loop engineering, reducing hallucinations, OpenCode ecosystem.
+> Topic: Loop engineering, reducing hallucinations, OpenCode ecosystem, Spec-Driven Development.
 
 ---
 
-## Key Findings
+## Spec-Driven Development (SDD) for AI Agents
 
-### Loop Engineering — The Loop Is the Unit of Work
+### The Three Levels
+
+| Level | Name | What it means | When |
+|-------|------|---------------|------|
+| 1 | Spec-first | Write spec before code, but spec is disposable | AI-assisted initial development |
+| 2 | **Spec-anchored** | Spec is kept after implementation, maintained alongside code | **Long-lived production systems ← we are here** |
+| 3 | Spec-as-source | Only the spec is edited; code is always regenerated from it | Mature tooling, high trust in generation |
+
+**Golden rule:** "Use the minimum level of specification rigor that removes ambiguity for your context."
+
+### Our Current SDD Mapping
+
+| SDD artifact | Our equivalent | Status |
+|-------------|----------------|--------|
+| Spec (what/why) | `docs/functional-map.md` + OpenAPI spec | ✅ |
+| Plan (how) | `docs/architecture.md` + `docs/plans/` | ✅ |
+| Tasks | Sprint plans with acceptance criteria | ✅ |
+| Constitution | `CLAUDE.md` hard rules | ✅ New |
+| Contract validation | OpenAPI spec | ⚠️ Passive — not executable |
+| Gherkin scenarios | Plan acceptance criteria | ⚠️ Gherkin-like, not formal |
+| **Contract tests** | Specmatic | ❌ Missing — the gap |
+
+### The Gap
+
+We're **spec-first but not spec-enforced.** The spec drives initial implementation but there's no automated check that code still matches the spec after changes. This is exactly what Specmatic solves.
+
+### Specmatic Overview
+
+- Runs contract tests from OpenAPI spec against running service
+- Validates every endpoint request/response against spec
+- Generates boundary/resiliency tests automatically
+- Native Spring Boot integration (JUnit 5, Testcontainers support)
+- AsyncAPI support for Kafka events (our outbox pattern)
+- Backward compatibility checks
+- Has MCP server mode for agent workflows
+- CI gate: `specmatic test` must pass before merge
+
+### Agent Workflow with SDD (proposed)
+
+```
+Functional Map → OpenAPI Spec → Specmatic Contract Tests
+Functional Map → Feature Spec → Gherkin Scenarios → Agent Implementation → Contract Tests Pass? → Human Review → Merge
+```
+
+### Key Insight
+
+SDD's value isn't in the commands — it's in the **checkpoints**. The review gates are where the human catches mistakes before they compound into code. We already have these checkpoints. Encoding them explicitly as a step the agent can't skip is the upgrade.
+
+### Proven vs Experimental
+
+| Adopt now | Watch |
+|-----------|-------|
+| OpenAPI as executable contract via Specmatic | Full spec-as-source (Tessl, CodeMySpec) |
+| Gherkin scenarios as agent acceptance criteria | Multi-agent orchestrators from spec |
+| Contract testing in CI as drift detection | Living specs that auto-update (Intent) |
+| Spec → Plan → Tasks workflow | Formal verification of spec-compliance |
+| Three-tier boundaries (Always/Ask/Never) | MCP server generation from spec |
+
+---
+
+## Loop Engineering
+...
 
 | Layer | What it does | When it matters |
 |-------|-------------|-----------------|
