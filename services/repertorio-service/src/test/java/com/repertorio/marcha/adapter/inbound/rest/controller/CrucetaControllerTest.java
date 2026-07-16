@@ -1,5 +1,6 @@
 package com.repertorio.marcha.adapter.inbound.rest.controller;
 
+import com.repertorio.marcha.adapter.config.security.RepertorioSecurityService;
 import com.repertorio.marcha.adapter.config.security.SecurityConfig;
 import com.repertorio.marcha.application.service.CrucetaService;
 import com.repertorio.marcha.domain.model.Cruceta;
@@ -26,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CrucetaController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, RepertorioSecurityService.class})
 class CrucetaControllerTest {
 
     @Autowired

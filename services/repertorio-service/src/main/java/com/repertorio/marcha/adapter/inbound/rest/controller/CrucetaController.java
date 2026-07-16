@@ -10,9 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -44,21 +43,16 @@ public class CrucetaController {
             @ApiResponse(responseCode = "400", description = "Invalid input"),
             @ApiResponse(responseCode = "403", description = "Not authorized")
     })
+    @PreAuthorize("@repertorioSecurity.isAdmin(#hermandadId)")
     public ResponseEntity<CrucetaResponse> defineCruceta(
             @PathVariable UUID hermandadId,
             @PathVariable UUID procesionId,
             @Valid @RequestBody CrucetaRequest request) {
-        // ponytail: inline admin check
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        var adminAuthority = "HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN";
-        if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals(adminAuthority))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
         log.info("Defining cruceta for procesion {} (hermandad {})", procesionId, hermandadId);
         var items = request.items().stream()
                 .map(i -> new CrucetaItem(i.marchaId(), i.orderIndex(), i.notes()))
                 .toList();
         var cruceta = crucetaService.defineCruceta(procesionId, items);
-        return ResponseEntity.status(HttpStatus.OK).body(CrucetaResponse.from(cruceta));
+        return ResponseEntity.ok(CrucetaResponse.from(cruceta));
     }
 }
