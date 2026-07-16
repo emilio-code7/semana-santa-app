@@ -18,12 +18,6 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.GET, "/api/hermandades").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/hermandades/{hermandadId}").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/hermandades/{hermandadId}/procesiones").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/hermandades/{hermandadId}/procesiones/{procesionId}").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/hermandades/{hermandadId}/procesiones/{procesionId}/current-marcha").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/marchas/**").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/hermandades/{hermandadId}/marchas/**").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/procesiones/live").permitAll()
                         .pathMatchers(HttpMethod.GET, "/actuator/**").permitAll()
                         .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyExchange().authenticated()
