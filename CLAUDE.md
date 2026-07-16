@@ -8,6 +8,31 @@ Semana Santa management system: 3 Spring Boot microservices (hermandad, procesio
 
 Read `docs/functional-map.md` before any implementation work — it's your complete reference: topology, profiles, endpoints, DB schemas, test inventory, operating principles. This file is the pointer. That file is the truth.
 
+## Development Workflow (follow this every time, automatically)
+
+This is the default workflow. Do not wait for the user to prompt it.
+
+```
+Spec (functional-map + OpenAPI) → Plan → Gherkin scenarios → Review → Implement → Contract tests → Verify → Commit
+```
+
+### Step-by-step
+
+1. **Read the spec** — `docs/functional-map.md` for project context, `docs/openapi.yaml` for API contracts, the relevant plan in `docs/plans/`
+2. **Extract Gherkin scenarios** — Before writing code, write `Feature:`, `Scenario:`, `Given/When/Then` blocks covering:
+   - Happy path
+   - Error/edge cases (null, not found, invalid state)
+   - Auth/permission boundaries
+3. **Present scenarios for review** — Show the scenarios. Wait for approval before implementing.
+4. **Implement TDD** — Test first, then code. One behavior change per commit.
+5. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
+6. **Verify gate** — Tests pass, build succeeds, no FIXME/TODO/HACK markers.
+7. **Commit** — Conventional commit message.
+
+### Why
+
+Gherkin scenarios catch misunderstandings at the text level (easy to fix) instead of the code level (rewrite implementation). Reviewing scenarios before code reduces wasted work.
+
 ## Hard Rules (never violate)
 
 1. **No JPA annotations in domain layer.** `@Entity`, `@Table`, `@Id` go in adapter JPA entities. Domain classes are pure Java.
@@ -21,6 +46,7 @@ Read `docs/functional-map.md` before any implementation work — it's your compl
 
 - Read the plan file in `docs/plans/` for the current sprint first
 - Read `docs/functional-map.md` §0 (Operating Principles) — covers hexagonal layering, DDD, security, outbox, Flyway, YAGNI, commit discipline
+- Read `docs/research/agent-workflow-optimization.md` for deeper SDD and agent loop context
 - For implementation: use the plan's acceptance criteria as your test
 - For architecture questions: read `docs/architecture.md`
 
@@ -33,6 +59,7 @@ Read `docs/functional-map.md` before any implementation work — it's your compl
 | Using `tools.jackson` imports | Yes, Spring Boot 4.1 uses `tools.jackson` — NOT `com.fasterxml.jackson` |
 | Writing code without reading the plan first | The plan has acceptance criteria. Read it. |
 | Claiming "all tests pass" without running them | Run `./gradlew test` first. Verify output. |
+| Adding dead abstractions (interface for single impl, factory for one product) | YAGNI. One implementation doesn't need an interface. |
 
 ## Verification Gate
 
