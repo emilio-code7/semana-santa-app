@@ -122,4 +122,27 @@ class MarchaServiceTest {
 
         assertThrows(MarchaNotFoundException.class, () -> marchaService.deleteMarcha(id));
     }
+
+    @Test
+    void search_returnsMatchesByTitleOrComposer() {
+        var match = Marcha.create("El Amor de Dios", "Manuel López Farfán", BandType.BANDA_PALIO, 420, null, null);
+        when(marchaRepository.findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase("amor", "amor"))
+                .thenReturn(List.of(match));
+
+        var result = marchaService.search("amor");
+
+        assertEquals(1, result.size());
+        assertEquals("El Amor de Dios", result.get(0).getTitle());
+        verify(marchaRepository).findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase("amor", "amor");
+    }
+
+    @Test
+    void search_returnsEmptyWhenNoMatches() {
+        when(marchaRepository.findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase("zzzzz", "zzzzz"))
+                .thenReturn(List.of());
+
+        var result = marchaService.search("zzzzz");
+
+        assertTrue(result.isEmpty());
+    }
 }

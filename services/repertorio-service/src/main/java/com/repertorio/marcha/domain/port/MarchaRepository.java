@@ -12,4 +12,5 @@ public interface MarchaRepository {
     List<Marcha> findAll();
     void deleteById(UUID id);
     boolean existsById(UUID id);
+    List<Marcha> findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase(String title, String composer);
 }

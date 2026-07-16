@@ -44,6 +44,12 @@ public class MarchaRepositoryAdapter implements MarchaRepository {
         return jpa.existsById(id);
     }
 
+    @Override
+    public List<Marcha> findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase(String title, String composer) {
+        return jpa.findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase(title, composer)
+                .stream().map(this::toDomain).toList();
+    }
+
     private MarchaEntity toEntity(Marcha m) {
         return new MarchaEntity(m.getId(), m.getTitle(), m.getComposer(), m.getBandType(),
                 m.getDurationSeconds(), m.getCompositionYear(), m.getYoutubeUrl(),

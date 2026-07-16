@@ -1,15 +1,21 @@
 package com.repertorio.marcha.adapter.outbound.persistence;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.domain.Persistable;
 import java.util.UUID;
 
 @Entity
 @Table(name = "cruceta_item",
        uniqueConstraints = @UniqueConstraint(columnNames = {"cruceta_id", "order_index"}))
-public class CrucetaItemEntity {
+public class CrucetaItemEntity implements Persistable<UUID> {
 
     @Id
+    @UuidGenerator
     private UUID id;
+
+    @Version
+    private int version;
 
     @Column(name = "cruceta_id", nullable = false)
     private UUID crucetaId;
@@ -33,7 +39,12 @@ public class CrucetaItemEntity {
         this.notes = notes;
     }
 
+    @Override
     public UUID getId() { return id; }
+
+    @Override
+    public boolean isNew() { return id == null; }
+
     public UUID getCrucetaId() { return crucetaId; }
     public UUID getMarchaId() { return marchaId; }
     public int getOrderIndex() { return orderIndex; }

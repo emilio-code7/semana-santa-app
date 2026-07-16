@@ -484,6 +484,19 @@
         }
       }
     },
+    "/api/marchas/search": {
+      "get": {
+        "tags": ["marcha-controller"],
+        "summary": "Search marchas by title or composer",
+        "operationId": "searchMarchas",
+        "parameters": [ { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } } ],
+        "responses": {
+          "200": { "description": "Matching marchas (empty array if none)", "content": { "*/*": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/MarchaResponse" } } } } },
+          "400": { "description": "Missing required query parameter q" },
+          "401": { "description": "Unauthorized — missing or invalid JWT" }
+        }
+      }
+    },
     "/api/marchas/{id}": {
       "get": {
         "tags": ["marcha-controller"],

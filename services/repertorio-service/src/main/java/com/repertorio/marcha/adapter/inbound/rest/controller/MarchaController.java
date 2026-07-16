@@ -65,6 +65,19 @@ public class MarchaController {
         return ResponseEntity.ok(marchas);
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Search marchas by title or composer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Matching marchas (empty array if none)")
+    })
+    public ResponseEntity<List<MarchaResponse>> searchMarchas(@RequestParam(required = true) String q) {
+        log.info("Searching marchas with query: {}", q);
+        var marchas = marchaService.search(q).stream()
+                .map(MarchaResponse::from)
+                .toList();
+        return ResponseEntity.ok(marchas);
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update a marcha")
     @ApiResponses({

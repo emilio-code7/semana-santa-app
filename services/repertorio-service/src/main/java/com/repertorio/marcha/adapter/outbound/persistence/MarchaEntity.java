@@ -2,15 +2,21 @@ package com.repertorio.marcha.adapter.outbound.persistence;
 
 import com.repertorio.marcha.domain.model.BandType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.domain.Persistable;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "marcha")
-public class MarchaEntity {
+public class MarchaEntity implements Persistable<UUID> {
 
     @Id
+    @UuidGenerator
     private UUID id;
+
+    @Version
+    private int version;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -53,7 +59,12 @@ public class MarchaEntity {
         this.updatedAt = updatedAt;
     }
 
+    @Override
     public UUID getId() { return id; }
+
+    @Override
+    public boolean isNew() { return id == null; }
+
     public String getTitle() { return title; }
     public String getComposer() { return composer; }
     public BandType getBandType() { return bandType; }

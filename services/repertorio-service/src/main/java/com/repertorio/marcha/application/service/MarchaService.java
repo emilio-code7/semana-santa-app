@@ -41,6 +41,11 @@ public class MarchaService {
         return marchaRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
+    public List<Marcha> search(String query) {
+        return marchaRepository.findByTitleContainingIgnoreCaseOrComposerContainingIgnoreCase(query, query);
+    }
+
     @Transactional
     public Marcha updateMarcha(UUID id, String title, String composer, BandType bandType,
                                int durationSeconds, Integer compositionYear, String youtubeUrl) {

@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -117,5 +118,59 @@ class MarchaControllerTest {
         mockMvc.perform(delete("/api/marchas/{id}", marchaId)
                         .with(jwt()))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void searchMarchasByTitleReturnsMatches() throws Exception {
+        var match = buildMarcha();
+        when(marchaService.search("amor")).thenReturn(List.of(match));
+
+        mockMvc.perform(get("/api/marchas/search")
+                        .param("q", "amor")
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Amarguras"));
+        verify(marchaService).search("amor");
+    }
+
+    @Test
+    void searchMarchasByComposerReturnsMatches() throws Exception {
+        var match = buildMarcha();
+        when(marchaService.search("moreno")).thenReturn(List.of(match));
+
+        mockMvc.perform(get("/api/marchas/search")
+                        .param("q", "moreno")
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void searchMarchasNoMatchesReturnsEmptyArray() throws Exception {
+        when(marchaService.search("zzzzznotfound")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/marchas/search")
+                        .param("q", "zzzzznotfound")
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void searchMarchasMissingQReturns400() throws Exception {
+        mockMvc.perform(get("/api/marchas/search")
+                        .with(jwt()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void searchMarchasUnauthenticatedReturns401() throws Exception {
+        mockMvc.perform(get("/api/marchas/search")
+                        .param("q", "test"))
+                .andExpect(status().isUnauthorized());
     }
 }
