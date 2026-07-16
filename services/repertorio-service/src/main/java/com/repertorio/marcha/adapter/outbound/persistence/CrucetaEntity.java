@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cruceta")
+@Table(name = "cruceta", indexes = @Index(name = "idx_cruceta_procesion_id", columnList = "procesion_id", unique = true))
 public class CrucetaEntity {
 
     @Id
