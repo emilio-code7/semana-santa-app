@@ -1,9 +1,11 @@
 package com.repertorio.procesion.adapter.inbound.rest.controller;
 
+import com.repertorio.common.JdbcIntegrationTestBase;
 import com.repertorio.procesion.adapter.outbound.outbox.OutboxEventJpaRepository;
+import com.repertorio.procesion.adapter.outbound.persistence.ProcesionEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionJpaRepository;
 import com.repertorio.procesion.domain.model.Procesion;
-import org.junit.jupiter.api.BeforeAll;
+import com.repertorio.procesion.domain.model.ProcesionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,30 +28,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class ProcesionControllerIntegrationTest {
-
-    private static final String POSTGRES_JDBC = System.getenv().getOrDefault(
-            "IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5434/procesion_db");
-    private static final String POSTGRES_USER = System.getenv().getOrDefault(
-            "IT_DATASOURCE_USERNAME", "postgres");
-    private static final String POSTGRES_PASS = System.getenv().getOrDefault(
-            "IT_DATASOURCE_PASSWORD", "postgres");
-
-    @BeforeAll
-    static void checkPostgresRunning() {
-        try (var c = java.sql.DriverManager.getConnection(POSTGRES_JDBC, POSTGRES_USER, POSTGRES_PASS)) {
-            // connection OK
-        } catch (Exception e) {
-            org.junit.jupiter.api.Assumptions.assumeTrue(false,
-                    "PostgreSQL not reachable at " + POSTGRES_JDBC + " — skipping integration test");
-        }
-    }
+class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> POSTGRES_JDBC);
-        registry.add("spring.datasource.username", () -> POSTGRES_USER);
-        registry.add("spring.datasource.password", () -> POSTGRES_PASS);
+        registry.add("spring.datasource.url", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5434/procesion_db"));
+        registry.add("spring.datasource.username", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_USERNAME", "postgres"));
+        registry.add("spring.datasource.password", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_PASSWORD", "postgres"));
     }
 
     @Autowired
@@ -92,7 +80,8 @@ class ProcesionControllerIntegrationTest {
     @Test
     void getProcesionReturns200() throws Exception {
         var procesion = procesionRepo.save(
-                Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0)));
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null));
 
         mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
                         .with(jwt()))
@@ -112,8 +101,9 @@ class ProcesionControllerIntegrationTest {
     @Test
     void listByHermandadReturnsPage() throws Exception {
         for (int i = 0; i < 3; i++) {
-            procesionRepo.save(Procesion.create(hermandadId,
-                    LocalDate.of(2026, 4, 13).plusDays(i), LocalTime.of(18, 0)));
+            procesionRepo.save(new ProcesionEntity(null, hermandadId,
+                    LocalDate.of(2026, 4, 13).plusDays(i), LocalTime.of(18, 0),
+                    ProcesionStatus.PLANNED, null, null));
         }
 
         mockMvc.perform(get("/api/procesiones")
@@ -130,7 +120,8 @@ class ProcesionControllerIntegrationTest {
     @Test
     void changeStatusReturns200() throws Exception {
         var procesion = procesionRepo.save(
-                Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0)));
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null));
 
         mockMvc.perform(patch("/api/procesiones/{id}/status", procesion.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,7 +136,8 @@ class ProcesionControllerIntegrationTest {
     @Test
     void changeStatusReturns400OnInvalidTransition() throws Exception {
         var procesion = procesionRepo.save(
-                Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0)));
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null));
 
         mockMvc.perform(patch("/api/procesiones/{id}/status", procesion.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -159,7 +151,8 @@ class ProcesionControllerIntegrationTest {
     @Test
     void deleteProcesionReturns204() throws Exception {
         var procesion = procesionRepo.save(
-                Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0)));
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null));
 
         mockMvc.perform(delete("/api/procesiones/{id}", procesion.getId())
                         .with(jwt()))

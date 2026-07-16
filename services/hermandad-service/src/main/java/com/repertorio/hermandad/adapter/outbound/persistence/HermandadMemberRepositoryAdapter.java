@@ -18,21 +18,23 @@ public class HermandadMemberRepositoryAdapter implements HermandadMemberReposito
 
     @Override
     public Page<HermandadMember> findByHermandadId(UUID hermandadId, Pageable pageable) {
-        return jpaRepository.findByHermandadId(hermandadId, pageable);
+        return jpaRepository.findByHermandadId(hermandadId, pageable).map(HermandadMemberEntity::toDomain);
     }
 
     @Override
     public Optional<HermandadMember> findByUserIdAndHermandadId(String userId, UUID hermandadId) {
-        return jpaRepository.findByUserIdAndHermandadId(userId, hermandadId);
+        return jpaRepository.findByUserIdAndHermandadId(userId, hermandadId).map(HermandadMemberEntity::toDomain);
     }
 
     @Override
     public HermandadMember save(HermandadMember member) {
-        return jpaRepository.save(member);
+        var entity = HermandadMemberEntity.from(member);
+        var saved = jpaRepository.save(entity);
+        return saved.toDomain();
     }
 
     @Override
     public void delete(HermandadMember member) {
-        jpaRepository.delete(member);
+        jpaRepository.delete(HermandadMemberEntity.from(member));
     }
 }

@@ -1,39 +1,18 @@
 package com.repertorio.procesion.domain.model;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.UuidGenerator;
-import org.springframework.data.domain.Persistable;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "procesion", indexes = @Index(name = "idx_procesion_hermandad_id", columnList = "hermandad_id"))
-public class Procesion implements Persistable<UUID> {
+public class Procesion {
 
-    @Id
-    @UuidGenerator
     private UUID id;
-
-    @Column(nullable = false)
     private UUID hermandadId;
-
-    @Column(nullable = false)
     private LocalDate date;
-
-    @Column(nullable = false)
     private LocalTime time;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private ProcesionStatus status = ProcesionStatus.PLANNED;
-
-    @Column(nullable = false, updatable = false)
     private Instant createdAt;
-
-    @Column(nullable = false)
     private Instant updatedAt;
 
     protected Procesion() {}
@@ -48,9 +27,6 @@ public class Procesion implements Persistable<UUID> {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
-
-    @Override
-    public boolean isNew() { return id == null; }
 
     public static Procesion create(UUID hermandadId, LocalDate date, LocalTime time) {
         var now = Instant.now();
@@ -89,15 +65,9 @@ public class Procesion implements Persistable<UUID> {
         this.updatedAt = Instant.now();
     }
 
-    @PrePersist
-    protected void prePersist() {
-        if (createdAt == null) createdAt = Instant.now();
-        if (updatedAt == null) updatedAt = Instant.now();
-    }
-
-    @PreUpdate
-    protected void preUpdate() {
-        updatedAt = Instant.now();
+    public static Procesion reconstruct(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
+                                         ProcesionStatus status, Instant createdAt, Instant updatedAt) {
+        return new Procesion(id, hermandadId, date, time, status, createdAt, updatedAt);
     }
 
     public UUID getId() { return id; }

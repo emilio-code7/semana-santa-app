@@ -1,13 +1,13 @@
 package com.repertorio.hermandad.adapter.inbound.rest.controller;
 
+import com.repertorio.common.JdbcIntegrationTestBase;
 import com.repertorio.hermandad.adapter.inbound.kafka.IdempotentEventConsumer;
+import com.repertorio.hermandad.adapter.outbound.persistence.HermandadEntity;
 import com.repertorio.hermandad.adapter.outbound.persistence.HermandadJpaRepository;
+import com.repertorio.hermandad.adapter.outbound.persistence.HermandadMemberEntity;
 import com.repertorio.hermandad.adapter.outbound.persistence.HermandadMemberJpaRepository;
 import com.repertorio.hermandad.application.port.UserExistencePort;
-import com.repertorio.hermandad.domain.model.Hermandad;
-import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadRole;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,30 +31,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class HermandadControllerIntegrationTest {
-
-    private static final String POSTGRES_JDBC = System.getenv().getOrDefault(
-            "IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5432/hermandad_db");
-    private static final String POSTGRES_USER = System.getenv().getOrDefault(
-            "IT_DATASOURCE_USERNAME", "postgres");
-    private static final String POSTGRES_PASS = System.getenv().getOrDefault(
-            "IT_DATASOURCE_PASSWORD", "postgres");
-
-    @BeforeAll
-    static void checkPostgresRunning() {
-        try (var c = java.sql.DriverManager.getConnection(POSTGRES_JDBC, POSTGRES_USER, POSTGRES_PASS)) {
-            // connection OK
-        } catch (Exception e) {
-            org.junit.jupiter.api.Assumptions.assumeTrue(false,
-                    "PostgreSQL not reachable at " + POSTGRES_JDBC + " — skipping integration test");
-        }
-    }
+class HermandadControllerIntegrationTest extends JdbcIntegrationTestBase {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> POSTGRES_JDBC);
-        registry.add("spring.datasource.username", () -> POSTGRES_USER);
-        registry.add("spring.datasource.password", () -> POSTGRES_PASS);
+        registry.add("spring.datasource.url", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5432/hermandad_db"));
+        registry.add("spring.datasource.username", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_USERNAME", "postgres"));
+        registry.add("spring.datasource.password", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_PASSWORD", "postgres"));
     }
 
     @Autowired
@@ -79,14 +65,14 @@ class HermandadControllerIntegrationTest {
         when(userExistencePort.exists(anyString())).thenReturn(true);
         // Clean slate: create a fresh hermandad for each test
         var hermandad = hermandadRepo.save(
-                new Hermandad("IT-Controller-" + System.nanoTime(), "Sevilla", 2024, "test"));
+                new HermandadEntity(null, "IT-Controller-" + System.nanoTime(), "Sevilla", 2024, null, "test", null, null));
         hermandadId = hermandad.getId();
     }
 
     @Test
     void getWithPaginationReturnsCorrectStructure() throws Exception {
         IntStream.range(0, 5).forEach(i ->
-                memberRepo.save(new HermandadMember(hermandadId, "user-" + i, HermandadRole.MUSICIAN))
+                memberRepo.save(new HermandadMemberEntity(null, hermandadId, "user-" + i, HermandadRole.MUSICIAN, null, null))
         );
 
         mockMvc.perform(get("/api/hermandades/{id}/members", hermandadId)
@@ -106,7 +92,7 @@ class HermandadControllerIntegrationTest {
     @Test
     void getWithPageSize5Returns5Items() throws Exception {
         IntStream.range(0, 10).forEach(i ->
-                memberRepo.save(new HermandadMember(hermandadId, "user-" + i, HermandadRole.MUSICIAN))
+                memberRepo.save(new HermandadMemberEntity(null, hermandadId, "user-" + i, HermandadRole.MUSICIAN, null, null))
         );
 
         mockMvc.perform(get("/api/hermandades/{id}/members", hermandadId)
@@ -123,7 +109,7 @@ class HermandadControllerIntegrationTest {
     @Test
     void defaultPageSize20WhenNoPaginationParams() throws Exception {
         IntStream.range(0, 5).forEach(i ->
-                memberRepo.save(new HermandadMember(hermandadId, "user-" + i, HermandadRole.MUSICIAN))
+                memberRepo.save(new HermandadMemberEntity(null, hermandadId, "user-" + i, HermandadRole.MUSICIAN, null, null))
         );
 
         mockMvc.perform(get("/api/hermandades/{id}/members", hermandadId)

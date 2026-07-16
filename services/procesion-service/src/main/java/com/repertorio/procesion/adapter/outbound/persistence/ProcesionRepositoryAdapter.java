@@ -18,17 +18,19 @@ public class ProcesionRepositoryAdapter implements ProcesionRepository {
 
     @Override
     public Procesion save(Procesion procesion) {
-        return jpaRepository.save(procesion);
+        var entity = ProcesionEntity.from(procesion);
+        var saved = jpaRepository.save(entity);
+        return saved.toDomain();
     }
 
     @Override
     public Optional<Procesion> findById(UUID id) {
-        return jpaRepository.findById(id);
+        return jpaRepository.findById(id).map(ProcesionEntity::toDomain);
     }
 
     @Override
     public Page<Procesion> findByHermandadId(UUID hermandadId, Pageable pageable) {
-        return jpaRepository.findByHermandadId(hermandadId, pageable);
+        return jpaRepository.findByHermandadId(hermandadId, pageable).map(ProcesionEntity::toDomain);
     }
 
     @Override
@@ -38,6 +40,6 @@ public class ProcesionRepositoryAdapter implements ProcesionRepository {
 
     @Override
     public void delete(Procesion procesion) {
-        jpaRepository.delete(procesion);
+        jpaRepository.delete(ProcesionEntity.from(procesion));
     }
 }

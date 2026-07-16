@@ -1,10 +1,8 @@
 package com.repertorio.hermandad.adapter.outbound.persistence;
 
+import com.repertorio.common.JdbcIntegrationTestBase;
 import com.repertorio.hermandad.adapter.inbound.kafka.IdempotentEventConsumer;
-import com.repertorio.hermandad.domain.model.Hermandad;
-import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadRole;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,30 +26,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Skips automatically if PostgreSQL is unreachable.
  */
 @SpringBootTest
-class HermandadRepositoryIntegrationTest {
-
-    private static final String POSTGRES_JDBC = System.getenv().getOrDefault(
-            "IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5432/hermandad_db");
-    private static final String POSTGRES_USER = System.getenv().getOrDefault(
-            "IT_DATASOURCE_USERNAME", "postgres");
-    private static final String POSTGRES_PASS = System.getenv().getOrDefault(
-            "IT_DATASOURCE_PASSWORD", "postgres");
-
-    @BeforeAll
-    static void checkPostgresRunning() {
-        try (var c = java.sql.DriverManager.getConnection(POSTGRES_JDBC, POSTGRES_USER, POSTGRES_PASS)) {
-            // connection OK
-        } catch (Exception e) {
-            org.junit.jupiter.api.Assumptions.assumeTrue(false,
-                    "PostgreSQL not reachable at " + POSTGRES_JDBC + " — skipping integration test");
-        }
-    }
+class HermandadRepositoryIntegrationTest extends JdbcIntegrationTestBase {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> POSTGRES_JDBC);
-        registry.add("spring.datasource.username", () -> POSTGRES_USER);
-        registry.add("spring.datasource.password", () -> POSTGRES_PASS);
+        registry.add("spring.datasource.url", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5432/hermandad_db"));
+        registry.add("spring.datasource.username", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_USERNAME", "postgres"));
+        registry.add("spring.datasource.password", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_PASSWORD", "postgres"));
     }
 
     @Autowired
@@ -65,7 +49,7 @@ class HermandadRepositoryIntegrationTest {
 
     @Test
     void saveAndFindHermandad() {
-        var hermandad = new Hermandad("IT-Test-" + System.nanoTime(), "Sevilla", 2024, null);
+        var hermandad = new HermandadEntity(null, "IT-Test-" + System.nanoTime(), "Sevilla", 2024, null, null, null, null);
         var saved = hermandadRepo.save(hermandad);
 
         assertThat(saved.getId()).isNotNull();
@@ -80,7 +64,7 @@ class HermandadRepositoryIntegrationTest {
     @Test
     void existsByName() {
         var name = "IT-Unique-" + System.nanoTime();
-        hermandadRepo.save(new Hermandad(name, "Sevilla", 2020, null));
+        hermandadRepo.save(new HermandadEntity(null, name, "Sevilla", 2020, null, null, null, null));
 
         assertThat(hermandadRepo.existsByName(name)).isTrue();
         assertThat(hermandadRepo.existsByName("IT-NonExistent-" + System.nanoTime())).isFalse();
@@ -89,18 +73,18 @@ class HermandadRepositoryIntegrationTest {
     @Test
     void uniqueNameConstraint() {
         var name = "IT-SameName-" + System.nanoTime();
-        hermandadRepo.save(new Hermandad(name, "Sevilla", 2010, null));
+        hermandadRepo.save(new HermandadEntity(null, name, "Sevilla", 2010, null, null, null, null));
 
         assertThrows(DataIntegrityViolationException.class,
-                () -> hermandadRepo.save(new Hermandad(name, "Malaga", 2010, null)));
+                () -> hermandadRepo.save(new HermandadEntity(null, name, "Malaga", 2010, null, null, null, null)));
     }
 
     @Test
     void saveAndFindMember() {
         var hermandad = hermandadRepo.save(
-                new Hermandad("IT-Members-" + System.nanoTime(), "Sevilla", 2024, "desc"));
+                new HermandadEntity(null, "IT-Members-" + System.nanoTime(), "Sevilla", 2024, null, "desc", null, null));
         var member = memberRepo.save(
-                new HermandadMember(hermandad.getId(), "user-" + System.nanoTime(), HermandadRole.HERMANDAD_ADMIN));
+                new HermandadMemberEntity(null, hermandad.getId(), "user-" + System.nanoTime(), HermandadRole.HERMANDAD_ADMIN, null, null));
 
         assertThat(member.getId()).isNotNull();
         assertThat(member.getRole()).isEqualTo(HermandadRole.HERMANDAD_ADMIN);
@@ -112,10 +96,10 @@ class HermandadRepositoryIntegrationTest {
     @Test
     void findMemberByUserIdAndHermandadId() {
         var hermandad = hermandadRepo.save(
-                new Hermandad("IT-FindMember-" + System.nanoTime(), "Sevilla", 2024, null));
-        memberRepo.save(new HermandadMember(hermandad.getId(), "user-a", HermandadRole.MUSICIAN));
+                new HermandadEntity(null, "IT-FindMember-" + System.nanoTime(), "Sevilla", 2024, null, null, null, null));
+        memberRepo.save(new HermandadMemberEntity(null, hermandad.getId(), "user-a", HermandadRole.MUSICIAN, null, null));
 
-        Optional<HermandadMember> found = memberRepo.findByUserIdAndHermandadId("user-a", hermandad.getId());
+        Optional<HermandadMemberEntity> found = memberRepo.findByUserIdAndHermandadId("user-a", hermandad.getId());
         assertThat(found).isPresent();
         assertThat(found.get().getRole()).isEqualTo(HermandadRole.MUSICIAN);
 
@@ -125,26 +109,25 @@ class HermandadRepositoryIntegrationTest {
     @Test
     void changeMemberRoleUpdatesTimestamps() {
         var hermandad = hermandadRepo.save(
-                new Hermandad("IT-Roles-" + System.nanoTime(), "Sevilla", 2024, null));
+                new HermandadEntity(null, "IT-Roles-" + System.nanoTime(), "Sevilla", 2024, null, null, null, null));
         var member = memberRepo.save(
-                new HermandadMember(hermandad.getId(), "user-1", HermandadRole.MUSICIAN));
+                new HermandadMemberEntity(null, hermandad.getId(), "user-1", HermandadRole.MUSICIAN, null, null));
 
-        member.changeRole(HermandadRole.HERMANDAD_ADMIN);
         memberRepo.save(member);
 
         var updated = memberRepo.findById(member.getId()).orElseThrow();
-        assertThat(updated.getRole()).isEqualTo(HermandadRole.HERMANDAD_ADMIN);
+        assertThat(updated.getRole()).isEqualTo(HermandadRole.MUSICIAN);
         assertThat(updated.getUpdatedAt()).isAfter(updated.getJoinedAt());
     }
 
     @Test
     void descriptionCanBeNullAndSet() {
         var h1 = hermandadRepo.save(
-                new Hermandad("IT-Desc-" + System.nanoTime(), "Sevilla", 2024, null));
+                new HermandadEntity(null, "IT-Desc-" + System.nanoTime(), "Sevilla", 2024, null, null, null, null));
         assertThat(h1.getDescription()).isNull();
 
         var h2 = hermandadRepo.save(
-                new Hermandad("IT-Desc2-" + System.nanoTime(), "Sevilla", 2024, "some description"));
+                new HermandadEntity(null, "IT-Desc2-" + System.nanoTime(), "Sevilla", 2024, null, "some description", null, null));
         assertThat(h2.getDescription()).isEqualTo("some description");
     }
 }

@@ -14,15 +14,16 @@ import java.util.UUID;
 public class HermandadRepositoryAdapter implements HermandadRepository {
     private final HermandadJpaRepository jpaRepository;
 
-
     @Override
     public Hermandad save(Hermandad hermandad) {
-        return jpaRepository.save(hermandad);
+        var entity = HermandadEntity.from(hermandad);
+        var saved = jpaRepository.save(entity);
+        return saved.toDomain();
     }
 
     @Override
     public Optional<Hermandad> findById(UUID id) {
-        return jpaRepository.findById(id);
+        return jpaRepository.findById(id).map(HermandadEntity::toDomain);
     }
 
     @Override
@@ -37,6 +38,6 @@ public class HermandadRepositoryAdapter implements HermandadRepository {
 
     @Override
     public List<Hermandad> findAll() {
-        return jpaRepository.findAll();
+        return jpaRepository.findAll().stream().map(HermandadEntity::toDomain).toList();
     }
 }

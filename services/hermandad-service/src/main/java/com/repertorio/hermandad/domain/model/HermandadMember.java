@@ -1,39 +1,21 @@
 package com.repertorio.hermandad.domain.model;
 
-import jakarta.persistence.*;
 import lombok.Getter;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "hermandad_member")
 @Getter
 public class HermandadMember implements Serializable {
 
     public static final String DOMAIN_EVENT_AGGREGATE_TYPE = "hermandad-member";
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
     private UUID id;
-
-    @Column(nullable = false, updatable = false)
     private UUID hermandadId;
-
-    @Column(nullable = false, updatable = false)
     private String userId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private HermandadRole role;
-
-    @Column(nullable = false, updatable = false)
     private Instant joinedAt;
-
-    @Column(nullable = false)
     private Instant updatedAt;
 
     protected HermandadMember() {}
@@ -51,14 +33,20 @@ public class HermandadMember implements Serializable {
         this.role = newRole;
     }
 
-    @PrePersist
-    public void prePersist() {
-        this.joinedAt = Instant.now();
-        this.updatedAt = Instant.now();
+    // ponytail: private all-args constructor for adapter reconstruction
+    private HermandadMember(UUID id, UUID hermandadId, String userId, HermandadRole role,
+                            Instant joinedAt, Instant updatedAt) {
+        this.id = id;
+        this.hermandadId = hermandadId;
+        this.userId = userId;
+        this.role = role;
+        this.joinedAt = joinedAt;
+        this.updatedAt = updatedAt;
     }
 
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = Instant.now();
+    public static HermandadMember reconstruct(UUID id, UUID hermandadId, String userId, HermandadRole role,
+                                               Instant joinedAt, Instant updatedAt) {
+        return new HermandadMember(id, hermandadId, userId, role, joinedAt, updatedAt);
     }
+
 }

@@ -1,34 +1,20 @@
 package com.repertorio.hermandad.domain.model;
 
-import jakarta.persistence.*;
 import lombok.Getter;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "hermandad")
 @Getter
 public class Hermandad {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
     private UUID id;
-    @Column(nullable = false, unique = true)
     private String name;
-    @Column(nullable = false)
     private String city;
-    @Column(nullable = false)
     private int foundedYear;
-    @Column
     private String keycloakGroupId;
-    @Column
     private String description;
-    @Column(nullable = false, updatable = false)
     private Instant createdAt;
-    @Column
     private Instant updatedAt;
 
     protected Hermandad() {}
@@ -49,15 +35,24 @@ public class Hermandad {
         this.description = description;
     }
 
-    @PrePersist
-    public void prePersist() {
-        createdAt = Instant.now();
-        updatedAt = Instant.now();
+    // ponytail: private all-args constructor for adapter reconstruction
+    private Hermandad(UUID id, String name, String city, int foundedYear,
+                      String keycloakGroupId, String description,
+                      Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.name = name;
+        this.city = city;
+        this.foundedYear = foundedYear;
+        this.keycloakGroupId = keycloakGroupId;
+        this.description = description;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = Instant.now();
+    public static Hermandad reconstruct(UUID id, String name, String city, int foundedYear,
+                                         String keycloakGroupId, String description,
+                                         Instant createdAt, Instant updatedAt) {
+        return new Hermandad(id, name, city, foundedYear, keycloakGroupId, description, createdAt, updatedAt);
     }
 
 }
