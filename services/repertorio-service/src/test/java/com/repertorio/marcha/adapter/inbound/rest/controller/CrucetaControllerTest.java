@@ -1,19 +1,16 @@
 package com.repertorio.marcha.adapter.inbound.rest.controller;
 
-import com.repertorio.marcha.adapter.config.security.RepertorioSecurityService;
 import com.repertorio.marcha.adapter.config.security.SecurityConfig;
 import com.repertorio.marcha.application.service.CrucetaService;
 import com.repertorio.marcha.domain.model.Cruceta;
 import com.repertorio.marcha.domain.model.CrucetaItem;
 import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CrucetaController.class)
-@Import({SecurityConfig.class, CrucetaControllerTest.TestSecurityConfig.class})
+@Import(SecurityConfig.class)
 class CrucetaControllerTest {
 
     @Autowired
@@ -38,25 +35,9 @@ class CrucetaControllerTest {
     @MockitoBean
     private CrucetaService crucetaService;
 
-    @Autowired
-    private RepertorioSecurityService repertorioSecurityService;
-
     private final UUID hermandadId = UUID.randomUUID();
     private final UUID procesionId = UUID.randomUUID();
     private final UUID marchaId = UUID.randomUUID();
-
-    @BeforeEach
-    void setUp() {
-        when(repertorioSecurityService.isAdmin(any())).thenReturn(false);
-    }
-
-    @TestConfiguration
-    static class TestSecurityConfig {
-        @Bean("repertorioSecurity")
-        RepertorioSecurityService repertorioSecurityService() {
-            return org.mockito.Mockito.mock(RepertorioSecurityService.class);
-        }
-    }
 
     private Cruceta buildCruceta() {
         var items = List.of(new CrucetaItem(marchaId, 1, "Opening"));
@@ -90,11 +71,11 @@ class CrucetaControllerTest {
     void defineCrucetaReturns200ForAdmin() throws Exception {
         var cruceta = buildCruceta();
         when(crucetaService.defineCruceta(eq(procesionId), any())).thenReturn(cruceta);
-        when(repertorioSecurityService.isAdmin(hermandadId)).thenReturn(true);
 
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
                         hermandadId, procesionId)
-                        .with(jwt())
+                        .with(jwt().authorities(new SimpleGrantedAuthority(
+                                "HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"items":[{"marchaId":"%s","orderIndex":1,"notes":"Opening"}]}
