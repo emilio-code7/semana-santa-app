@@ -76,3 +76,17 @@ Before declaring any task complete:
 Format: `type(scope): description`
 Types: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
 One concern per commit. Check `git diff` before committing.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live on GitHub at `github.com/emilio-code7/semana-santa-app`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default labels (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one CLAUDE.md + docs/. See `docs/agents/domain.md`.
