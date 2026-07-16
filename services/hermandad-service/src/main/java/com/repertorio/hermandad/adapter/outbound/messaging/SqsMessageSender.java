@@ -1,15 +1,12 @@
 package com.repertorio.hermandad.adapter.outbound.messaging;
 
 import com.repertorio.common.messaging.MessageSender;
-import io.awspring.cloud.sqs.operations.SqsSendOptions;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 @Component
 @Profile("aws")
@@ -21,8 +18,12 @@ public class SqsMessageSender implements MessageSender {
 
     @Override
     public CompletableFuture<Void> send(String queueName, String payload) {
-        return sqsTemplate.sendAsync((Consumer<SqsSendOptions<String>>)
-                opts -> opts.queue(queueName).payload(payload))
-            .thenApply(result -> null);
+        try {
+            sqsTemplate.send(queueName, payload);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to send SQS message to {}: {}", queueName, e.getMessage());
+            return CompletableFuture.failedFuture(e);
+        }
     }
 }
