@@ -234,23 +234,22 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 ### Sprint 10 — AWS Migration
 
-> Migrate from self-managed Kafka/Keycloak/Postgres containers to AWS-managed services (SQS, Cognito, RDS, ElastiCache). Target: free tier ($0/mo).
-> **Architecture**: Single EC2 t2.micro → 3 Spring Boot services + nginx. SQS replaces Kafka, Cognito replaces Keycloak, RDS replaces container Postgres, ElastiCache replaces container Redis.
+> Migrate from self-managed Kafka/Keycloak/Postgres containers to AWS-managed services (SQS, Cognito, RDS). Target: free tier ($0/mo).
+> **Architecture**: Single EC2 t2.micro → 3 Spring Boot services + nginx. SQS replaces Kafka, Cognito replaces Keycloak, RDS replaces container Postgres. ElastiCache dropped from free-tier plan (Redis caching is optional, only hermandad-service uses it).
 > **Stack**: Spring Cloud AWS 4.0.2, AWS CDK, Cognito Lambda triggers
 
 ---
 
 #### AWS-TASK-1: AWS Infrastructure Stack
 
-**Description:** Deploy the base infrastructure — EC2 instance, RDS Postgres, ElastiCache Redis, SQS queues, Cognito user pool, IAM roles, and security groups. Use AWS CDK for infrastructure-as-code.
+**Description:** Deploy the base infrastructure — EC2 instance, RDS Postgres, SQS queues, Cognito user pool, IAM roles, and security groups. Use AWS CDK for infrastructure-as-code. No ElastiCache (not in free tier).
 
 **Acceptance Criteria:**
 - [ ] EC2 t2.micro with Amazon Linux 2023, security group (HTTP:80, SSH:22 from trusted IPs)
 - [ ] RDS db.t2.micro, 20GB gp2, Postgres 16 — single instance with 5 databases (hermandad_db, procesion_db, repertorio_db, tracking_db, notification_db)
-- [ ] ElastiCache t2.micro, Redis 7 — security group restricted to EC2 security group
 - [ ] 3 SQS Standard queues created: `hermandad-events`, `hermandad-member-events`, `procesion-events` — each with DLQ + RedrivePolicy (maxReceiveCount=3)
 - [ ] Cognito user pool + app client + pre-token generation Lambda V2.0 configured
-- [ ] IAM instance profile with permissions for SQS (SendMessage, ReceiveMessage, DeleteMessage), ECR (pull), ElastiCache (connect)
+- [ ] IAM instance profile with permissions for SQS (SendMessage, ReceiveMessage, DeleteMessage) and ECR (pull)
 - [ ] ECR repository for each service's Docker images
 - [ ] Default VPC or new VPC with public subnet
 - [ ] `infrastructure/aws/stack.ts` — CDK app compiling and deployable
@@ -378,7 +377,6 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 - [ ] Flyway migrations run correctly against RDS databases
 - [ ] `docker compose -f docker-compose.aws.yml up` starts all 3 services + nginx
 - [ ] All services register health check endpoints accessible through nginx
-- [ ] Redis config switches from container host to ElastiCache endpoint
 
 **Technical Notes:**
 - One RDS instance, separate databases (not schemas): `hermandad_db`, `procesion_db`, `repertorio_db`
