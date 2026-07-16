@@ -8,7 +8,6 @@ import com.repertorio.marcha.domain.model.KnownProcesion;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
-@Profile("!aws")
 @RequiredArgsConstructor
 @Slf4j
 public class ProcesionEventConsumer {
