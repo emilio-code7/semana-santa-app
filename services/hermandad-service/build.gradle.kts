@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.spring.boot.starter.jackson)
 
     implementation(libs.springdoc.starter)
+    implementation(libs.spring.cloud.aws.starter.sqs)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)

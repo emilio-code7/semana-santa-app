@@ -290,31 +290,31 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 #### AWS-TASK-3: SQS Outbox Migration (All Services)
 
-**Description:** Replace Kafka with SQS in the outbox pattern across all 3 active services. OutboxPoller sends to SQS instead of Kafka. Hermandad's IdempotentEventConsumer switches from `@KafkaListener` to `@SqsListener`. Keep the `processed_event` dedup table unchanged.
+**Description:** Add SQS alongside Kafka using hexagonal adapters. Extract `MessageSender` port from `OutboxPoller`. Default profile uses Kafka (local dev). `aws` profile uses SQS (deployed). Dual-transport approach minimizes cut-over risk, allows rollback via profile switch.
 
 **Acceptance Criteria:**
-- [ ] `spring-cloud-aws-starter-sqs` 4.0.2 replaces `spring-boot-starter-kafka` in all 3 services
-- [ ] OutboxPoller (hermandad + procesion + repertorio): `SqsTemplate.send(queueName, payload)` replaces `KafkaTemplate.send(topic, payload)`
-- [ ] Hermandad `IdempotentEventConsumer`: `@SqsListener("hermandad-events")` + `@SqsListener("hermandad-member-events")` replace `@KafkaListener`
-- [ ] Dedup still uses `processed_event` table (SQS Standard doesn't have built-in dedup)
-- [ ] `@SqsListener` uses `@Header(SqsHeaders.SQS_MESSAGE_ID_HEADER)` for dedup key
-- [ ] Kafka config removed from `application.yml` (bootstrap-servers, consumer/producer props)
-- [ ] SQS region config in `application.yml`: `spring.cloud.aws.region.static`
-- [ ] Services use instance profile credentials on EC2, env vars locally
+- [ ] `MessageSender` port interface in `shared/common` — returns `CompletableFuture<Void>` for at-least-once delivery
+- [ ] `KafkaMessageSender` (`@Profile("!aws")`) + `SqsMessageSender` (`@Profile("aws")`) per service
+- [ ] OutboxPoller updated to use `MessageSender` instead of `KafkaTemplate` directly (all 3 services)
+- [ ] `@Profile("!aws")` on existing `@KafkaListener` consumers (IdempotentEventConsumer + ProcesionEventConsumer)
+- [ ] `@Profile("aws")` SQS consumers with `AcknowledgementMode.MANUAL` for idempotent processing
+- [ ] `spring-cloud-aws-starter-sqs` 4.0.2 added to all 3 service build.gradle.kts
+- [ ] `application-aws.yml` per service with `spring.autoconfigure.exclude=KafkaAutoConfiguration`
 - [ ] `./gradlew :services:hermandad-service:compileJava` passes
 - [ ] `./gradlew :services:procesion-service:compileJava` passes
 - [ ] `./gradlew :services:repertorio-service:compileJava` passes
-- [ ] All existing unit/integration tests pass (adapters mocked)
+- [ ] All existing unit/integration tests pass
 
 **Technical Notes:**
-- No code change to domain or application layers — only adapter layer changes
-- SQS Standard queues (not FIFO) — matches current Kafka ordering (best-effort)
-- SQS `@SqsListener` auto-deletes messages on successful return; thrown exception returns to queue after visibility timeout
-- Keep Kafka starter removed from all build.gradle.kts — no dual-transport
-- Repertorio (if built with Kafka in Sprint 9) applies same migration pattern
+- Dual-transport: Kafka and SQS side by side, selected via `spring.profiles.active`
+- Default profile: Kafka (unchanged local dev). `aws` profile: SQS (deployed EC2)
+- `MessageSender.send()` returns `CompletableFuture<Void>` — OutboxPoller preserves at-least-once via callback-based `markAsProcessed`
+- `@Profile("!aws")` on all Kafka beans prevents bootstrap failures when aws profile is active
+- `AcknowledgementMode.MANUAL` on `@SqsListener` — ack only after idempotency record is persisted
 - DLQ handled at queue level via RedrivePolicy — no Spring-side config needed
+- **Future**: Remove Kafka starter, `KafkaMessageSender`, and `@KafkaListener` classes after SQS is validated in production
 
-**Effort:** ~8 files across 3 services · **Dependencies:** AWS-TASK-1 (queues exist)
+**Effort:** ~15 files · **Dependencies:** AWS-TASK-1 (queues exist)
 
 ---
 
