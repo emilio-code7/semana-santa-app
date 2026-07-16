@@ -121,7 +121,7 @@ OAuth2 / JWT via `spring-boot-starter-oauth2-resource-server`. Keycloak as the i
 - No abstract base entities. No generic CRUD services.
 - No MapStruct (for now). Manual DTO mapping.
 - No Axon Framework, no Debezium CDC, no Saga pattern.
-- JPA annotations stay on domain models (pragmatic Hexagonal — JPA is not an "infrastructure leak", it's a practical choice).
+- No JPA annotations in domain models (`@Entity`, `@Table`, `@Id` go in adapter JPA entities under `adapter/outbound/persistence/`). Domain classes are pure Java — see functional-map §0.1.
 
 ### Version Compatibility
 
