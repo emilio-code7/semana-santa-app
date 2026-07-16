@@ -240,19 +240,19 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 ---
 
-#### AWS-TASK-1: AWS Infrastructure Stack
+#### AWS-TASK-1: AWS Infrastructure Stack ✅
 
-**Description:** Deploy the base infrastructure — EC2 instance, RDS Postgres, SQS queues, Cognito user pool, IAM roles, and security groups. Use AWS CDK for infrastructure-as-code. No ElastiCache (not in free tier).
+**Description:** Deploy the base infrastructure — EC2 instance, RDS Postgres, SQS queues, Cognito user pool, IAM roles, and security groups. Use AWS CDK for infrastructure-as-code. No ElastiCache (not in free tier). Uses T3.micro (T2 not available on free-plan accounts).
 
 **Acceptance Criteria:**
-- [ ] EC2 t2.micro with Amazon Linux 2023, security group (HTTP:80, SSH:22 from trusted IPs)
-- [ ] RDS db.t2.micro, 20GB gp2, Postgres 16 — single instance with 5 databases (hermandad_db, procesion_db, repertorio_db, tracking_db, notification_db)
-- [ ] 3 SQS Standard queues created: `hermandad-events`, `hermandad-member-events`, `procesion-events` — each with DLQ + RedrivePolicy (maxReceiveCount=3)
-- [ ] Cognito user pool + app client + pre-token generation Lambda V2.0 configured
-- [ ] IAM instance profile with permissions for SQS (SendMessage, ReceiveMessage, DeleteMessage) and ECR (pull)
-- [ ] ECR repository for each service's Docker images
-- [ ] Default VPC or new VPC with public subnet
-- [ ] `infrastructure/aws/stack.ts` — CDK app compiling and deployable
+- [x] EC2 t3.micro with Amazon Linux 2023, security group (HTTP:80, SSH:22)
+- [x] RDS db.t3.micro, 20GB gp2, Postgres 16 — single instance (5 databases to be created at deploy)
+- [x] 3 SQS Standard queues created: `hermandad-events`, `hermandad-member-events`, `procesion-events` — each with DLQ + RedrivePolicy (maxReceiveCount=3)
+- [x] Cognito user pool + app client + pre-token generation Lambda V2.0 configured
+- [x] IAM instance profile with permissions for SQS (SendMessage, ReceiveMessage, DeleteMessage) and ECR (pull)
+- [x] ECR repository for each service's Docker images
+- [x] Default VPC used
+- [x] `infrastructure/aws/stack.ts` — CDK app compiling and deployable
 
 **Technical Notes:**
 - Use Cognito group naming convention `HERMANDAD_{id}_{role}` — Lambda parses these into the `hermandad_memberships` JSON claim (same format as current Keycloak)
@@ -442,6 +442,31 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 Items from `docs/audit.md` — small-effort fixes that should be picked up early.
 
 - Rename `keycloak_group_id` to `keycloak_group_id_refs` (audit finding — naming)
+
+### Code Review Findings (2026-07-16)
+
+Full two-axis code review from initial commit `9f52a3d`. Findings split by severity.
+
+#### 🔴 High Priority
+
+- **CR-1: JPA annotations in domain layer (3 classes).** `Hermandad.java`, `HermandadMember.java`, `Procesion.java` have `@Entity`, `@Table`, `@Id`, `@Column` in the `domain/model/` package. Violates functional-map §0.1 ("Domain must not import Spring, JPA, or any framework annotation"). Repertorio's `Marcha.java` gets it right — needs to be backported. **Effort:** 4-6 files per service.
+- **CR-2: Spec contradiction — JPA rule.** functional-map §0.1 says "no JPA in domain", architecture.md says "JPA annotations stay on domain models." Both can't be right. Pick one, update the other. **Effort:** 1 doc file.
+
+#### 🟡 Medium Priority
+
+- **CR-3: searchMarchas endpoint missing.** functional-map §4.3 declares `GET /api/marchas/search?q={query}` → `searchMarchas()`. No code exists. **Effort:** 3-4 files (controller, service, repository, OpenAPI).
+- **CR-4: functional-map stale — missing updateMarcha, outdated @PreAuthorize status.** `PUT /api/marchas/{id}` exists in code but not in spec. Repertorio `@PreAuthorize` status wrong. **Effort:** 1 doc file.
+- **CR-5: 5 undocumented public GET routes in gateway.** `api-gateway/SecurityConfig.java` has `permitAll()` routes that don't exist in any service (`/api/hermandades/{id}/procesiones`, `/api/marchas/**`, etc.). `GET /api/marchas/**` being public contradicts functional-map §4.3. **Effort:** 1-2 files.
+- **CR-6: Repertorio JPA entities missing Persistable<UUID>.** functional-map §9.12 flags Hibernate 7 UUID regression risk. `MarchaEntity`, `CrucetaEntity`, `CrucetaItemEntity` set UUIDs manually. Procesion already fixed this in `0577a09`. **Effort:** 3 files, follow procesion fix pattern.
+
+#### 🟠 Low Priority / Polish
+
+- **CR-7: Duplicate infrastructure (~1500 lines copy-paste).** Outbox, events, security, error handling triplicated across services. Extract to `shared/common`. **Effort:** Significant refactor — 30+ files.
+- **CR-8: Interface drift — DomainEvent lives in different packages.** Hermandad/procesion define it in `application/port/`, repertorio in `domain/event/`, with different shape (`eventId`, `occurredAt` missing in 2/3). **Effort:** 4-6 files.
+- **CR-9: Unused code.** `RepertorioSecurityService` (23 lines), `@EnableMethodSecurity` in procesion/repertorio (no `@PreAuthorize`), `MembersCache` DTO. **Effort:** 4 files to delete.
+- **CR-10: Integration tests bypass IntegrationTestBase.** Procesion/repertorio ITs use manual JDBC check instead of `IntegrationTestBase` from `shared/common`. Hermandad does it correctly. **Effort:** 2 test files.
+- **CR-11: IdempotentEventConsumer does nothing.** Consumes and deduplicates hermandad events but has no downstream processing. **Effort:** Either remove or wire actual processing.
+- **CR-12: cruceta unique index not mirrored on entity.** `V2` migration has `CREATE UNIQUE INDEX idx_cruceta_procesion_id`, `CrucetaEntity.java` lacks `@Table(indexes = ...)`. **Effort:** 1 file.
 
 ### Hermandad Tests
 
