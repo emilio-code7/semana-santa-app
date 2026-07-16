@@ -451,11 +451,12 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `GET` | `/api/marchas` | authenticated | `listMarchas()` | `MarchaController.java:42` |
 | `GET` | `/api/marchas/{id}` | authenticated | `getMarcha()` | `MarchaController.java:52` |
 | `DELETE` | `/api/marchas/{id}` | authenticated | `deleteMarcha()` | `MarchaController.java:62` |
+| `PUT` | `/api/marchas/{id}` | authenticated | `updateMarcha()` | `MarchaController.java:75` |
 | `GET` | `/api/marchas/search?q={query}` | authenticated | `searchMarchas()` | `MarchaController.java:72` |
 | `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta` | authenticated | `getCruceta()` | `CrucetaController.java:28` |
 | `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta` | authenticated | `defineCruceta()` | `CrucetaController.java:38` |
 
-**Note**: Repertorio service has no `@PreAuthorize` — same as procesion. `RepertorioSecurityService` exists but unused.
+**Note**: Marcha CRUD uses `anyRequest().authenticated()`. Cruceta management uses `@PreAuthorize` on `defineCruceta()`.
 
 ### 4.4 Public Routes (Gateway-level)
 
@@ -666,7 +667,7 @@ Request with Bearer JWT
 |-------|-----------|-----------|------------|
 | **Public** | `GET /api/hermandades` + `GET /api/hermandades/{id}` | none | none |
 | **Authenticated** | `POST /api/hermandades` | all endpoints | all endpoints |
-| **Admin-only** (`@PreAuthorize`) | member CRUD endpoints | none | none |
+| **Admin-only** (`@PreAuthorize`) | member CRUD endpoints | none | `defineCruceta()` |
 
 ### 6.3 Key Classes
 
@@ -819,7 +820,7 @@ Request with Bearer JWT
 | # | Severity | Issue | File(s) | Status |
 |---|----------|-------|---------|--------|
 | 1 | 🟠 Low | ✅ ~~**Flyway index not mirrored on entity** — `idx_procesion_hermandad_id` exists in SQL but `@Table(indexes = ...)` missing on entity~~ | `Procesion.java`, `V1__create_procesion_table.sql` | Done |
-| 2 | 🟠 Low | **No `@PreAuthorize` on procesion or repertorio controllers** — `@EnableMethodSecurity` declared but unused in both | `ProcesionController.java`, `MarchaController.java`, `RepertorioSecurityService.java` | Open |
+| 2 | 🟠 Low | ✅ ~~**No `@PreAuthorize` on procesion or repertorio controllers** — `@EnableMethodSecurity` declared but unused in both~~ | `CrucetaController.java:47` | Done — `defineCruceta()` uses `@PreAuthorize` |
 | 3 | 🟠 Low | ✅ ~~**Dead `@EnableFeignClients`** — annotation + `spring-cloud-starter-openfeign` with zero `@FeignClient`~~ | `ProcesionServiceApplication.java:12`, `build.gradle.kts:18` | Done |
 | 4 | 🟠 Low | **No Redis caching on procesion or repertorio** — hermandad has it, read-heavy listings would benefit | — | Open |
 | 5 | 🟠 Low | ✅ ~~**3 ghost gateway routes** — repertorio, tracking, notification routes point to stub services → 503~~ | `api-gateway/application.yml:33-48` | Done (repertorio fixed, 2 remain) |
