@@ -38,8 +38,8 @@ public class OutboxEventEntity implements Persistable<UUID> {
     @Column
     private Instant processedAt;
 
-    @Column(nullable = false)
-    private boolean processed;
+    @Column
+    private Boolean processed;
 
     protected OutboxEventEntity() {}
 

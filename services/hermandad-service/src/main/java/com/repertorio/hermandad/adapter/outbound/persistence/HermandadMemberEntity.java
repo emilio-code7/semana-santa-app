@@ -4,6 +4,7 @@ import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadRole;
 import jakarta.persistence.*;
 import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.domain.Persistable;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -11,12 +12,14 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "hermandad_member")
-public class HermandadMemberEntity implements Serializable {
+public class HermandadMemberEntity implements Persistable<UUID>, Serializable {
 
     @Id
-    @GeneratedValue
     @UuidGenerator
     private UUID id;
+
+    @Version
+    private int version;
 
     @Column(nullable = false, updatable = false)
     private UUID hermandadId;
@@ -74,10 +77,16 @@ public class HermandadMemberEntity implements Serializable {
         );
     }
 
+    @Override
     public UUID getId() { return id; }
     public UUID getHermandadId() { return hermandadId; }
     public String getUserId() { return userId; }
     public HermandadRole getRole() { return role; }
     public Instant getJoinedAt() { return joinedAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    @Override
+    public boolean isNew() {
+        return false; // IDs are always provided by the domain
+    }
 }

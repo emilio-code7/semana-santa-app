@@ -3,18 +3,21 @@ package com.repertorio.hermandad.adapter.outbound.persistence;
 import com.repertorio.hermandad.domain.model.Hermandad;
 import jakarta.persistence.*;
 import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "hermandad")
-public class HermandadEntity {
+public class HermandadEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue
     @UuidGenerator
     private UUID id;
+
+    @Version
+    private int version;
 
     @Column(nullable = false, unique = true)
     private String name;
@@ -82,6 +85,7 @@ public class HermandadEntity {
         );
     }
 
+    @Override
     public UUID getId() { return id; }
     public String getName() { return name; }
     public String getCity() { return city; }
@@ -90,4 +94,9 @@ public class HermandadEntity {
     public String getDescription() { return description; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    @Override
+    public boolean isNew() {
+        return false; // IDs are always provided by the domain
+    }
 }
