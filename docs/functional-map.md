@@ -107,7 +107,7 @@ repertorio/
 │   └── pre-commit                            # Enforces OpenAPI-first, doc updates, no FIXMEs
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                            # Tests + spec validation on every push
+│       ├── ci.yml                            # Tests + spec validation on every push — see docs/plans/2026-07-17-ci-cd-improvements.md
 │       └── deploy.yml                        # Build → ECR → EC2 deploy (AWS)
 ├── gradle/
 │   ├── libs.versions.toml                    # Version catalog (Java 21, SB 4.1.0, Testcontainers 1.20.1)
