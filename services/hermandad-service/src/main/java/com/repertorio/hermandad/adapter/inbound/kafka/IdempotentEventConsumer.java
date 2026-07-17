@@ -10,6 +10,20 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+/**
+ * Consumes events from hermandad topics for idempotency tracking.
+ *
+ * This consumer deduplicates events via the processed_event table and logs
+ * them. Current purpose: operational audit trail — confirms events crossed
+ * the outbox → Kafka boundary successfully.
+ *
+ * ponytail: sink — no downstream processing wired yet. Add business logic
+ * here when a consumer for these events is needed (e.g., cross-service
+ * notifications, cache invalidation, webhook dispatch).
+ */
+// ponytail: audit-only sink. Events are consumed, deduplicated, logged,
+// and discarded. Add real processing when a concrete consumer requirement
+// appears. See CR-11 in docs/plans/2026-07-16-code-review-fixes.md.
 @Component
 @RequiredArgsConstructor
 @Slf4j
