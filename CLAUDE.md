@@ -31,7 +31,7 @@ Spec (functional-map + OpenAPI) → Plan → Gherkin scenarios → Review → Im
    - **REFACTOR**: Clean up without changing behavior.
    - If you wrote implementation before tests, you skipped TDD. Delete the implementation and start over.
    - One behavior change per commit. Small commits.
-6. **Auto-run code review** — After implementation, run the `/code-review` skill against the diff. If the review finds issues, fix them and re-run until clean. Only proceed when the review passes.
+6. **Auto-run code review** — After implementation, run the `/code-review` skill against the diff. If the review finds issues, fix them and re-run until clean. **Fixes must also follow TDD** — write the failing test that reproduces the issue first, then fix the code, then verify the test passes. Only proceed when the review passes.
 7. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
 8. **Update docs** — See functional-map §0.9 for which docs to update per change type. Regenerate Bruno scripts if API changed.
 9. **Verify gate** — Tests pass, build succeeds, no FIXME/TODO/HACK markers, pre-commit hook passes.
