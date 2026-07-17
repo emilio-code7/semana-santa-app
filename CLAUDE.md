@@ -26,14 +26,15 @@ Spec (functional-map + OpenAPI) → Plan → Gherkin scenarios → Review → Im
    - Auth/permission boundaries
 4. **Present scenarios for review** — Show the scenarios. Wait for approval before implementing.
 5. **Implement TDD** — Test first, then code. One behavior change per commit.
-6. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
-7. **Update docs** — See functional-map §0.9 for which docs to update per change type. Regenerate Bruno scripts if API changed.
-8. **Verify gate** — Tests pass, build succeeds, no FIXME/TODO/HACK markers, pre-commit hook passes.
-9. **Commit** — Conventional commit message.
+6. **Auto-run code review** — After implementation, run the `/code-review` skill against the diff. If the review finds issues, fix them and re-run until clean. Only proceed when the review passes.
+7. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
+8. **Update docs** — See functional-map §0.9 for which docs to update per change type. Regenerate Bruno scripts if API changed.
+9. **Verify gate** — Tests pass, build succeeds, no FIXME/TODO/HACK markers, pre-commit hook passes.
+10. **Commit** — Conventional commit message.
 
 ### Why
 
-The pre-commit hook blocks commits that change controllers without updating OpenAPI. The CI pipeline validates the spec on every push. Gherkin scenarios catch misunderstandings at the text level (easy to fix) instead of the code level (rewrite implementation). Reviewing scenarios before code reduces wasted work.
+The pre-commit hook blocks commits that change controllers without updating OpenAPI. The auto-run code review (step 6) catches spec violations, code smells, and scope creep before the human sees the work — reducing feedback loops. The CI pipeline validates the spec on every push.
 
 ## Hard Rules (never violate)
 
