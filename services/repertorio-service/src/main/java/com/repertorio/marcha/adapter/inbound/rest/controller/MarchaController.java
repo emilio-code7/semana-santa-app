@@ -39,17 +39,17 @@ public class MarchaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(MarchaResponse.from(marcha));
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get a marcha by ID")
+    @GetMapping("/search")
+    @Operation(summary = "Search marchas by title or composer")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Marcha found"),
-            @ApiResponse(responseCode = "404", description = "Marcha not found")
+            @ApiResponse(responseCode = "200", description = "Matching marchas (empty array if none)")
     })
-    public ResponseEntity<MarchaResponse> getMarcha(@PathVariable UUID id) {
-        log.info("Getting marcha {}", id);
-        return marchaService.getMarcha(id)
-                .map(m -> ResponseEntity.ok(MarchaResponse.from(m)))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<List<MarchaResponse>> searchMarchas(@RequestParam(required = true) String q) {
+        log.info("Searching marchas with query: {}", q);
+        var marchas = marchaService.search(q).stream()
+                .map(MarchaResponse::from)
+                .toList();
+        return ResponseEntity.ok(marchas);
     }
 
     @GetMapping
@@ -65,17 +65,17 @@ public class MarchaController {
         return ResponseEntity.ok(marchas);
     }
 
-    @GetMapping("/search")
-    @Operation(summary = "Search marchas by title or composer")
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a marcha by ID")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Matching marchas (empty array if none)")
+            @ApiResponse(responseCode = "200", description = "Marcha found"),
+            @ApiResponse(responseCode = "404", description = "Marcha not found")
     })
-    public ResponseEntity<List<MarchaResponse>> searchMarchas(@RequestParam(required = true) String q) {
-        log.info("Searching marchas with query: {}", q);
-        var marchas = marchaService.search(q).stream()
-                .map(MarchaResponse::from)
-                .toList();
-        return ResponseEntity.ok(marchas);
+    public ResponseEntity<MarchaResponse> getMarcha(@PathVariable UUID id) {
+        log.info("Getting marcha {}", id);
+        return marchaService.getMarcha(id)
+                .map(m -> ResponseEntity.ok(MarchaResponse.from(m)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
