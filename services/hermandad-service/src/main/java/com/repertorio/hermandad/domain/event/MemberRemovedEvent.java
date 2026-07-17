@@ -1,17 +1,23 @@
 package com.repertorio.hermandad.domain.event;
 
-import com.repertorio.hermandad.application.port.DomainEvent;
+import com.repertorio.common.event.DomainEvent;
 import com.repertorio.hermandad.domain.model.HermandadMember;
 import com.repertorio.hermandad.domain.model.HermandadRole;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public record MemberRemovedEvent(
         UUID memberId,
         UUID hermandadId,
         String userId,
-        HermandadRole role
+        HermandadRole role,
+        UUID eventId,
+        Instant occurredAt
 ) implements DomainEvent {
+    public MemberRemovedEvent(UUID memberId, UUID hermandadId, String userId, HermandadRole role) {
+        this(memberId, hermandadId, userId, role, UUID.randomUUID(), Instant.now());
+    }
 
     @Override
     public String aggregateType() { return HermandadMember.DOMAIN_EVENT_AGGREGATE_TYPE; }

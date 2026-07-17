@@ -1,8 +1,8 @@
 package com.repertorio.procesion.adapter.outbound.events;
 
-import com.repertorio.procesion.application.port.DomainEvent;
+import com.repertorio.common.event.DomainEvent;
+import com.repertorio.common.outbox.OutboxPublisher;
 import com.repertorio.procesion.application.port.DomainEventPublisher;
-import com.repertorio.procesion.application.port.OutboxPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

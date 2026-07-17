@@ -1,6 +1,6 @@
 package com.repertorio.procesion.application.service;
 
-import com.repertorio.procesion.application.port.DomainEvent;
+import com.repertorio.common.event.DomainEvent;
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
 import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;

@@ -1,7 +1,7 @@
-package com.repertorio.hermandad.application.port;
+package com.repertorio.common.outbox;
 
 import com.repertorio.common.event.DomainEvent;
 
-public interface DomainEventPublisher {
+public interface OutboxPublisher {
     void publish(DomainEvent domainEvent);
 }

@@ -1,12 +1,11 @@
-package com.repertorio.marcha.adapter.outbound.outbox;
+package com.repertorio.common.outbox;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -18,16 +17,16 @@ public class OutboxPoller {
 
     @Scheduled(fixedDelayString = "PT5S")
     public void processPendingOutbox() {
-        List<OutboxEventEntity> outboxEventList =
-                outboxEventRepository.findTop100ByProcessedFalseOrderByCreatedAtAsc();
-        for (OutboxEventEntity outboxEvent : outboxEventList) {
-            kafkaTemplate.send(outboxEvent.getAggregateType() + "-events", outboxEvent.getPayload())
+        List<OutboxEventEntity> events = outboxEventRepository
+                .findTop100ByProcessedFalseOrderByCreatedAtAsc();
+        for (OutboxEventEntity event : events) {
+            kafkaTemplate.send(event.getAggregateType() + "-events", event.getPayload())
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Error sending outbox event to Kafka", ex);
+                        log.error("Error sending outbox event {} to Kafka: {}", event.getId(), ex.getMessage());
                     } else {
-                        outboxEvent.markAsProcessed();
-                        outboxEventRepository.save(outboxEvent);
+                        event.markAsProcessed();
+                        outboxEventRepository.save(event);
                     }
                 });
         }

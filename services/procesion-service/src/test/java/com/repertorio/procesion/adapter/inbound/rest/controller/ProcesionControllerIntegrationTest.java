@@ -1,7 +1,7 @@
 package com.repertorio.procesion.adapter.inbound.rest.controller;
 
 import com.repertorio.common.JdbcIntegrationTestBase;
-import com.repertorio.procesion.adapter.outbound.outbox.OutboxEventJpaRepository;
+import com.repertorio.common.outbox.OutboxEventJpaRepository;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionJpaRepository;
 import com.repertorio.procesion.domain.model.Procesion;

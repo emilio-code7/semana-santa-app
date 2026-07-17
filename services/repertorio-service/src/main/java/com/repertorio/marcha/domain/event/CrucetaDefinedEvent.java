@@ -1,5 +1,6 @@
 package com.repertorio.marcha.domain.event;
 
+import com.repertorio.common.event.DomainEvent;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -19,4 +20,7 @@ public record CrucetaDefinedEvent(
 
     @Override
     public UUID aggregateId() { return crucetaId(); }
+
+    @Override
+    public String eventType() { return "CRUCETA_DEFINED"; }
 }

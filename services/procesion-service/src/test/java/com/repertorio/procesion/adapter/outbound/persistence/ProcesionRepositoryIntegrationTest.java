@@ -1,7 +1,7 @@
 package com.repertorio.procesion.adapter.outbound.persistence;
 
 import com.repertorio.common.JdbcIntegrationTestBase;
-import com.repertorio.procesion.adapter.outbound.outbox.OutboxEventJpaRepository;
+import com.repertorio.common.outbox.OutboxEventJpaRepository;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionStatus;
 import org.junit.jupiter.api.Test;

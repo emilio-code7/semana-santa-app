@@ -1,16 +1,20 @@
-package com.repertorio.procesion.adapter.outbound.outbox;
+package com.repertorio.common.outbox;
 
-import jakarta.persistence.*;
-import lombok.Getter;
-import org.hibernate.annotations.UuidGenerator;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "outbox_event")
 @Getter
-public class OutboxEventEntity {
+public class OutboxEventEntity implements Persistable<UUID> {
 
     @Id
     @UuidGenerator
@@ -34,8 +38,8 @@ public class OutboxEventEntity {
     @Column
     private Instant processedAt;
 
-    @Column
-    private Boolean processed;
+    @Column(nullable = false)
+    private boolean processed;
 
     protected OutboxEventEntity() {}
 
@@ -48,12 +52,17 @@ public class OutboxEventEntity {
     }
 
     @PrePersist
-    public void prePersist() {
+    void onCreate() {
         this.createdAt = Instant.now();
     }
 
     public void markAsProcessed() {
         this.processed = true;
         this.processedAt = Instant.now();
+    }
+
+    @Override
+    public boolean isNew() {
+        return id == null;
     }
 }

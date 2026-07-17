@@ -1,9 +1,9 @@
 package com.repertorio.hermandad.adapter.outbound.events;
 
 
-import com.repertorio.hermandad.application.port.DomainEvent;
+import com.repertorio.common.event.DomainEvent;
+import com.repertorio.common.outbox.OutboxPublisher;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
-import com.repertorio.hermandad.application.port.OutboxPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;

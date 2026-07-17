@@ -1,5 +1,6 @@
 package com.repertorio.marcha.domain.event;
 
+import com.repertorio.common.event.DomainEvent;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -18,4 +19,7 @@ public record MarchaRemovedEvent(
 
     @Override
     public UUID aggregateId() { return marchaId(); }
+
+    @Override
+    public String eventType() { return "MARCHA_REMOVED"; }
 }

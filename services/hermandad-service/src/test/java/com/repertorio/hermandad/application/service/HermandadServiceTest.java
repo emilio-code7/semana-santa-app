@@ -2,7 +2,7 @@ package com.repertorio.hermandad.application.service;
 
 import com.repertorio.hermandad.adapter.inbound.rest.dto.CreateHermandadRequest;
 import com.repertorio.hermandad.adapter.inbound.rest.dto.AddMemberRequest;
-import com.repertorio.hermandad.application.port.DomainEvent;
+import com.repertorio.common.event.DomainEvent;
 import com.repertorio.hermandad.application.port.DomainEventPublisher;
 import com.repertorio.hermandad.application.port.UserExistencePort;
 import com.repertorio.hermandad.domain.event.HermandadCreatedEvent;

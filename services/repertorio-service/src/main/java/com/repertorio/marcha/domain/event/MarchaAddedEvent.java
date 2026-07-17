@@ -1,5 +1,6 @@
 package com.repertorio.marcha.domain.event;
 
+import com.repertorio.common.event.DomainEvent;
 import com.repertorio.marcha.domain.model.BandType;
 import java.time.Instant;
 import java.util.UUID;
@@ -24,4 +25,7 @@ public record MarchaAddedEvent(
 
     @Override
     public UUID aggregateId() { return marchaId(); }
+
+    @Override
+    public String eventType() { return "MARCHA_ADDED"; }
 }

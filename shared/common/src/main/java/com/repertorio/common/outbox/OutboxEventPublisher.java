@@ -1,10 +1,10 @@
-package com.repertorio.hermandad.adapter.outbound.outbox;
+package com.repertorio.common.outbox;
 
-import tools.jackson.databind.ObjectMapper;
-import com.repertorio.hermandad.application.port.DomainEvent;
-import com.repertorio.hermandad.application.port.OutboxPublisher;
+import com.repertorio.common.event.DomainEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
@@ -17,10 +17,13 @@ public class OutboxEventPublisher implements OutboxPublisher {
     public void publish(DomainEvent domainEvent) {
         try {
             String json = objectMapper.writeValueAsString(domainEvent);
-            repository.save(new OutboxEventEntity(domainEvent.aggregateType(), domainEvent.aggregateId(), domainEvent.eventType(), json));
-        } catch (tools.jackson.core.JacksonException e) {
+            repository.save(new OutboxEventEntity(
+                    domainEvent.aggregateType(),
+                    domainEvent.aggregateId(),
+                    domainEvent.eventType(),
+                    json));
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize outbox payload", e);
         }
     }
-
 }

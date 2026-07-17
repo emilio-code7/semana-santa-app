@@ -1,0 +1,1 @@
+ALTER TABLE outbox_event ADD COLUMN processed_at TIMESTAMP WITH TIME ZONE;

@@ -30,6 +30,7 @@ testcontainers = { group = "org.testcontainers", name = "testcontainers", versio
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
 testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
+testcontainers-localstack = { group = "org.testcontainers", name = "localstack", version.ref = "testcontainers" }
 keycloak-admin-client = { group = "org.keycloak", name = "keycloak-admin-client", version.ref = "keycloak-admin-client" }
 logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-logback-encoder", version = "7.4" }
 spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }

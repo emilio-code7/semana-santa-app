@@ -1,4 +1,4 @@
-package com.repertorio.marcha.domain.event;
+package com.repertorio.common.event;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -8,4 +8,5 @@ public interface DomainEvent {
     Instant occurredAt();
     String aggregateType();
     UUID aggregateId();
+    String eventType();
 }

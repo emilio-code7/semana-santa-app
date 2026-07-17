@@ -1,8 +1,8 @@
 package com.repertorio.marcha.adapter.outbound.events;
 
+import com.repertorio.common.outbox.OutboxPublisher;
 import com.repertorio.marcha.application.port.DomainEventPublisher;
-import com.repertorio.marcha.application.port.OutboxPublisher;
-import com.repertorio.marcha.domain.event.DomainEvent;
+import com.repertorio.common.event.DomainEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;

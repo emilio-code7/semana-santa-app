@@ -1,9 +1,9 @@
 package com.repertorio.marcha.adapter.outbound.persistence;
 
 import com.repertorio.marcha.adapter.inbound.kafka.ProcesionEventConsumer;
-import com.repertorio.marcha.adapter.outbound.outbox.OutboxEventJpaRepository;
+import com.repertorio.common.outbox.OutboxEventJpaRepository;
 import com.repertorio.marcha.domain.model.KnownProcesion;
-import org.junit.jupiter.api.BeforeAll;
+import com.repertorio.common.JdbcIntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,30 +24,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Skips automatically if PostgreSQL is unreachable.
  */
 @SpringBootTest
-class KnownProcesionRepositoryIntegrationTest {
-
-    private static final String POSTGRES_JDBC = System.getenv().getOrDefault(
-            "IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5433/repertorio_db");
-    private static final String POSTGRES_USER = System.getenv().getOrDefault(
-            "IT_DATASOURCE_USERNAME", "postgres");
-    private static final String POSTGRES_PASS = System.getenv().getOrDefault(
-            "IT_DATASOURCE_PASSWORD", "postgres");
-
-    @BeforeAll
-    static void checkPostgresRunning() {
-        try (var c = java.sql.DriverManager.getConnection(POSTGRES_JDBC, POSTGRES_USER, POSTGRES_PASS)) {
-            // connection OK
-        } catch (Exception e) {
-            org.junit.jupiter.api.Assumptions.assumeTrue(false,
-                    "PostgreSQL not reachable at " + POSTGRES_JDBC + " — skipping integration test");
-        }
-    }
+class KnownProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> POSTGRES_JDBC);
-        registry.add("spring.datasource.username", () -> POSTGRES_USER);
-        registry.add("spring.datasource.password", () -> POSTGRES_PASS);
+        registry.add("spring.datasource.url", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_URL", "jdbc:postgresql://localhost:5433/repertorio_db"));
+        registry.add("spring.datasource.username", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_USERNAME", "postgres"));
+        registry.add("spring.datasource.password", () ->
+                System.getenv().getOrDefault("IT_DATASOURCE_PASSWORD", "postgres"));
     }
 
     @Autowired
