@@ -25,7 +25,12 @@ Spec (functional-map + OpenAPI) → Plan → Gherkin scenarios → Review → Im
    - Error/edge cases (null, not found, invalid state)
    - Auth/permission boundaries
 4. **Present scenarios for review** — Show the scenarios. Wait for approval before implementing.
-5. **Implement TDD** — Test first, then code. One behavior change per commit.
+5. **Implement TDD (RED → GREEN → REFACTOR)** — This is not optional.
+   - **RED**: Write the failing test FIRST, before any implementation code.
+   - **GREEN**: Write the minimum code to make the test pass.
+   - **REFACTOR**: Clean up without changing behavior.
+   - If you wrote implementation before tests, you skipped TDD. Delete the implementation and start over.
+   - One behavior change per commit. Small commits.
 6. **Auto-run code review** — After implementation, run the `/code-review` skill against the diff. If the review finds issues, fix them and re-run until clean. Only proceed when the review passes.
 7. **Validate against spec** — Check the OpenAPI spec matches the implementation (response codes, field types, endpoint paths).
 8. **Update docs** — See functional-map §0.9 for which docs to update per change type. Regenerate Bruno scripts if API changed.
