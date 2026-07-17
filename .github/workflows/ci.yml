@@ -7,31 +7,13 @@ on:
     branches: ['**']
 
 jobs:
-  ci:
+  validate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle/libs.versions.toml', 'gradle.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Run tests
-        run: ./gradlew test
 
       - name: Validate OpenAPI spec is valid JSON
         run: |
@@ -53,3 +35,67 @@ jobs:
         run: |
           bash -n docs/demo/phase-1.sh
           echo "✅ Demo script syntax OK"
+
+  test:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service: [hermandad-service, procesion-service, repertorio-service]
+        include:
+          - service: hermandad-service
+            db-name: hermandad_db
+          - service: procesion-service
+            db-name: procesion_db
+          - service: repertorio-service
+            db-name: repertorio_db
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle/libs.versions.toml', 'gradle.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Create test database
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE ${{ matrix.db-name }};"
+
+      - name: Run tests
+        run: ./gradlew :services:${{ matrix.service }}:test
+        env:
+          IT_DATASOURCE_URL: jdbc:postgresql://localhost:5432/${{ matrix.db-name }}
+          IT_DATASOURCE_USERNAME: postgres
+          IT_DATASOURCE_PASSWORD: postgres
+          JDBC_URL: jdbc:postgresql://localhost:5432/${{ matrix.db-name }}
+          JDBC_USER: postgres
+          JDBC_PASSWORD: postgres
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports-${{ matrix.service }}
+          path: services/${{ matrix.service }}/build/reports/tests/

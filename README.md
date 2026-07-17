@@ -1,5 +1,7 @@
 # Repertorio — Semana Santa Management API
 
+[![CI](https://github.com/emilio-code7/semana-santa-app/actions/workflows/ci.yml/badge.svg)](https://github.com/emilio-code7/semana-santa-app/actions/workflows/ci.yml)
+
 REST API for managing Semana Santa (Holy Week) brotherhoods, processions, and musical repertoire. Built on Spring Boot 4.1 with hexagonal architecture, event-driven communication, and containerized deployment.
 
 **Portfolio goals:** demonstrable distributed system — event-driven microservices, outbox pattern, Kafka-based eventual consistency, hexagonal + DDD, CI/CD-ready.
