@@ -1,0 +1,22 @@
+{
+  // ============================================
+  // OMO-Slim project-level agent model overrides
+  // ============================================
+  // This merges with ~/.config/opencode/oh-my-opencode-slim.json
+  // Higher-precedence values here override user-level defaults.
+  // Optimized for OpenCode Go subscription ($10/mo).
+  // Model choices based on SWE-bench + Artificial Analysis benchmarks (July 2026).
+
+  "disabled_agents": [],
+  "presets": {
+    "custom": {
+      "orchestrator": { "model": "opencode-go/glm-5.2" },
+      "oracle":       { "model": "opencode-go/qwen3.7-max" },
+      "librarian":    { "model": "opencode-go/deepseek-v4-flash" },
+      "explorer":     { "model": "opencode-go/deepseek-v4-flash" },
+      "designer":     { "model": "opencode-go/minimax-m3" },
+      "fixer":        { "model": "opencode-go/deepseek-v4-flash" },
+      "observer":     { "model": "opencode-go/minimax-m3" }
+    }
+  }
+}

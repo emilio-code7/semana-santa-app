@@ -24,7 +24,7 @@
 | Spec (what/why) | `docs/functional-map.md` + OpenAPI spec | ✅ |
 | Plan (how) | `docs/architecture.md` + `docs/plans/` | ✅ |
 | Tasks | Sprint plans with acceptance criteria | ✅ |
-| Constitution | `CLAUDE.md` hard rules | ✅ New |
+| Constitution | `AGENTS.md` hard rules | ✅ New |
 | Contract validation | OpenAPI spec | ⚠️ Passive — not executable |
 | Gherkin scenarios | Plan acceptance criteria | ⚠️ Gherkin-like, not formal |
 | **Contract tests** | Specmatic | ❌ Missing — the gap |
@@ -88,7 +88,7 @@ SDD's value isn't in the commands — it's in the **checkpoints**. The review ga
 | Anti-pattern | The smell | The fix |
 |-------------|----------|---------|
 | Prompted Architecture | 150+ line prompt doing control flow | Move sequencing into code, leave intent in prompt |
-| Compaction-Vulnerable State | Goals only in user messages | Use CLAUDE.md, checkpoint files, session.metadata |
+| Compaction-Vulnerable State | Goals only in user messages | Use AGENTS.md, checkpoint files, session.metadata |
 | Ungated Background Work | Cron regardless of power/CPU | Read machine state before firing |
 | Tool-Result Flooding | Every intermediate result appended | Script deterministic pipelines, don't round-trip through LLM |
 | Premature Distribution | docker-compose with Kafka + Redis for single-user | Start monolithic, distribute when you have >1 consumer |
@@ -129,7 +129,7 @@ oh-my-opencode's skill loader can shadow superpowers skills. Workaround: symlink
 ## Recommendations for This Project
 
 ### High Impact, Low Effort
-1. **CLAUDE.md** — project invariants auto-loaded every session (see root CLAUDE.md)
+1. **AGENTS.md** — project invariants auto-loaded every session (see root AGENTS.md)
 2. **Verification gate before every commit** — run tests/lint/compile, don't trust agent's "all green"
 3. **Review step after implementer agents** — cross-model review catches context-blindness bugs
 
