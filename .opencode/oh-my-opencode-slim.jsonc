@@ -3,20 +3,39 @@
   // OMO-Slim project-level agent model overrides
   // ============================================
   // This merges with ~/.config/opencode/oh-my-opencode-slim.json
-  // Higher-precedence values here override user-level defaults.
   // Optimized for OpenCode Go subscription ($10/mo).
   // Model choices based on SWE-bench + Artificial Analysis benchmarks (July 2026).
 
   "disabled_agents": [],
   "presets": {
     "custom": {
-      "orchestrator": { "model": "opencode-go/glm-5.2" },
+      "orchestrator": { "model": "opencode-go/deepseek-v4-pro" },
       "oracle":       { "model": "opencode-go/qwen3.7-max" },
       "librarian":    { "model": "opencode-go/deepseek-v4-flash" },
       "explorer":     { "model": "opencode-go/deepseek-v4-flash" },
       "designer":     { "model": "opencode-go/minimax-m3" },
       "fixer":        { "model": "opencode-go/deepseek-v4-flash" },
-      "observer":     { "model": "opencode-go/minimax-m3" }
+      "observer":     { "model": "opencode-go/minimax-m3" },
+      "council":      { "model": "opencode-go/qwen3.7-max" }
     }
+  },
+  "council": {
+    "presets": {
+      "strong": {
+        "qwen": {
+          "model": "opencode-go/qwen3.7-max",
+          "prompt": "You are a senior engineer reviewing from the perspective of correctness and edge cases. Focus on bugs, spec violations, and data integrity."
+        },
+        "glm": {
+          "model": "opencode-go/glm-5.2",
+          "prompt": "You are an architect reviewing from the perspective of maintainability and simplicity. Focus on design patterns, coupling, and YAGNI."
+        },
+        "deepseek": {
+          "model": "opencode-go/deepseek-v4-pro",
+          "prompt": "You are a performance engineer reviewing from the perspective of efficiency and scalability. Focus on algorithms, data structures, and resource usage."
+        }
+      }
+    },
+    "councillor_execution_mode": "parallel"
   }
 }
