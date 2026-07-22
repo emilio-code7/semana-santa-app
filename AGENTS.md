@@ -39,10 +39,11 @@ Explore → Assess → Design → Implement → Diff → Review → Verify → S
 
 | Resource | Details |
 |---|---|
-| **EC2** | t3.micro, Amazon Linux 2023, IP: `98.81.108.60` |
-| **RDS** | PostgreSQL 16, db.t3.micro, 20GB gp2, 5 databases |
+| **Region** | eu-south-2 (Spain) |
+| **EC2** | t3.small, Amazon Linux 2023, IP: `35.42.55.101` |
+| **RDS** | PostgreSQL 16, db.t3.micro, 20GB gp2, 3 databases (hermandad_db via CDK, procesion_db + repertorio_db via deploy script) |
 | **SQS** | 3 queues (`hermandad-events`, `hermandad-member-events`, `procesion-events`) + 3 DLQs |
-| **Cognito** | User Pool `us-east-1_V6Uwds4fO`, Client `7jlsvkd6jrajupfkcoaqsn6dd` |
+| **Cognito** | User Pool `eu-south-2_ETraAnuAq`, Client `3bhlf9f4686bv6fpho7ap7mmp` |
 | **ECR** | 3 repos: `repertorio/hermandad-service`, `repertorio/procesion-service`, `repertorio/repertorio-service` |
 | **Lambda** | Pre-token generation (Node.js 20, Cognito group → claim injection) |
 | **IAM** | EC2 role: SSM + SQS + ECR pull |
@@ -52,7 +53,7 @@ Explore → Assess → Design → Implement → Diff → Review → Verify → S
 Spring Boot services use `@Profile("aws")` to swap adapters:
 - `@Profile("aws")` → SQS messaging, Cognito auth
 - `@Profile("!aws")` → Kafka messaging, Keycloak auth (local dev)
-- Nginx reverse proxy routes `/api/hermandades/` → `:8081`, `/api/procesiones/` → `:8082`, `/api/marchas/` → `:8083`
+- Nginx reverse proxy routes `/api/hermandades` → `:8081`, `/api/procesiones` → `:8082`, `/api/marchas` → `:8083`
 - Eureka disabled on EC2 (`EUREKA_CLIENT_ENABLED=false`)
 
 ## Infrastructure Workflow (step-by-step)
