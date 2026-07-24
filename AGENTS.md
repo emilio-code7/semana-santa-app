@@ -4,6 +4,13 @@
 
 Semana Santa management system: 3 Spring Boot microservices (hermandad, procesion, repertorio), event-driven via Kafka outbox, JWT auth via Keycloak, hexagonal + DDD.
 
+## Operating Principle
+
+**Orchestrator** reasons, decides, and delegates.
+**Sub-agents** receive one specific task, start with a clean context, produce an artifact, and do nothing else — no sub-orchestration, no scope creep, no second-guessing.
+
+This is not negotiable. A sub-agent that drifts into analysis, re-planning, or further delegation has violated its contract.
+
 ## Mode Detection (read first)
 
 If the request mentions any of these keywords → activate **Infrastructure Mode**:
