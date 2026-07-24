@@ -18,6 +18,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springframework.boot:spring-boot-starter-kafka")
+    implementation(libs.spring.cloud.aws.sqs)
+    implementation(libs.cognito.idp)
     implementation(libs.keycloak.admin.client)
 
     implementation(libs.spring.boot.starter.flyway)

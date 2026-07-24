@@ -1,0 +1,86 @@
+# Docker Compose for AWS deployment (EC2)
+# Uses managed services: RDS (Postgres), SQS, Cognito
+# No containers for Kafka, Keycloak, Redis, Zookeeper, or Postgres
+
+x-common: &common
+  pull_policy: always
+  restart: unless-stopped
+  environment: &common-env
+    SPRING_PROFILES_ACTIVE: aws
+    # RDS — single instance, 3 databases (hermandad_db via CDK; others via approved database bootstrap procedure)
+    SPRING_DATASOURCE_USERNAME: postgres
+    SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
+    SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+    SPRING_FLYWAY_ENABLED: "true"
+    # SQS (uses default credential chain — instance profile on EC2)
+    SPRING_CLOUD_AWS_REGION_STATIC: ${REGION}
+    SPRING_CLOUD_AWS_SQS_QUEUE_HERMANDAD_EVENTS: ${QUEUE_HERMANDAD_EVENTS}
+    SPRING_CLOUD_AWS_SQS_QUEUE_HERMANDAD_MEMBER_EVENTS: ${QUEUE_HERMANDAD_MEMBER_EVENTS}
+    SPRING_CLOUD_AWS_SQS_QUEUE_PROCESION_EVENTS: ${QUEUE_PROCESION_EVENTS}
+    SPRING_CLOUD_AWS_SQS_QUEUE_MARCHA_EVENTS: ${QUEUE_MARCHA_EVENTS}
+    # Cognito
+    COGNITO_ISSUER_URL: ${COGNITO_ISSUER_URL}
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${COGNITO_ISSUER_URL}
+    # Eureka disabled (no discovery-server)
+    EUREKA_CLIENT_ENABLED: "false"
+    SPRING_CLOUD_DISCOVERY_ENABLED: "false"
+    # JVM memory cap (t3.small = 2GB total; 3 services share it)
+    JAVA_OPTS: "-Xmx256m -Xms128m"
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    depends_on:
+      hermandad-service:
+        condition: service_started
+      procesion-service:
+        condition: service_started
+      repertorio-service:
+        condition: service_started
+
+  hermandad-service:
+    <<: *common
+    image: ${ECR_BASE}/repertorio/hermandad-service:latest
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST}:5432/hermandad_db
+      # Cognito admin
+      COGNITO_USER_POOL_ID: ${COGNITO_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  procesion-service:
+    <<: *common
+    image: ${ECR_BASE}/repertorio/procesion-service:latest
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST}:5432/procesion_db
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  repertorio-service:
+    <<: *common
+    image: ${ECR_BASE}/repertorio/repertorio-service:latest
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST}:5432/repertorio_db
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8083/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s

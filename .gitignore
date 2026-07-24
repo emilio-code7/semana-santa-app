@@ -1,6 +1,11 @@
 # Worktrees
 .worktrees/
 
+# BEGIN oh-my-opencode-slim worktrees
+.slim/worktrees/
+.slim/worktrees.json
+# END oh-my-opencode-slim worktrees
+
 # Gradle
 .gradle/
 build/
@@ -12,6 +17,14 @@ build/
 *.ipr
 *.iws
 .vscode/
+.project
+.classpath
+.factorypath
+.settings/
+/infrastructure/api-gateway/bin/
+/infrastructure/discovery-server/bin/
+/services/*/bin/
+/shared/*/bin/
 
 # OS
 .DS_Store

@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
@@ -18,6 +19,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import static java.time.Duration.ofDays;
 
 @Configuration
+@Profile("!aws")
 @RequiredArgsConstructor
 public class RedisConfig {
 

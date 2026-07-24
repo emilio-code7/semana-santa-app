@@ -257,7 +257,7 @@ domain/
 | **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache. Validates cruceta definition against known procesions. |
 | **SB4** | Migrated (`tools.jackson`) |
 
-**Current product boundary and risks:** A Cruceta is currently an ordered, procession-specific setlist. The intended product is route-aware: a marcha assigned to a named route point or segment. Before adding that capability, Cruceta mutation must verify that `KnownProcesion.hermandadId` equals the `{hermandadId}` authorized in the request path. `ProcesionEventConsumer` also catches failures and returns normally, which can acknowledge a failed Kafka record; reliable retry/DLQ handling and producer-generated event IDs are planned work.
+**Current product boundary and risks:** A Cruceta is currently an ordered, procession-specific setlist. The intended product is route-aware: a marcha assigned to a named route point or segment. Before adding that capability, Cruceta mutation must verify that `KnownProcesion.hermandadId` equals the `{hermandadId}` authorized in the request path. `ProcesionEventProcessor` now propagates failures to the transport listener, so the transport (Kafka or SQS) can retry or route to a DLQ. Producer-generated event IDs are planned work.
 
 **Key directories:**
 ```
@@ -342,10 +342,17 @@ Domain Event (e.g. HermandadCreatedEvent)
             │
             ├──► SELECT TOP 100 WHERE processed = FALSE ORDER BY created_at ASC
             │
-            └──► KafkaTemplate.send(topic = "{aggregateType}-events", payload = JSON)
+            └──► MessageSender.send("{aggregateType}-events", payload)
                     │
-                    └──► Kafka topic (e.g. hermandad-events, procesion-events)
+                    ├──► @Profile("!aws"): KafkaMessageSender → Kafka topic
+                    │       (e.g. hermandad-events, procesion-events)
+                    │
+                    └──► @Profile("aws"): SqsMessageSender → SQS queue
+                            (e.g. hermandad-events, hermandad-member-events,
+                             procesion-events, marcha-events)
 ```
+
+**Transport selection**: `OutboxPoller` uses `MessageSender` (port in `shared/common`) which is bound to `KafkaMessageSender` under `@Profile("!aws")` and `SqsMessageSender` under `@Profile("aws")`. No direct `KafkaTemplate` use in the poller.
 
 ### 3.3 Event Consumption Flow
 
@@ -362,26 +369,49 @@ Kafka topic: hermandad-events / hermandad-member-events
             └──► ⚠️ No downstream processing — currently a sink (audit/self-consumption)
 ```
 
-**Repertorio (cross-service consumer):**
+**Repertorio (cross-service consumer, transport-neutral):**
 ```
-Kafka topic: procesion-events
+Kafka topic: procesion-events  (@Profile("!aws") → ProcesionEventConsumer)
+SQS queue:  procesion-events  (@Profile("aws")   → ProcesionSqsConsumer)
     │
-    └──► ProcesionEventConsumer (groupId = repertorio-service-group)
+    └──► ProcesionEventProcessor.process(payload)
             │
-            ├──► Check processed_event table by deterministic UUID
-            │       ├── Existing → log "duplicate skipped"
-            │       └── New → save processed_event row
+            ├──► Compute deterministic eventId (UUID.nameUUIDFromBytes)
+            ├──► Check processed_event table
+            │       ├── Existing → log "duplicate skipped", return
+            │       └── New → continue
             │
             └──► Parse event payload:
-                    ├── Has "date" field → ProcesionCreatedEvent
-                    │       └── knownProcesionRepository.save(KnownProcesion(procesionId, hermandadId, "PLANNED"))
-                    └── Has "status" field → ProcesionStatusChangedEvent
+                    ├── Has neither "previousStatus" nor "newStatus"
+                    │   → ProcesionCreatedEvent
+                    │       └── knownProcesionRepository.save(KnownProcesion(...))
+                    │
+                    └── Has "previousStatus" or "newStatus"
+                        → ProcesionStatusChangedEvent
                             └── knownProcesionRepository.updateStatus(procesionId, newStatus)
+
+            On success → processedEventStore.record(eventId)
+            On failure → throw (transport retries / DLQ)
 ```
 
 **Note**: `marcha-events` topic exists but has **no consumer** — repertorio only produces to this topic.
 
-### 3.4 Kafka Topology
+### 3.4 SQS Queue Topology (AWS profile)
+
+The AWS profile replaces Kafka topics with SQS queues. The target architecture provisions 4 queues:
+
+| Queue | Producer | Consumer | Purpose |
+|-------|----------|----------|---------|
+| `hermandad-events` | hermandad-service (SqsMessageSender) | **producer-only** (no AWS SQS consumer exists) | Created/modified brotherhoods |
+| `hermandad-member-events` | hermandad-service (SqsMessageSender) | **producer-only** (no AWS SQS consumer exists) | Member role changes |
+| `procesion-events` | procesion-service (SqsMessageSender) | repertorio-service (@SqsListener, local cache) | Procesion lifecycle events |
+| `marcha-events` | repertorio-service (SqsMessageSender) | **producer-only** (no AWS SQS consumer exists) | Marcha catalog events; future consumer planned |
+
+Each queue has a corresponding DLQ (retention 14 days, maxReceiveCount 3). **Currently 3 queues deployed** (`hermandad-events`, `hermandad-member-events`, `procesion-events`); `marcha-events` will be provisioned in the next CDK deployment.
+
+> **`cruceta-events` not provisioned**: There is no `cruceta-events` queue in the AWS architecture. Cruceta outbox rows (aggregate type `cruceta`) will be produced as `{aggregateType}-events` → `cruceta-events` by the outbox poller, but no SQS queue exists for this destination. Under AWS, the outbox poller's `SqsMessageSender.send("cruceta-events", payload)` will receive a `CompletableFuture` failure. The outbox row therefore remains `processed = false` and will be retried every poll cycle. A separate, reviewed decision is needed to provision a `cruceta-events` queue and its consumer. This is tracked in the deferred work section of the consolidation plan.
+
+### 3.5 Kafka Topology
 
 | Topic | Partitions | Producer | Consumer | Status |
 |-------|-----------|----------|----------|--------|
@@ -392,7 +422,7 @@ Kafka topic: procesion-events
 | `notification-commands` | 3 | none (planned) | none | ⚠️ No producer/consumer |
 | `tracking-events` | 6 | none (planned) | none | ⚠️ No producer/consumer |
 
-### 3.5 State Machine: Procesion Status Transitions
+### 3.6 State Machine: Procesion Status Transitions
 
 ```
           ┌──────────┐
