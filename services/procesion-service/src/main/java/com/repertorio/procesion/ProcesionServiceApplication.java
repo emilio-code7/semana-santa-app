@@ -3,13 +3,11 @@ package com.repertorio.procesion;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = {"com.repertorio.procesion", "com.repertorio.common.outbox"})
-@EnableJpaRepositories(basePackages = {"com.repertorio.procesion", "com.repertorio.common.outbox"})
-@EntityScan("com.repertorio.procesion")
+@EntityScan({"com.repertorio.procesion", "com.repertorio.common.outbox"})
 @EnableDiscoveryClient
 @EnableScheduling
 public class ProcesionServiceApplication {
