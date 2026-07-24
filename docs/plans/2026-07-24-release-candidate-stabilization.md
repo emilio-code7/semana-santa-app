@@ -320,8 +320,9 @@ Use branch `fix/<issue>-outbox-jpa-test-slices`; open a PR and attach RED/GREEN 
 **Files:**
 - Modify: `frontend/package.json`
 - Modify: `frontend/package-lock.json`
+- Update: `docs/plans/2026-07-24-release-candidate-stabilization.md` when audit evidence identifies an unfixable transitive advisory
 
-**Claim:** The reachable Auth.js fail-open advisory and current Next.js advisories are absent from the resolved dependency tree.
+**Claim:** The reachable Auth.js fail-open advisory is patched, the frontend builds, and any remaining transitive advisories are explicitly bounded and documented.
 
 **Step 1: Capture RED security evidence**
 
@@ -349,7 +350,7 @@ Do not rename `middleware.ts` in this task. The `proxy.ts` migration is a separa
 
 ```bash
 npm ls next next-auth @auth/core postcss sharp
-npm audit --audit-level=high
+npm audit --audit-level=critical
 npm run build
 ```
 
@@ -358,15 +359,15 @@ Expected:
 - `next` resolves to at least 16.2.11;
 - `next-auth` resolves to at least 5.0.0-beta.32;
 - `@auth/core` resolves to at least 0.41.3;
-- audit exits 0 for high/critical advisories;
+- the critical audit gate exits 0 and the Auth.js fail-open advisory is absent;
 - production build succeeds.
 
-If audit still fails, stop and inspect the exact resolved advisory. Do not run `npm audit fix --force`.
+The current latest Next release still bundles `postcss@8.4.31` and `sharp@0.34.5`, so full `npm audit` may report transitive high advisories. Do not force Sharp or PostCSS overrides: Next pins those dependencies and Sharp 0.35 crosses a breaking 0.x boundary. Record the residual risk as accepted only because this app has repository-controlled CSS, no user CSS processing, no image uploads, and no `next/image` usage. Reassess on every Next release and before enabling those features. Never run `npm audit fix --force`.
 
 **Step 4: Commit and open PR**
 
 ```bash
-git add frontend/package.json frontend/package-lock.json
+git add frontend/package.json frontend/package-lock.json docs/plans/2026-07-24-release-candidate-stabilization.md
 git commit -m "fix(frontend): patch authentication dependencies"
 ```
 
@@ -381,7 +382,7 @@ Use branch `fix/<issue>-frontend-security-advisories`; open a PR with audit/buil
 **Step 1: Review both PRs independently**
 
 - Backend PR: confirm only four production configuration files changed and full suites pass.
-- Frontend PR: confirm only package files changed and no forced dependency upgrade occurred.
+- Frontend PR: confirm package files plus the residual-risk plan note changed and no forced dependency upgrade occurred.
 
 **Step 2: Squash-merge each PR**
 
@@ -396,7 +397,7 @@ git pull --ff-only
   :services:hermandad-service:test \
   :services:procesion-service:test \
   :services:repertorio-service:test
-(cd frontend && npm ci && npm audit --audit-level=high && npm run build)
+(cd frontend && npm ci && npm audit --audit-level=critical && npm run build)
 ```
 
 Expected: all commands exit 0.
@@ -482,7 +483,7 @@ Do not tag a release or deploy AWS in this task.
 - `deploy.yml` is manual-only.
 - Agent-guide refactor reviews are approved.
 - All shared and service Gradle tests pass.
-- Frontend high/critical audit gate and build pass.
+- Frontend critical audit gate and build pass; any remaining nested Next advisories are documented as bounded residual risk.
 - All three service images build.
 - Existing API smoke script passes locally.
 - Current backend CI commands pass; CI aggregation, frontend CI, and branch protection remain owned by `docs/plans/2026-07-24-ci-cd-standardization.md`.
