@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    aws:
+      region:
+        static: eu-south-2
+      sqs:
+        queue:
+          hermandad-events: ${SPRING_CLOUD_AWS_SQS_QUEUE_HERMANDAD_EVENTS:hermandad-events}
+          hermandad-member-events: ${SPRING_CLOUD_AWS_SQS_QUEUE_HERMANDAD_MEMBER_EVENTS:hermandad-member-events}
+          procesion-events: ${SPRING_CLOUD_AWS_SQS_QUEUE_PROCESION_EVENTS:procesion-events}
+          marcha-events: ${SPRING_CLOUD_AWS_SQS_QUEUE_MARCHA_EVENTS:marcha-events}
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URL}
+          jwk-set-uri: ${COGNITO_ISSUER_URL}/.well-known/jwks.json

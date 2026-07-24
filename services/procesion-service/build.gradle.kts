@@ -17,6 +17,7 @@ dependencies {
     implementation(libs.spring.cloud.starter.netflix.eureka.client)
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-kafka")
+    implementation(libs.spring.cloud.aws.sqs)
 
     implementation(libs.spring.boot.starter.flyway)
     runtimeOnly("org.flywaydb:flyway-database-postgresql")

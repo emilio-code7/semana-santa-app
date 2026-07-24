@@ -6,6 +6,8 @@ testcontainers = "1.20.1"
 keycloak-admin-client = "24.0.3"
 spring-dependency-management = "1.1.7"
 springdoc = "3.0.3"
+springCloudAws = "4.0.2"
+awsSdk = "2.42.36"
 
 [libraries]
 spring-boot-starter-webmvc = { group = "org.springframework.boot", name = "spring-boot-starter-webmvc" }
@@ -37,6 +39,8 @@ spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
 spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "spring-boot-starter-data-redis" }
 springdoc-starter = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 springdoc-starter-webflux = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc" }
+spring-cloud-aws-sqs = { group = "io.awspring.cloud", name = "spring-cloud-aws-starter-sqs", version.ref = "springCloudAws" }
+cognito-idp = { group = "software.amazon.awssdk", name = "cognitoidentityprovider", version.ref = "awsSdk" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

@@ -4,6 +4,7 @@ import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventEntity;
 import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ import java.util.UUID;
 // and discarded. Add real processing when a concrete consumer requirement
 // appears. See CR-11 in docs/plans/2026-07-16-code-review-fixes.md.
 @Component
+@Profile("!aws")
 @RequiredArgsConstructor
 @Slf4j
 public class IdempotentEventConsumer {
