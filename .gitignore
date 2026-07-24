@@ -47,3 +47,20 @@ application-local.properties
 # Docker
 docker-compose.override.yml
 .omo/
+
+# Non-OpenCode agent tooling
+.claude/
+.codebuddy/
+.gemini/
+.kiro/
+.qoder/
+.cursorrules
+.windsurfrules
+CODEBUDDY.md
+GEMINI.md
+QODER.md
+.mcp.json
+.github/code-review-graph.instruction.md
+
+# Added by code-review-graph
+.code-review-graph/

@@ -101,7 +101,7 @@ repertorio/
 ├── build.gradle.kts                          # Root: Spring Boot 4.1.0 + Spring Cloud 2025.1.2 BOM
 ├── settings.gradle.kts                       # 7 modules: 2 infra, 5 services, 1 shared
 ├── README.md                                 # Project overview, quick start, architecture, demo
-├── AGENTS.md                                 # Agent invariants + development workflow — first thing agents read
+├── AGENTS.md                                 # Always-on agent contract (identity, routing, rules) — first thing agents read. Detailed workflows in .agents/skills/
 ├── .githooks/
 │   ├── README.md                             # Setup instructions
 │   └── pre-commit                            # Enforces OpenAPI-first, doc updates, no FIXMEs
