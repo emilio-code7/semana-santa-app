@@ -46,3 +46,12 @@
 - `git diff --check` — no whitespace errors
 - Visual inspection of `git diff` — no unintended changes to application code
 - All new skill files have valid YAML frontmatter
+
+## Intentional Policy Changes
+
+This refactor made the following deliberate policy changes:
+
+- **Intent routing replaced keyword mode detection**: Routing decisions are now based on the nature of the change (intent), not on detecting mode keywords. This avoids brittle pattern matching and lets the orchestrator apply judgment.
+- **Risk-triggered Oracle review**: Oracle is no longer a required step for every change. Review is triggered only by risk: architecture/boundary decisions, security changes, multi-service or data-integrity changes, hard bugs, or explicit request.
+- **Single-fixer operational tasks**: Simple operational tasks (commit, status, single command, one-file edit) delegate directly to `@fixer` without loading the full workflow skill. This preserves orchestrator context and reduces latency.
+- **`deploy-outputs.json` only after real deployment**: The file is no longer updated speculatively during implementation. It is updated and committed only after an actual deployment confirms live outputs changed.

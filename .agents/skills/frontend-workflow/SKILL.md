@@ -25,7 +25,7 @@ Use this skill when implementing frontend changes — browser, UI, components, p
 
 ## Workflow
 
-1. **Explore** — Use `@explorer` for 4+ files, complex flows, or unfamiliar patterns; inspect targeted files directly for bounded changes.
+1. **Explore** — Use graph MCP tools first (`semantic_search_nodes_tool`, `query_graph_tool`, `get_architecture_overview_tool`). Fall back to `@explorer` for 4+ files, complex flows, or to targeted Grep/Glob/Read when graph coverage is insufficient.
 2. **Read the spec** — `docs/openapi.yaml` for endpoint shapes, `docs/functional-map.md` for service topology.
 3. **Design** — For non-trivial visual/UX changes, delegate to `@designer`. Designer owns: layout, spacing, hierarchy, motion, color, affordances, responsive behavior. Orchestrator may only edit copy after design.
 4. **Implement** — Mechanical changes (API wiring, data fetching, types) → `@fixer`. Visual/UX changes → always `@designer`.

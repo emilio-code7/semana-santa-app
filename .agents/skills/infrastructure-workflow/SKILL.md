@@ -11,11 +11,12 @@ Use this skill for infrastructure changes — AWS, CDK, deployment, CI/CD, Docke
 
 1. Load relevant AWS/cloud skills before starting.
 2. Read `docs/aws-guide.md` for architecture context, migration rationale, service mapping, deploy instructions.
-3. Read `infrastructure/aws/deploy-outputs.json` for current live resource state.
+3. Read `.github/workflows/deploy.yml` for current CI/CD deploy pipeline definition.
+4. Read `infrastructure/aws/deploy-outputs.json` for current live resource state.
 
 ## Workflow
 
-1. **Explore** — Use `@explorer` for complex multi-resource changes or unfamiliar areas; inspect targeted files directly for bounded changes.
+1. **Explore** — Use graph MCP tools first (`semantic_search_nodes_tool`, `query_graph_tool`, `get_architecture_overview_tool`). Fall back to `@explorer` for complex multi-resource changes or unfamiliar areas, or to targeted Grep/Glob/Read when graph coverage is insufficient.
 2. **Assess** — Read `infrastructure/aws/deploy-outputs.json` for live resource state. Run `cdk diff` to see what would change. Never touch AWS without knowing the current state.
 3. **Design** — `@oracle` is **mandatory** for: IAM policy changes, new AWS services, security group modifications, cost-impacting changes (instance types, RDS sizing). Oracle must approve before any CDK code is written.
 4. **Implement** — Delegate to `@fixer` for bounded CDK/CI changes. Simple tasks follow AGENTS.md and use exactly one fixer. CDK is TypeScript — same tooling as the rest of the project.
@@ -32,7 +33,7 @@ Use this skill for infrastructure changes — AWS, CDK, deployment, CI/CD, Docke
 3. **Never change IAM policies without Oracle review.** Least privilege is hard.
 4. **Never commit AWS credentials, IPs, or secrets.**
 5. **Never change instance types without cost analysis.**
-6. **Always update `docs/aws-guide.md`** when adding services or changing architecture.
+6. **Always update `docs/aws-guide.md`** when adding services, changing architecture, or changing deployment procedures.
 7. **Always run `cdk synth` before `cdk deploy`.** Catch synthesis errors locally, not in CloudFormation.
 
 ## Verification Gate
@@ -41,7 +42,7 @@ Before declaring any infra task complete:
 1. `cdk synth` — CloudFormation template generates without errors
 2. `cdk diff` — reviewed and approved by Oracle for non-trivial changes
 3. No hardcoded secrets, IPs, or credentials in committed files
-4. `docs/aws-guide.md` updated if architecture changed
+4. `docs/aws-guide.md` updated if architecture or deployment procedure changed
 5. `deploy-outputs.json` updated and committed only after an actual deployment and verification confirms live outputs changed
 
 ## Simple Tasks

@@ -16,7 +16,7 @@ Use this skill when implementing backend changes — services, API, persistence,
 
 ## Workflow
 
-1. **Explore** — Delegate to `@explorer` when you need to understand 4+ files or a complex flow. Otherwise, use grep/glob/read directly.
+1. **Explore** — Use graph MCP tools first (`semantic_search_nodes_tool`, `query_graph_tool`, `get_architecture_overview_tool`). For external/version-specific research, delegate to `@librarian`. Fall back to `@explorer` for 4+ files or complex flows, or to targeted Grep/Glob/Read when graph coverage is insufficient.
 2. **OpenAPI first** — For API/controller changes, update `docs/openapi.yaml` with new endpoints, request/response schemas, and operationIds before writing code. The spec is the contract. Pre-commit hook enforces this.
 3. **Gherkin** — For non-trivial behavior changes, write `Feature:`/`Scenario:`/`Given/When/Then` blocks covering happy path, error/edge cases, and auth/permission boundaries. Present for approval before implementing.
 4. **Design review** — Consult `@oracle` only for: architecture trade-offs, hex layer placement, security decisions, hard bugs, or required non-trivial diff review. Oracle is an escalation, not a default.

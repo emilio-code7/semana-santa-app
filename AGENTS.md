@@ -30,6 +30,18 @@ Route by intent, not keywords. If multiple apply, choose primary by changed beha
 | **Frontend** | Browser/UI/components/pages | `.agents/skills/frontend-workflow/SKILL.md` |
 | **Infrastructure** | AWS/cloud/deployment/CI/CD/Docker | `.agents/skills/infrastructure-workflow/SKILL.md` |
 
+## Specialists
+
+Route work to the right specialist — each handles one concern and returns control:
+
+| Specialist | When |
+|-----------|------|
+| `@explorer` | 4+ files, unfamiliar flows, or multi-service understanding |
+| `@librarian` | External research, version-specific docs, dependency compatibility |
+| `@fixer` | Bounded multi-file implementation (simple tasks per Task Sizing above) |
+| `@designer` | Visual/UX work: layout, styling, responsive behavior, animation |
+| `@oracle` | Strategic, security, or data-integrity decisions — risk-triggered per workflow skill |
+
 ## First Thing (all modes)
 
 Read `docs/functional-map.md` before any implementation work — it's your complete reference: topology, profiles, endpoints, DB schemas, test inventory, operating principles. This file is the pointer. That file is the truth.
@@ -52,6 +64,7 @@ Read `docs/functional-map.md` before any implementation work — it's your compl
 | App topology, profiles, endpoints, DB schemas, test inventory | `docs/functional-map.md` |
 | API contract (endpoints, request/response schemas) | `docs/openapi.yaml` |
 | Hexagonal + DDD architecture decisions | `docs/architecture.md` |
+| Domain glossary, ubiquitous language, aggregate roots | `docs/agents/domain.md` |
 | AWS migration rationale, architecture, deploy instructions | `docs/aws-guide.md` |
 | Live AWS resource IDs (CDK outputs) | `infrastructure/aws/deploy-outputs.json` |
 | Sprint plans with acceptance criteria | `docs/plans/` |
