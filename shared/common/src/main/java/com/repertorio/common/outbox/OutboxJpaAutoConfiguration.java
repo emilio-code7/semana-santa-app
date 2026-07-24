@@ -16,5 +16,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 @ConditionalOnBean(EntityManagerFactory.class)
 @EntityScan("com.repertorio.common.outbox")
+@EnableJpaRepositories(basePackageClasses = OutboxEventJpaRepository.class)
 public class OutboxJpaAutoConfiguration {
 }
