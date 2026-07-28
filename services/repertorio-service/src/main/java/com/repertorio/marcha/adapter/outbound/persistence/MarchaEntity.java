@@ -2,7 +2,6 @@ package com.repertorio.marcha.adapter.outbound.persistence;
 
 import com.repertorio.marcha.domain.model.BandType;
 import jakarta.persistence.*;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.domain.Persistable;
 import java.time.Instant;
 import java.util.UUID;
@@ -12,8 +11,10 @@ import java.util.UUID;
 public class MarchaEntity implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
 
     @Version
     private int version;
@@ -63,14 +64,27 @@ public class MarchaEntity implements Persistable<UUID> {
     public UUID getId() { return id; }
 
     @Override
-    public boolean isNew() { return id == null; }
+    public boolean isNew() { return isNew; }
+
+    @PostLoad
+    void markNotNew() { this.isNew = false; }
 
     public String getTitle() { return title; }
     public String getComposer() { return composer; }
     public BandType getBandType() { return bandType; }
     public int getDurationSeconds() { return durationSeconds; }
     public Integer getCompositionYear() { return compositionYear; }
+    public int getVersion() { return version; }
     public String getYoutubeUrl() { return youtubeUrl; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    // ponytail: package-private setters for adapter use only
+    void setTitle(String title) { this.title = title; }
+    void setComposer(String composer) { this.composer = composer; }
+    void setBandType(BandType bandType) { this.bandType = bandType; }
+    void setDurationSeconds(int durationSeconds) { this.durationSeconds = durationSeconds; }
+    void setCompositionYear(Integer compositionYear) { this.compositionYear = compositionYear; }
+    void setYoutubeUrl(String youtubeUrl) { this.youtubeUrl = youtubeUrl; }
+    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
