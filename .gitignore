@@ -33,6 +33,9 @@ Thumbs.db
 # Agent skills lockfile (auto-generated, deterministic)
 skills-lock.json
 
+# Local API test environment (contains credentials)
+api-tests/bruno/environments/Local.json
+
 # Java
 *.class
 
