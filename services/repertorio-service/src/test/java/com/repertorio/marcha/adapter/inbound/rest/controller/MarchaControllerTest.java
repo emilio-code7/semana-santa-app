@@ -43,7 +43,7 @@ class MarchaControllerTest {
     private Marcha buildMarcha() {
         var m = Marcha.create("Amarguras", "Manuel López Farfán", BandType.BANDA_PALIO, 420, 1919, null);
         // use reflection to set id for predictable test
-        return Marcha.reconstruct(marchaId, m.getTitle(), m.getComposer(), m.getBandType(),
+        return Marcha.reconstruct(marchaId, 0, m.getTitle(), m.getComposer(), m.getBandType(),
                 m.getDurationSeconds(), m.getCompositionYear(), m.getYoutubeUrl(),
                 m.getCreatedAt(), m.getUpdatedAt());
     }

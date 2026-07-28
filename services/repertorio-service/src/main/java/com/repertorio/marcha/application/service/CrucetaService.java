@@ -28,11 +28,16 @@ public class CrucetaService {
         if (!knownProcesionRepository.existsByProcesionId(procesionId)) {
             throw new ProcesionNotFoundException(procesionId);
         }
-        var existing = crucetaRepository.findByProcesionId(procesionId);
-        existing.ifPresent(c -> crucetaRepository.deleteByProcesionId(procesionId));
-
-        var cruceta = new Cruceta(procesionId, items);
-        cruceta = crucetaRepository.save(cruceta);
+        // Load existing aggregate and redefine in place — preserves aggregate ID and revision
+        var cruceta = crucetaRepository.findByProcesionId(procesionId)
+                .map(existing -> {
+                    existing.redefine(items);
+                    return crucetaRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    var newCruceta = new Cruceta(procesionId, items);
+                    return crucetaRepository.save(newCruceta);
+                });
         eventPublisher.publish(new CrucetaDefinedEvent(cruceta.getId(), procesionId, items.size()));
         return cruceta;
     }

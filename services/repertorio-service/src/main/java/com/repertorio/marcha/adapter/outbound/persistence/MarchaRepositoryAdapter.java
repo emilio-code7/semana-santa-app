@@ -1,6 +1,7 @@
 package com.repertorio.marcha.adapter.outbound.persistence;
 
 import com.repertorio.marcha.domain.model.Marcha;
+import com.repertorio.marcha.domain.model.VersionMismatchException;
 import com.repertorio.marcha.domain.port.MarchaRepository;
 import org.springframework.stereotype.Component;
 
@@ -19,9 +20,29 @@ public class MarchaRepositoryAdapter implements MarchaRepository {
 
     @Override
     public Marcha save(Marcha marcha) {
-        var entity = toEntity(marcha);
-        var saved = jpa.save(entity);
-        return toDomain(saved);
+        // Check whether this is a new or existing entity by looking it up in the DB
+        var managed = jpa.findById(marcha.getId());
+        if (managed.isEmpty()) {
+            // New entity: construct entity with domain-assigned ID; isNew=true via @Transient → persist
+            var entity = toEntity(marcha);
+            var saved = jpa.save(entity);
+            jpa.flush();
+            return toDomain(saved);
+        }
+        // Existing entity: check version before applying changes to detect stale writes
+        var existing = managed.get();
+        if (marcha.getVersion() != existing.getVersion()) {
+            throw new VersionMismatchException("Marcha", marcha.getId(), marcha.getVersion(), existing.getVersion());
+        }
+        existing.setTitle(marcha.getTitle());
+        existing.setComposer(marcha.getComposer());
+        existing.setBandType(marcha.getBandType());
+        existing.setDurationSeconds(marcha.getDurationSeconds());
+        existing.setCompositionYear(marcha.getCompositionYear());
+        existing.setYoutubeUrl(marcha.getYoutubeUrl());
+        existing.setUpdatedAt(marcha.getUpdatedAt());
+        jpa.flush();
+        return toDomain(existing);
     }
 
     @Override
@@ -36,7 +57,9 @@ public class MarchaRepositoryAdapter implements MarchaRepository {
 
     @Override
     public void deleteById(UUID id) {
-        jpa.deleteById(id);
+        var managed = jpa.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Marcha not found: " + id));
+        jpa.delete(managed);
     }
 
     @Override
@@ -57,7 +80,7 @@ public class MarchaRepositoryAdapter implements MarchaRepository {
     }
 
     private Marcha toDomain(MarchaEntity e) {
-        return Marcha.reconstruct(e.getId(), e.getTitle(), e.getComposer(), e.getBandType(),
+        return Marcha.reconstruct(e.getId(), e.getVersion(), e.getTitle(), e.getComposer(), e.getBandType(),
                 e.getDurationSeconds(), e.getCompositionYear(), e.getYoutubeUrl(),
                 e.getCreatedAt(), e.getUpdatedAt());
     }

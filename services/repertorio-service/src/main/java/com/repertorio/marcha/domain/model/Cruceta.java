@@ -9,6 +9,7 @@ public class Cruceta {
 
     private final UUID id;
     private final UUID procesionId;
+    private int version;
     private List<CrucetaItem> items;
     private Instant createdAt;
     private Instant updatedAt;
@@ -22,6 +23,7 @@ public class Cruceta {
     public Cruceta(UUID procesionId, List<CrucetaItem> items) {
         this.id = UUID.randomUUID();
         this.procesionId = procesionId;
+        this.version = 0;
         setItems(items);
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
@@ -46,21 +48,23 @@ public class Cruceta {
     }
 
     // ponytail: reconstruct for adapter mapping
-    private Cruceta(UUID id, UUID procesionId, List<CrucetaItem> items,
+    private Cruceta(UUID id, int version, UUID procesionId, List<CrucetaItem> items,
                     Instant createdAt, Instant updatedAt) {
         this.id = id;
+        this.version = version;
         this.procesionId = procesionId;
         this.items = new ArrayList<>(items);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static Cruceta reconstruct(UUID id, UUID procesionId, List<CrucetaItem> items,
+    public static Cruceta reconstruct(UUID id, int version, UUID procesionId, List<CrucetaItem> items,
                                        Instant createdAt, Instant updatedAt) {
-        return new Cruceta(id, procesionId, items, createdAt, updatedAt);
+        return new Cruceta(id, version, procesionId, items, createdAt, updatedAt);
     }
 
     public UUID getId() { return id; }
+    public int getVersion() { return version; }
     public UUID getProcesionId() { return procesionId; }
     public List<CrucetaItem> getItems() { return List.copyOf(items); }
     public Instant getCreatedAt() { return createdAt; }
