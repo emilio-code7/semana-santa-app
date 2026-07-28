@@ -1,3 +1,10 @@
+keycloak:
+  admin:
+    server-url: ${SPRING_KEYCLOAK_ADMIN_SERVER_URL:http://localhost:8180}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
 spring:
   autoconfigure:
     exclude:
