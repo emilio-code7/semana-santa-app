@@ -6,6 +6,7 @@ import java.util.UUID;
 public class Marcha {
 
     private final UUID id;
+    private int version;
     private String title;
     private String composer;
     private BandType bandType;
@@ -23,6 +24,7 @@ public class Marcha {
     public Marcha(String title, String composer, BandType bandType, int durationSeconds,
                   Integer compositionYear, String youtubeUrl) {
         this.id = UUID.randomUUID();
+        this.version = 0;
         this.title = requireNonBlank(title, "title");
         this.composer = requireNonBlank(composer, "composer");
         this.bandType = requireNonNull(bandType, "bandType");
@@ -71,10 +73,11 @@ public class Marcha {
     }
 
     // ponytail: reconstruct for adapter mapping — private all-args, only reachable via static factory
-    private Marcha(UUID id, String title, String composer, BandType bandType,
+    private Marcha(UUID id, int version, String title, String composer, BandType bandType,
                    int durationSeconds, Integer compositionYear, String youtubeUrl,
                    Instant createdAt, Instant updatedAt) {
         this.id = id;
+        this.version = version;
         this.title = title;
         this.composer = composer;
         this.bandType = bandType;
@@ -85,15 +88,16 @@ public class Marcha {
         this.updatedAt = updatedAt;
     }
 
-    public static Marcha reconstruct(UUID id, String title, String composer, BandType bandType,
+    public static Marcha reconstruct(UUID id, int version, String title, String composer, BandType bandType,
                                       int durationSeconds, Integer compositionYear, String youtubeUrl,
                                       Instant createdAt, Instant updatedAt) {
-        return new Marcha(id, title, composer, bandType, durationSeconds, compositionYear,
+        return new Marcha(id, version, title, composer, bandType, durationSeconds, compositionYear,
                 youtubeUrl, createdAt, updatedAt);
     }
 
     // Getters
     public UUID getId() { return id; }
+    public int getVersion() { return version; }
     public String getTitle() { return title; }
     public String getComposer() { return composer; }
     public BandType getBandType() { return bandType; }
