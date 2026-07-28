@@ -11,6 +11,16 @@ Semana Santa management system: 3 Spring Boot microservices (hermandad, procesio
 
 This is not negotiable. A sub-agent that drifts into analysis, re-planning, or further delegation has violated its contract.
 
+## Agent Capability Boundaries
+
+| Agent | Capability |
+|-------|-----------|
+| `@explorer`, `@librarian`, `@oracle`, `@observer` | **Read-only advisory** — inspect, research, analyze, report only. Never edit/create/delete files, implement fixes, commit, or push. |
+| `@council` | **Review synthesis only** — may coordinate councillors internally but must not modify project files. |
+| `@fixer`, `@designer` | **Writers** — the only agents authorized to edit, create, or delete project files. |
+
+If advisory work reveals an implementation need, return a handoff to `@fixer` or `@designer` instead of implementing.
+
 ## Task Sizing and Delegation Budget
 
 - Preserve parallel execution for genuinely independent, non-overlapping workstreams and whenever it materially reduces elapsed time. Parallel lanes require disjoint file ownership; use one fixer per lane; never run parallel writers on shared files; the orchestrator reconciles artifacts.
