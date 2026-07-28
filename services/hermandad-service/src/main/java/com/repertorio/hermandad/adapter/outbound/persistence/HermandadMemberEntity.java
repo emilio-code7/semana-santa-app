@@ -51,7 +51,7 @@ public class HermandadMemberEntity implements Persistable<UUID>, Serializable {
 
     @PrePersist
     public void prePersist() {
-        this.joinedAt = Instant.now();
+        if (this.joinedAt == null) this.joinedAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
@@ -85,8 +85,11 @@ public class HermandadMemberEntity implements Persistable<UUID>, Serializable {
     public Instant getJoinedAt() { return joinedAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
+    // ponytail: package-private setter for adapter use only
+    void setRole(HermandadRole role) { this.role = role; }
+
     @Override
     public boolean isNew() {
-        return false; // IDs are always provided by the domain
+        return id == null;
     }
 }
