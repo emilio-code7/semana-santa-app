@@ -1,7 +1,6 @@
 package com.repertorio.marcha.adapter.outbound.persistence;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.domain.Persistable;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,8 +12,10 @@ import java.util.UUID;
 public class CrucetaEntity implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
 
     @Version
     private int version;
@@ -46,8 +47,12 @@ public class CrucetaEntity implements Persistable<UUID> {
     public UUID getId() { return id; }
 
     @Override
-    public boolean isNew() { return id == null; }
+    public boolean isNew() { return isNew; }
 
+    @PostLoad
+    void markNotNew() { this.isNew = false; }
+
+    public int getVersion() { return version; }
     public UUID getProcesionId() { return procesionId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
@@ -60,4 +65,7 @@ public class CrucetaEntity implements Persistable<UUID> {
             this.items.addAll(items);
         }
     }
+
+    // ponytail: package-private setter for adapter use only
+    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

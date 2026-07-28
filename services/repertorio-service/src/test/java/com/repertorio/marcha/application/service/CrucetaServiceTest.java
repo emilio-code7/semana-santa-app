@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import org.mockito.ArgumentCaptor;
+
 @ExtendWith(MockitoExtension.class)
 class CrucetaServiceTest {
 
@@ -53,6 +55,7 @@ class CrucetaServiceTest {
     void defineCruceta_replacesExisting() {
         var procesionId = UUID.randomUUID();
         var existing = new Cruceta(procesionId, List.of(new CrucetaItem(UUID.randomUUID(), 1, "Old")));
+        var existingId = existing.getId();
         when(knownProcesionRepository.existsByProcesionId(procesionId)).thenReturn(true);
         when(crucetaRepository.findByProcesionId(procesionId)).thenReturn(Optional.of(existing));
         when(crucetaRepository.save(any(Cruceta.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -61,10 +64,13 @@ class CrucetaServiceTest {
         var cruceta = crucetaService.defineCruceta(procesionId, newItems);
 
         assertEquals(procesionId, cruceta.getProcesionId());
+        assertEquals(existingId, cruceta.getId(), "aggregate ID must be preserved on replacement");
         assertEquals(1, cruceta.getItems().size());
         assertEquals("New", cruceta.getItems().getFirst().getNotes());
         verify(crucetaRepository).save(any(Cruceta.class));
-        verify(eventPublisher).publish(any(CrucetaDefinedEvent.class));
+        var eventCaptor = ArgumentCaptor.forClass(CrucetaDefinedEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        assertEquals(existingId, eventCaptor.getValue().crucetaId(), "event must use preserved aggregate ID");
     }
 
     @Test

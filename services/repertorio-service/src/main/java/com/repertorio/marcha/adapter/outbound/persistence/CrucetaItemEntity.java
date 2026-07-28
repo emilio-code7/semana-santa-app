@@ -1,7 +1,6 @@
 package com.repertorio.marcha.adapter.outbound.persistence;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.domain.Persistable;
 import java.util.UUID;
 
@@ -11,8 +10,10 @@ import java.util.UUID;
 public class CrucetaItemEntity implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
 
     @Version
     private int version;
@@ -43,8 +44,12 @@ public class CrucetaItemEntity implements Persistable<UUID> {
     public UUID getId() { return id; }
 
     @Override
-    public boolean isNew() { return id == null; }
+    public boolean isNew() { return isNew; }
 
+    @PostLoad
+    void markNotNew() { this.isNew = false; }
+
+    public int getVersion() { return version; }
     public UUID getCrucetaId() { return crucetaId; }
     public UUID getMarchaId() { return marchaId; }
     public int getOrderIndex() { return orderIndex; }

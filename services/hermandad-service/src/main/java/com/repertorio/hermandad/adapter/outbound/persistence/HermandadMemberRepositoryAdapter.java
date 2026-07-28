@@ -28,13 +28,28 @@ public class HermandadMemberRepositoryAdapter implements HermandadMemberReposito
 
     @Override
     public HermandadMember save(HermandadMember member) {
-        var entity = HermandadMemberEntity.from(member);
-        var saved = jpaRepository.save(entity);
-        return saved.toDomain();
+        if (member.getId() == null) {
+            // New entity: construct fresh
+            var entity = HermandadMemberEntity.from(member);
+            var saved = jpaRepository.save(entity);
+            jpaRepository.flush();
+            return saved.toDomain();
+        }
+        // Existing entity: load managed instance, copy mutable fields, preserve version
+        var managed = jpaRepository.findById(member.getId())
+                .orElseThrow(() -> new IllegalArgumentException("HermandadMember not found: " + member.getId()));
+        managed.setRole(member.getRole());
+        jpaRepository.flush();
+        return managed.toDomain();
     }
 
     @Override
     public void delete(HermandadMember member) {
-        jpaRepository.delete(HermandadMemberEntity.from(member));
+        if (member.getId() == null) {
+            throw new IllegalArgumentException("Cannot delete a HermandadMember without an id");
+        }
+        var managed = jpaRepository.findById(member.getId())
+                .orElseThrow(() -> new IllegalArgumentException("HermandadMember not found: " + member.getId()));
+        jpaRepository.delete(managed);
     }
 }

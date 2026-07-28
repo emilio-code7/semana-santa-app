@@ -16,9 +16,23 @@ public class HermandadRepositoryAdapter implements HermandadRepository {
 
     @Override
     public Hermandad save(Hermandad hermandad) {
-        var entity = HermandadEntity.from(hermandad);
-        var saved = jpaRepository.save(entity);
-        return saved.toDomain();
+        if (hermandad.getId() == null) {
+            // New entity: construct fresh
+            var entity = HermandadEntity.from(hermandad);
+            var saved = jpaRepository.save(entity);
+            jpaRepository.flush();
+            return saved.toDomain();
+        }
+        // Existing entity: load managed instance, copy mutable fields, preserve version
+        var managed = jpaRepository.findById(hermandad.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Hermandad not found: " + hermandad.getId()));
+        managed.setName(hermandad.getName());
+        managed.setCity(hermandad.getCity());
+        managed.setFoundedYear(hermandad.getFoundedYear());
+        managed.setKeycloakGroupId(hermandad.getKeycloakGroupId());
+        managed.setDescription(hermandad.getDescription());
+        jpaRepository.flush();
+        return managed.toDomain();
     }
 
     @Override

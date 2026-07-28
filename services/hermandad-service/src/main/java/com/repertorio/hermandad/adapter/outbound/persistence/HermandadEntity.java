@@ -57,7 +57,7 @@ public class HermandadEntity implements Persistable<UUID> {
 
     @PrePersist
     public void prePersist() {
-        createdAt = Instant.now();
+        if (createdAt == null) createdAt = Instant.now();
         updatedAt = Instant.now();
     }
 
@@ -95,8 +95,15 @@ public class HermandadEntity implements Persistable<UUID> {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
+    // ponytail: package-private setters for adapter use only
+    void setName(String name) { this.name = name; }
+    void setCity(String city) { this.city = city; }
+    void setFoundedYear(int foundedYear) { this.foundedYear = foundedYear; }
+    void setKeycloakGroupId(String keycloakGroupId) { this.keycloakGroupId = keycloakGroupId; }
+    void setDescription(String description) { this.description = description; }
+
     @Override
     public boolean isNew() {
-        return false; // IDs are always provided by the domain
+        return id == null;
     }
 }
