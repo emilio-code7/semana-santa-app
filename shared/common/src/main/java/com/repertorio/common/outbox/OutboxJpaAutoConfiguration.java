@@ -3,7 +3,7 @@ package com.repertorio.common.outbox;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
+import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * Only activates when an {@link EntityManagerFactory} bean is available,
  * which means it is skipped in {@code @WebMvcTest} slice tests.
  */
-@AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
+@AutoConfiguration(after = DataJpaRepositoriesAutoConfiguration.class)
 @ConditionalOnBean(EntityManagerFactory.class)
 @EntityScan("com.repertorio.common.outbox")
 @EnableJpaRepositories(basePackageClasses = OutboxEventJpaRepository.class)
