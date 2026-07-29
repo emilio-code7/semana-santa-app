@@ -113,6 +113,31 @@ Fall back to Grep/Glob/Read only when the graph doesn't cover what you need.
 - **Git workflow**: Load `using-repository-git-workflow` skill for branch naming, PRs, merges, sprint organization, hotfixes, release tags.
 - **Memory**: Use `memory` tool for architectural decisions, patterns, gotchas. Scope: `project`.
 
+## GitHub Issue Delivery Workflow
+
+GitHub Issues at `github.com/emilio-code7/semana-santa-app` are the canonical executable work queue. Plans and documentation provide context, but an issue is the implementation unit.
+
+### Discovery and creation
+
+- Before any implementation, search open and closed issues for the concern. Never duplicate. If no issue exists, create one before coding.
+- An independently dispatchable issue must contain: **Source**, **Current state**, **What to build** (or gate evidence), **Acceptance criteria/pass rule**, **Constraints**, **Verification/TDD evidence**, **Blocked by**, and **Agent handoff**. Add the appropriate milestone when the work belongs to a roadmap or sprint.
+- See `docs/agents/issue-tracker.md` for issue metadata conventions and `docs/agents/triage-labels.md` for label semantics.
+
+### Selecting and executing work
+
+- Only implement frontier issues whose blockers are all **closed** and which carry the `ready-for-agent` label. Gates carry `ready-for-human`. Do not bypass blockers or self-promote blocked issues.
+- Before coding, read the issue, its comments, `AGENTS.md`, `docs/functional-map.md`, and any linked plan or roadmap document.
+- Follow OpenAPI-first (update the spec before writing controller code) and TDD (failing test first, then implementation, then refactor).
+- Stay strictly inside the issue scope. When new or related work is discovered, create a follow-up issue instead of expanding the current branch or PR.
+
+### Branching, PRs, and closing
+
+- One issue or concern per short-lived branch from an updated `main`. Branch names include the issue number as documented in the repository Git workflow.
+- Complete work through a PR. The PR body must include `Closes #<issue-number>` and the verification evidence.
+- CI must pass. The implementation agent must not merge or deploy without explicit authorization.
+- Keep the issue open during review. A squash merge closes it automatically.
+- After merge, the integration owner verifies completion and promotes newly unblocked implementation issues to `ready-for-agent`. Gates remain `ready-for-human`.
+
 ## AWS Guidance
 
 - Prefer the AWS MCP Server for AWS interactions (sandboxed execution, observability, audit logging). Fall back to AWS CLI.
