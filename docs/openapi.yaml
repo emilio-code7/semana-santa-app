@@ -3,7 +3,7 @@
   "info": {
     "title": "Semana Santa API",
     "version": "v0",
-    "description": "REST API for Semana Santa Hermandad management"
+    "description": "AS-IS contract for implemented endpoints only. Target per-Paso Cruceta and plan-finalization endpoints are added OpenAPI-first by roadmap tickets."
   },
   "servers": [
     {
