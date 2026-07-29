@@ -102,3 +102,15 @@ jobs:
         with:
           name: test-reports-${{ matrix.service }}
           path: services/${{ matrix.service }}/build/reports/tests/
+
+  ci-success:
+    needs: [validate, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all CI jobs passed
+        if: needs.validate.result != 'success' || needs.test.result != 'success'
+        run: |
+          echo "CI check failed: validate=${{ needs.validate.result }}, test=${{ needs.test.result }}"
+          exit 1
+      - run: echo "All CI checks passed"
