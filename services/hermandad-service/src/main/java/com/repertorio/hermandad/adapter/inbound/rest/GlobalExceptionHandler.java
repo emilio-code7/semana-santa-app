@@ -4,6 +4,7 @@ import com.repertorio.hermandad.adapter.inbound.rest.dto.ApiError;
 import com.repertorio.hermandad.domain.model.HermandadAlreadyExistsException;
 import com.repertorio.hermandad.domain.model.HermandadMemberNotFoundException;
 import com.repertorio.hermandad.domain.model.HermandadNotFoundException;
+import com.repertorio.hermandad.domain.model.TitularNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HermandadMemberNotFoundException.class)
     public ResponseEntity<ApiError> handleHermandadMemberNotFoundException(HermandadMemberNotFoundException ex) {
+        var status = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(status).body(new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(TitularNotFoundException.class)
+    public ResponseEntity<ApiError> handleTitularNotFoundException(TitularNotFoundException ex) {
         var status = HttpStatus.NOT_FOUND;
         return ResponseEntity.status(status).body(new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage()));
     }
