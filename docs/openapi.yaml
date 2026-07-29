@@ -340,9 +340,7 @@
           "400": { "description": "Invalid input (validation error)" },
           "401": { "description": "Unauthorized — missing or invalid JWT" }
         }
-      }
-    },
-    "/api/procesiones": {
+      },
       "get": {
         "tags": ["procesion-controller"],
         "summary": "List procesiones by hermandad (paginated)",

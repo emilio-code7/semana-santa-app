@@ -25,24 +25,21 @@ Cross-service workflow: Hermandad → Procesion → Repertorio (cruceta) with Ka
 
 ---
 
-## Next Product Priority — Route-Aware Cruceta
+## Current Priority — Reliability-First High-Throughput Roadmap
 
-**Product outcome:** a capataz can create a route-aware musical plan: which marcha should be played at each meaningful point or segment of a specific procession.
+**Product outcome:** Within four months, prove that Repertorio's event system is correct, reliable under load, and operable on provider-neutral VPS infrastructure. Route-aware Cruceta is gated behind the throughput proof.
 
-**Detailed plan:** [`2026-07-15-sprint-10-route-aware-cruceta.md`](plans/2026-07-15-sprint-10-route-aware-cruceta.md)
+**Detailed plan:** [`2026-07-28-reliability-first-high-throughput-roadmap.md`](plans/2026-07-28-reliability-first-high-throughput-roadmap.md)
 
-**Scope for the first vertical slice:**
-- Add an ordered route with named points to a procession. Do not require map rendering, coordinates, GPS, tracking, or notifications.
-- Associate each `CrucetaItem` with a route point or segment, while preserving marcha, order, and notes.
-- Provide a route-ordered run sheet with manual "current" and "next" progression.
+**Phase structure:**
+- **Month 1 — Correctness & Event Foundations:** Tenant isolation, versioned event envelope, keyed sender, optimistic lock repair, producer-generated event IDs.
+- **Month 2 — Reliable Delivery & Operability:** Multi-replica-safe outbox (SELECT FOR UPDATE SKIP LOCKED), atomic consumer dedup, Prometheus metrics, VPS deployment, deploy automation.
+- **Month 3 — Load/Failure Evidence:** k6 load harness, multi-node test environment, baseline capture, measured tuning, throughput proof (1,000 req/s, 500 events/s).
+- **Month 4 — Route-Aware Cruceta** (gated behind Gate 20 at end of Month 3 — automatically unlocks only if target is met; otherwise requires new decision): Named route points, Cruceta item binding to route moments, manual run-sheet progression.
 
-**Correctness work required before or within this slice:**
-- [ ] Validate that `KnownProcesion.hermandadId` matches `{hermandadId}` before defining or replacing a Cruceta. Authorization currently checks the path ID but the service only checks that the procession exists.
-- [ ] Add tests proving that an administrator of Hermandad A cannot mutate a Cruceta for a procession of Hermandad B.
-- [ ] Make `ProcesionEventConsumer` surface failures to Kafka or implement explicit retry/dead-letter handling. Its current catch-and-log behavior can acknowledge a failed message and lose the update.
-- [ ] Add the producer-generated event envelope and stable `eventId` planned for reliable delivery; payload-hash deduplication can incorrectly treat distinct identical events as duplicates.
+**20 implementation tickets** plus 3 integration gates — see the plan for full details.
 
-**Explicitly deferred:** GPS-triggered progression, public live tracking, push notifications, and map integration.
+**Explicitly deferred:** Route-aware Cruceta until throughput gate passes (Ticket 20). GPS triggers, maps, public tracking, push notifications remain deferred indefinitely.
 
 ---
 
@@ -90,7 +87,7 @@ Complete remaining hermandad-service gaps and build the idempotent Kafka consume
    - ~~Consumer bean listens to `hermandad-events` and `hermandad-member-events`~~ ✅
    - ~~Checks `processed_event` table before processing; skips if already processed; stores event_id + consumer_name + timestamp if new~~ ✅
    - ~~Register consumer group for offset tracking~~ ✅
-   - **AC**: Duplicate Kafka messages are silently skipped; each unique event is processed exactly once; pattern is copy-paste ready for other services
+    - **AC**: Duplicate Kafka messages are silently skipped via `processed_event` dedup table; pattern is copy-paste ready for other services
 
 ---
 
@@ -232,9 +229,13 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 ---
 
-### Sprint 10 — AWS Migration
+### Sprint 10 — AWS Migration (Superseded — Adapter Compatibility Retained)
 
-> Migrate from self-managed Kafka/Keycloak/Postgres containers to AWS-managed services (SQS, Cognito, RDS). Target: free tier ($0/mo).
+> **Status:** The always-on AWS migration direction is superseded by the provider-neutral VPS approach in the current reliability-first roadmap. The AWS adapter code (`SqsMessageSender`, `ProcesionSqsConsumer`, Cognito adapters, CDK stack) is retained in the codebase and compiles — it is active under `@Profile("aws")` but undeployed. New development targets `@Profile("!aws")` (Kafka + Keycloak + container Postgres). SQS FIFO compatibility is documented in the current plan for future reference. The `cruceta-events` queue remains explicitly deferred.
+
+> `marcha-events` is an approved additive CDK change but is not deployed. `cruceta-events` remains deferred, so Cruceta AWS outbox rows remain pending/retried by design.
+
+> **Original scope:** Migrate from self-managed Kafka/Keycloak/Postgres containers to AWS-managed services (SQS, Cognito, RDS). Target: free tier ($0/mo).
 > **Architecture**: Single EC2 t2.micro → 3 Spring Boot services + nginx. SQS replaces Kafka, Cognito replaces Keycloak, RDS replaces container Postgres. ElastiCache dropped from free-tier plan (Redis caching is optional, only hermandad-service uses it).
 > **Stack**: Spring Cloud AWS 4.0.2, AWS CDK, Cognito Lambda triggers
 
@@ -392,25 +393,41 @@ Build the remaining hermandad-service feature (member removal), bootstrap the Pr
 
 #### AWS-TASK-7: CI/CD Pipeline
 
-**Description:** Set up GitHub Actions workflow that builds Docker images, pushes to ECR, and deploys to EC2 via SSH. Zero-touch deployment from push to production.
+**Description:** GitHub Actions workflow to build Docker images, push to ECR, and deploy to EC2. Currently manual-only (`workflow_dispatch`) — not push-triggered. Historical manual runs stopped at the test step because `deploy.yml` runs `./gradlew test` without the PostgreSQL service container that `ci.yml` provides (`services.postgres` with health check, database creation via `psql`). The first acceptance gate is a successful manual end-to-end deploy from `main` branch. Keep deployment manual-only until that gate passes.
+
+**Status:** Workflow scaffolded at `.github/workflows/deploy.yml`. Not yet run successfully end-to-end.
 
 **Acceptance Criteria:**
-- [ ] `.github/workflows/deploy.yml`: triggers on push to `main` branch
-- [ ] Build step: `./gradlew build -x test` (tests run in a separate CI step)
-- [ ] Docker build: builds all 3 service images using their Dockerfiles
-- [ ] ECR push: authenticates, tags `:latest` and `:{sha}`, pushes
-- [ ] EC2 deploy: SSH into EC2, login to ECR, `docker compose pull && docker compose up -d`
-- [ ] Secrets configured: `AWS_ACCOUNT_ID`, `EC2_HOST`, `EC2_SSH_KEY`, `DB_USERNAME`, `DB_PASSWORD`
-- [ ] Health check step: `curl http://$EC2_HOST/health` returns 200 after deploy
+- [ ] First manual `workflow_dispatch` deploy from `main` succeeds end-to-end (build → push → deploy → health)
+- [ ] Fix test step: either add Postgres service config (matching `ci.yml`) or switch to `build -x test` until deploy is verified
+- [ ] `docker compose pull && docker compose up -d` runs on EC2 after ECR push
+- [ ] Health check: `curl http://<ec2-host>/health` returns 200
+- [ ] Secrets configured (no real identifiers in backlog): AWS account access, EC2 host/SSH key, DB credentials
+- [ ] Remains `workflow_dispatch` until verified; promote to `on: push: branches: [main]` as a separate step
+
+**Current workflow gaps (to resolve in order):**
+1. **Postgres service missing** — deploy.yml has a `test` step but no `services.postgres` block. Tests that require Postgres will fail. Fix: either add the service block (preferred before verification) or skip tests until after manual verify (quicker).
+2. **Long-lived AWS keys** — `aws-actions/configure-aws-credentials@v4` uses `aws-access-key-id`/`aws-secret-access-key` from secrets. After verification, harden to OIDC (`id-token: write` + `role-to-assume`).
+3. **Action SHAs unpinned** — `actions/checkout@v4`, `aws-actions/amazon-ecr-login@v2`, `appleboy/ssh-action@v1` are mutable tags. Pin to full commit SHAs after verification.
+4. **No production environment guard** — no `environment:` block, no required reviewers, no deployment protection rules. Add after verification: a `production` environment with required approvals.
+5. **SSH private key in secrets** — `appleboy/ssh-action` uses a long-lived SSH key. After verification, replace with SSM (`aws ssm start-session` via `aws-actions/aws-ssm-start-session` or `aws-run-command`) to avoid managing SSH keys entirely.
+
+**Later hardening (deferred until manual gate passes):**
+- OIDC instead of long-lived AWS access keys
+- Pin all action references to immutable commit SHAs (Dependabot for updates)
+- `environment: production` with required reviewers + deployment branch constraint
+- Replace SSH with SSM Session Manager or AWS-RunCommand
+- `docker compose` health check + rollback on failure
+- Multi-region ECR replication if needed
 
 **Technical Notes:**
-- Use `appleboy/ssh-action` for EC2 SSH — simple, proven
 - ECR authentication: `aws ecr get-login-password | docker login ...`
 - Docker Compose file (docker-compose.aws.yml) references ECR images via `${ECR_REGISTRY}/service:latest`
-- Rollback: if health check fails, SSH in and run `docker compose up -d` with previous images
-- GitHub Actions free tier: 2,000 min/mo — plenty for this
+- Docker images tagged `:latest` and `:{sha}` on push
+- Rollback strategy: if health check fails, re-run previous images via `docker compose up -d` with old tags
+- GitHub Actions free tier: 2,000 min/mo — sufficient for low-volume use
 
-**Effort:** 2 files (workflow + env template) · **Dependencies:** AWS-TASK-1 through AWS-TASK-6
+**Effort:** 1 file (workflow) · **Dependencies:** AWS-TASK-1 through AWS-TASK-6
 
 ---
 

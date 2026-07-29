@@ -10,27 +10,30 @@ This roadmap turns Repertorio from a collection of well-structured services into
 - Every phase must produce a demoable outcome and an interview story.
 - Preserve at-least-once delivery; make business processing idempotent.
 - Build vertical slices and tests first, following the development workflow.
+- **Correctness and reliability precede all feature expansion.** The route-aware Cruceta is gated behind proven throughput and failure recovery.
 
 ## Product North Star
 
 Repertorio is a procession music-planning product, not a general-purpose Hermandad-management system. Its core value is helping a Hermandad decide and execute **which marcha is played at which meaningful moment of a procession route**.
 
-The current `Cruceta` is the intentional first step: an ordered, procession-specific musical plan. It is not yet route-aware. The next product capability should add a lightweight ordered route (named points first; coordinates and GPS are optional later) and allow each Cruceta item to reference a route point or segment. Tracking and notifications remain multipliers on that trusted plan, not prerequisites for it.
+The current `Cruceta` is the intentional first step: an ordered, procession-specific musical plan. Before making it route-aware, the event system must be provably correct and reliable under load. Route awareness is added in Phase 5, after the throughput and failure-recovery gate passes.
 
 ## Roadmap at a Glance
 
 | Phase | Outcome | Primary interview theme |
-|---|---|---|
+|-------|---------|------------------------|
 | 1. Operational procession | ✅ One end-to-end business workflow | Service boundaries and eventual consistency |
-| 2. Route-aware Cruceta | Music is tied to meaningful route moments | Domain modelling and user-centred MVP scope |
-| 3. Reliable event delivery | Explicit, recoverable event processing | Outbox, idempotency, failure recovery |
-| 4. Observable system | A failure is visible from request to consumer | Logs, metrics, traces, SLO thinking |
-| 5. Contract and tenancy maturity | Services evolve safely and enforce consistent access | API/event contracts and multi-tenancy |
-| 6. Portfolio readiness | A reviewer can run and understand the project quickly | Technical communication and trade-offs |
+| 2. Correctness & Event Foundations | Tenant isolation, versioned events, optimistic locking | Contract-driven correctness and multi-tenancy |
+| 3. Reliable Event Delivery & Operability | Multi-replica-safe outbox, atomic dedup, Prometheus metrics | Operational maturity without orchestration |
+| 4. Load/Failure Evidence | Measured 1,000 req/s and 500 events/s throughput proof | Data-driven performance engineering |
+| 5. Route-Aware Cruceta | Music tied to meaningful route moments | Domain modelling and user-centred MVP scope |
+| 6. Portfolio Readiness | A reviewer can run and understand the project quickly | Technical communication and trade-offs |
+
+**Detailed four-month roadmap:** [`docs/plans/2026-07-28-reliability-first-high-throughput-roadmap.md`](plans/2026-07-28-reliability-first-high-throughput-roadmap.md)
 
 ---
 
-## Phase 1 — Operational Procession
+## Phase 1 — Operational Procession ✅
 
 ### Goal
 
@@ -59,100 +62,140 @@ Create one complete, meaningful workflow across the existing Hermandad, Procesio
 
 ---
 
-## Phase 2 — Route-Aware Cruceta
+## Phase 2 — Correctness & Event Foundations
 
 ### Goal
 
-Turn the ordered Cruceta into the product's core promise: a route-aware musical plan that tells the team what should play at each meaningful point in the procession.
+Establish the correctness invariants that all subsequent phases depend on: tenant isolation, a versioned event envelope, and optimistic-lock safety. Reads require owning-tenant membership; writes additionally require the approved role and persisted ownership verification.
+
+### Detailed plan
+
+See the Month 1 section of [`docs/plans/2026-07-28-reliability-first-high-throughput-roadmap.md`](plans/2026-07-28-reliability-first-high-throughput-roadmap.md) (Tickets 01–09).
 
 ### Work items
 
-- Model an ordered route for a procession using named route points; avoid maps and GPS automation in the first version.
-- Allow a `CrucetaItem` to reference a route point or route segment, while retaining its marcha and operational notes.
-- Provide a mobile-friendly run sheet ordered by route progression, including the current/next marcha.
-- Add a manual live-progress control for the active route point and marcha.
-- Enforce the invariant that a Cruceta may only be defined for a procession belonging to the Hermandad in the request path.
+- Freeze reliability contracts: event envelope schema, reliability metrics protocol, tenant isolation invariants.
+- Enforce Procesion tenant isolation: `@PreAuthorize` guard verifying persisted Hermandad ownership.
+- Enforce Cruceta tenant isolation and safe (atomic) replacement.
+- Expand the event envelope with `schemaVersion` (shared `DomainEvent` already has `eventId` and `occurredAt`), key the `MessageSender` interface, update outbox schema across all services.
+- Migrate Hermandad, Procesion→Repertorio, and Repertorio producer flows to the extended envelope.
+- Repair `@Version` propagation through repository adapters (all aggregate JPA entities already have the annotation). Add concurrent-write tests.
+- Pass the correctness integration gate (Gate 09).
+
+### Acceptance criteria
+
+- A user of Hermandad A cannot read or write another Hermandad's procession or Cruceta.
+- All domain events carry a producer-generated `eventId`, `occurredAt`, and `schemaVersion`.
+- Consumers deduplicate on `eventId` (not payload hash).
+- Concurrent writes to the same aggregate fail with an optimistic-lock exception through real adapters.
+- All existing tests pass; new tenant-isolation, envelope, and optimistic-lock tests exist.
+- `docs/openapi.yaml` reflects all endpoint changes.
+
+### Interview story
+
+"We fixed tenant isolation before adding features because a user-facing security bug is the hardest to recover from. We chose producer-generated event IDs over payload hashing so two legitimate events with identical payloads would not be incorrectly treated as duplicates."
+
+---
+
+## Phase 3 — Reliable Event Delivery & Operability
+
+### Goal
+
+Make the outbox pattern safe for multi-replica operation, make consumer idempotency atomic (eliminating the check-then-insert race), and expose operational metrics. Deploy to a provider-neutral VPS with automated immutable deployment and backup/restore procedures.
+
+### Detailed plan
+
+See the Month 2 section of [`docs/plans/2026-07-28-reliability-first-high-throughput-roadmap.md`](plans/2026-07-28-reliability-first-high-throughput-roadmap.md) (Tickets 10–15).
+
+### Work items
+
+- Make outbox polling multi-replica safe: `SELECT ... FOR UPDATE SKIP LOCKED`, leases, bounded retries, and one ordered active claim per aggregate.
+- Make consumer idempotency atomic: `INSERT ON CONFLICT DO NOTHING` instead of check-then-insert.
+- Add minimum operational visibility: Prometheus metrics for outbox backlog, consumer lag, error counts; structured JSON logging.
+- Build the provider-neutral VPS runtime: Docker Compose, volumes, nginx reverse proxy with TLS, off-host backup.
+- Automate immutable deployment, rollback, and backup restore via GitHub Actions.
+- Pass the reliable-deployment gate (Gate 15).
+
+### Acceptance criteria
+
+- Two concurrent outbox poller instances never claim the same row simultaneously.
+- Crash after publish before mark can produce a duplicate; consumer idempotency (transactional upsert) absorbs it.
+- Two concurrent deliveries of the same `(consumerName, eventId)` result in at most one committed business effect; the duplicate is skipped.
+- `curl /actuator/prometheus` on any service shows outbox backlog, processed count, and error count.
+- VPS is reachable at public DNS; `docker compose up` starts all services; `/health` endpoints return 200 (real readiness).
+- Deployment uses immutable SHA tags only; rollback via previous SHA restores the previous version.
+- Off-host backup + restore (pg_dump/pg_dumpall) is documented and testable.
+
+### Interview story
+
+"We made the outbox poller safe for multiple replicas using PostgreSQL's `SELECT ... FOR UPDATE SKIP LOCKED`, one active claim per aggregate, and ordered claims. Delivery remains at-least-once because a crash after publish can duplicate a message. A transactional `(consumerName, eventId)` claim ensures duplicate deliveries create at most one committed business effect."
+
+---
+
+## Phase 4 — Load/Failure Evidence
+
+### Goal
+
+Prove the system can sustain 1,000 HTTP req/s and 500 events/s at p95 <300 ms with event freshness <5 s in a temporary multi-node environment. Use measured baselines and targeted tuning only — no speculative optimization.
+
+### Detailed plan
+
+See the Month 3 section of [`docs/plans/2026-07-28-reliability-first-high-throughput-roadmap.md`](plans/2026-07-28-reliability-first-high-throughput-roadmap.md) (Tickets 16–20).
+
+### Work items
+
+- Build the repeatable load/failure harness: k6 HTTP scenarios that create real outbox events without bypassing application endpoints.
+- Build a temporary multi-node test environment (destroyed after evidence is collected).
+- Capture the untuned baseline with zero configuration changes.
+- Apply only measured tuning based on baseline bottleneck analysis (poller batch size, connection pools, Kafka producer config — no architectural rewrites).
+- Prove the regional spike target or document the exact bottleneck preventing it.
+- Pass the throughput gate (Gate 20).
+
+### Acceptance criteria
+
+- k6 HTTP test sustains 1,000 req/s across all service endpoints for 5 minutes with p95 <300 ms.
+- The k6 event-producing HTTP scenario sustains 500 committed outbox events/s through Kafka → consumer for 5 minutes with freshness <5 s p95.
+- Baseline and tuned results are published as a comparison report.
+- The multi-node test environment is destroyed after evidence is captured.
+- If target is not met: clear documentation of the bottleneck and the architectural change needed.
+
+### Interview story
+
+"We built a repeatable load testing harness and a disposable multi-node environment to measure throughput scientifically. Every tuning change started with a hypothesis from the baseline. We proved 1,000 req/s and 500 events/s before adding the next feature — the Cruceta route-awareness. This data-driven approach meant we never speculated about performance."
+
+---
+
+## Phase 5 — Route-Aware Cruceta
+
+### Goal
+
+Turn the ordered Cruceta into the product's core promise: a route-aware musical plan that tells the team what should play at each meaningful point in the procession. **This phase starts only after Gate 20 passes. A documented gap blocks this phase until a new decision is approved.**
+
+### Detailed plan
+
+See the Month 4 section of [`docs/plans/2026-07-28-reliability-first-high-throughput-roadmap.md`](plans/2026-07-28-reliability-first-high-throughput-roadmap.md) (Tickets 21–23).
+
+### Work items
+
+- Model an ordered route for a procession using named route points; avoid maps and GPS automation.
+- Allow a `CrucetaItem` to reference a route point, while retaining its marcha and operational notes.
+- Provide a read-only run sheet ordered by route progression, including the current/next marcha.
+- Add a manual live-progress control for the active route point and marcha (no GPS or automatic progression).
+- Tenant isolation is inherited from Phase 2 (Tickets 02/03).
 
 ### Acceptance criteria
 
 - A capataz can define named route points for a procession.
-- A Cruceta can associate each marcha with a route point or segment.
+- A Cruceta can associate each marcha with a route point.
 - The application can show a clear "now / next" musical plan without GPS.
-- An administrator of Hermandad A cannot define or alter the Cruceta of a procession belonging to Hermandad B.
+- Cross-tenant Cruceta operations are denied (inherited from Phase 2).
+- All existing reliability and throughput guarantees are maintained.
 
----
+### Explicitly deferred
 
-## Phase 3 — Reliable Event Delivery
-
-### Goal
-
-Make the event contract explicit and show how the system recovers from publish and consumer failures.
-
-### Work items
-
-- Introduce a versioned event envelope with `eventId`, `eventType`, `aggregateId`, `occurredAt`, `schemaVersion`, and `payload`.
-- Generate `eventId` when the domain event is created and persist the same ID in the outbox.
-- Update consumers to deduplicate on the producer-generated `eventId`, rather than a payload hash.
-- Track outbox attempts, error information, and terminal failure state.
-- Add bounded retry with backoff and a dead-letter topic for messages that cannot be processed.
-- Define a replay procedure for dead-letter messages.
-
-### Acceptance criteria
-
-- Publishing the same logical event twice is safe for every consumer.
-- Two legitimate events with identical payloads are not incorrectly treated as duplicates.
-- A failed publication is retried and is visible to an operator.
-- A permanently failing consumer message reaches a dead-letter topic with enough context for diagnosis.
-- An integration test proves the outbox-to-Kafka path; a consumer test proves duplicate handling.
-
-### Interview story
-
-“We chose at-least-once delivery because it is practical with Kafka and database transactions. We avoided duplicate business effects through a stable event ID and consumer-side idempotency.”
-
----
-
-## Phase 4 — Observable System
-
-### Goal
-
-Make normal operation and failure behaviour visible across HTTP, Kafka, and the outbox.
-
-### Work items
-
-- Propagate a correlation/trace ID from the API gateway through HTTP and Kafka headers.
-- Emit structured JSON logs with service, trace ID, event ID, aggregate ID, and error details.
-- Add OpenTelemetry tracing for HTTP requests, database calls, and Kafka publish/consume operations.
-- Expose Prometheus metrics for request failures/latency, Kafka consumer lag, outbox backlog, retries, and dead-letter count.
-- Create a minimal Grafana dashboard and one alert-like dashboard panel for a growing outbox backlog.
-
-### Acceptance criteria
-
-- A user request can be followed from the gateway to the resulting Kafka consumer action.
-- Turning Kafka off produces a visible outbox backlog and recovery once Kafka returns.
-- A short runbook explains how to diagnose a delayed event.
-- The dashboard and sample trace are linked from the README.
-
----
-
-## Phase 5 — Contract and Tenancy Maturity
-
-### Goal
-
-Allow services to evolve independently while applying the same tenancy and authorization rules everywhere.
-
-### Work items
-
-- Establish compatibility rules for REST and Kafka events, including `schemaVersion` handling.
-- Add contract tests for the workflow's important REST and event interactions.
-- Ensure gateway tenant context propagation supports all domain route patterns, not only Hermandad paths.
-- State each service's tenant ownership and authorization policy in the architecture documentation.
-- Keep `shared:common` restricted to cross-cutting concerns; do not introduce shared domain models.
-
-### Acceptance criteria
-
-- A compatible event change can be consumed by an older consumer version.
-- Contract tests fail when a producer breaks a documented consumer expectation.
-- Tenant and authorization behaviour is consistent for Hermandad, Procesion, and Repertorio routes.
+- Coordinates, map rendering, routing-provider integration, or GPS triggers.
+- Automatic selection of the current route point or marcha.
+- Public sharing, tracking, push notifications, and band-facing collaboration features.
 
 ---
 
@@ -165,7 +208,7 @@ Make the repository easy for an interviewer or reviewer to run, understand, and 
 ### Work items
 
 - ✅ ~~Add a root `README.md` with project purpose, architecture diagram, prerequisites, startup, seeded users, URLs, and the main demo workflow.~~ (done in Phase 1)
-- Refresh `docs/audit.md` and `docs/backlog.md` so completed Repertorio work and current risks are accurate.
+- Refresh `docs/audit.md` and `docs/backlog.md` so completed work and current risks are accurate.
 - Create concise architecture decision records for the outbox approach, event choreography, and authorization design.
 - ✅ ~~Add a repeatable demo script: successful workflow, intentional Kafka failure, recovery, and trace/metric inspection.~~ (done: `docs/demo/phase-1.sh`)
 - Record three or four interview stories based on real decisions and incidents encountered while building the project.
@@ -180,6 +223,6 @@ Make the repository easy for an interviewer or reviewer to run, understand, and 
 
 ## Suggested Sequence
 
-Complete the phases in order. Phase 1 establishes the musical plan; Phase 2 makes it route-aware; Phase 3 makes event delivery reliable; and Phase 4 proves that reliability operationally. The remaining phases turn the implementation into a maintainable, convincing portfolio artifact.
+Complete the phases in order. Phase 1 establishes the musical plan. Phase 2 adds tenant isolation and a versioned event contract. Phase 3 makes event delivery reliable and the system operable. Phase 4 proves throughput and failure recovery under load. Phase 5 makes the musical plan route-aware — and is gated behind Phase 4. Phase 6 turns the implementation into a maintainable, convincing portfolio artifact.
 
-Tracking and Notification should remain deferred until Phase 4 is complete. They become useful then as consumers of an established, observable event contract, rather than additional services that dilute focus.
+Tracking and Notification remain deferred until Phase 4 is complete. They become useful then as consumers of an established, observable event contract, rather than additional services that dilute focus.
