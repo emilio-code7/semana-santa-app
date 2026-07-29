@@ -8,12 +8,32 @@ REST API for managing Semana Santa (Holy Week) brotherhoods, processions, and mu
 
 ---
 
+## Current Capabilities vs Target Direction
+
+**AS-IS (current implementation):**
+- Hermandad CRUD + member management with Keycloak admin sync.
+- Procesion CRUD with state machine (PLANNED → IN_PROGRESS → COMPLETED/CANCELLED). No Pasos, no Route Sections, no finalized plan.
+- Marcha catalogue (global, shared).
+- One Cruceta per Procesion (not per Paso), with items having marchaId/orderIndex/notes.
+- KnownProcesion projection stores only procesionId/hermandadId/status.
+- No Titular, Paso, RouteSection code/schema/endpoints exist.
+- Tenant isolation: Hermandad service has `@PreAuthorize`; Procesion endpoints lack persisted tenant isolation; Cruceta isolation is partial.
+
+**TARGET (active roadmap):**
+- Hermandad owns Titulares (religious images).
+- A Procesion contains ordered Pasos, each referencing one Titular.
+- Pasos and an ordered shared Route (named Route Sections) are finalized together.
+- Repertorio owns Marcha and one Cruceta per Paso, with Marchas assigned by Route Section.
+- Independent run-sheet progression per Paso.
+- Full tenant isolation on all endpoints.
+- See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/agents/domain.md`](docs/agents/domain.md) for details.
+
 ## Architecture
 
 ```
-hermandad-service :8081    Procesion CRUD + member management, Keycloak admin sync
-procesion-service :8082    Procession CRUD + state machine (PLANNED → IN_PROGRESS → COMPLETED)
-repertorio-service :8083   Global marcha catalog + cruceta (ordered playlist per procession)
+hermandad-service :8081    Hermandades + members (TARGET adds Titulares)
+procesion-service :8082    Procession CRUD + state machine (TARGET adds Pasos, Route Sections, finalization)
+repertorio-service :8083   Global marcha catalog + one Cruceta per Procesion (TARGET adds per-Paso Crucetas)
 api-gateway         :8080   Spring Cloud Gateway — routes by path prefix
 discovery-server    :8761   Eureka service registry
 ```
@@ -70,7 +90,7 @@ Swagger UI at `http://localhost:8080/swagger-ui.html`
 | `docs/demo/` | Runnable demo scripts |
 | `docs/roadmap.md` | Development phases and portfolio milestones |
 | `docs/openapi.yaml` | Complete API spec (OpenAPI 3.0) |
-| `docs/functional-map.md` | Full topology, endpoints, DB schemas, test inventory — 960 lines of agent-ready context |
+| `docs/functional-map.md` | Full topology, endpoints, DB schemas, test inventory — agent-ready context |
 | `docs/architecture.md` | Hexagonal + DDD design decisions |
 | `infrastructure/` | API Gateway, Discovery Server, Keycloak realm export, nginx config |
 | `shared/common/` | Cross-cutting: `IntegrationTestBase`, `JwtMembershipExtractor`, `TenantContext` |
@@ -97,7 +117,7 @@ Integration tests use Testcontainers (PostgreSQL), skip gracefully if unavailabl
 |----------|-----------|
 | **Hexagonal + DDD** | Domain purity, testability, framework independence — domain layer has zero Spring imports |
 | **Outbox pattern** | Guarantees at-least-once delivery to Kafka without distributed transactions |
-| **Kafka-based cross-service validation** | Repertorio validates cruceta references against a local `KnownProcesion` cache populated from `procesion-events` topic. Eventual consistency, no synchronous coupling |
+| **Kafka-based cross-service validation (AS-IS → TARGET)** | AS-IS: Repertorio validates references against `KnownProcesion` (only procesionId/hermandadId/status). TARGET: Procesion publishes a finalized-plan snapshot (`ProcesionPlanFinalizedEvent`) with Pasos, Route Sections, Titular refs; Repertorio consumes and validates locally. No synchronous REST in either case. |
 | **Per-service database** | Independent Flyway histories, no migration conflicts, clean service boundaries |
 | **Spring Cloud Gateway** | Centralized routing, auth filtering, API docs aggregation — replaces per-service URL management |
 
@@ -107,18 +127,17 @@ Integration tests use Testcontainers (PostgreSQL), skip gracefully if unavailabl
 
 Current: Docker Compose on single host.
 
-Planned (Sprint 10): AWS-native — SQS replaces Kafka, Cognito replaces Keycloak, RDS replaces container Postgres. Infra-as-code via CDK at `infrastructure/aws/`.
-
-Future: K8s with Helm charts ($5/mo Civo cluster).
+TARGET: Provider-neutral VPS with Docker Compose, nginx reverse proxy with TLS, GHCR immutable SHA images, automated deploy/rollback via GitHub Actions, off-host pg_dump backups. AWS adapters compile-tested and undeployed; Kubernetes is an explicit anti-goal.
 
 ---
 
 ## Roadmap
 
-See `docs/roadmap.md` for the full 5-phase plan:
+See `docs/roadmap.md` for the full 6-phase plan:
 
-1. ✅ **Operational Procesion** — cross-service workflow (done)
-2. 🔜 **Reliable Event Delivery** — event envelope, retry, dead-letter topics
-3. **Observable System** — traces, metrics, Grafana
-4. **Contract Maturity** — evolvable APIs, contract tests
-5. **Portfolio Readiness** — README, demo script, interview stories
+1. ✅ **Phase 1 — Operational Procesion** — cross-service workflow (done)
+2. 🔜 **Phase 2 — Correct Domain Foundation & Route-Aware Cruceta** — Tickets 01–06, Gate 07
+3. **Phase 3 — Correctness & Event Foundations** — Tickets 08–14, Gate 15
+4. **Phase 4 — Reliable Delivery & Operability** — Tickets 16–20, Gate 21
+5. **Phase 5 — Load/Failure Evidence** — Tickets 22–25, Gate 26
+6. **Phase 6 — Portfolio Readiness** — maintainable, convincing artifact

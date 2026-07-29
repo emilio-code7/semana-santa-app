@@ -123,7 +123,7 @@
 | 4 | 🔴 High | **Cruceta tenant mismatch is not validated** — authorization checks `{hermandadId}` from the path, while `CrucetaService` only checks that `procesionId` exists. An admin of Hermandad A can target a known procession of Hermandad B. | `CrucetaController.java`, `CrucetaService.java`, `KnownProcesion.java` |
 | 5 | 🟡 Medium | **Consumer failures are swallowed** — the listener catches and logs exceptions, then returns normally. Kafka can acknowledge the failed record, losing the `KnownProcesion` update. | `ProcesionEventConsumer.java` |
 | 6 | 🟡 Medium | **Payload-hash idempotency is not a stable event identity** — two distinct events with identical payloads can be treated as duplicates. | `ProcesionEventConsumer.java` |
-| 7 | Product gap | **Cruceta is procession-specific but not route-aware** — it is an ordered setlist and cannot yet associate a marcha with a route point or segment. | `Cruceta.java`, `CrucetaItem.java` |
+| 7 | Product gap (AS-IS) | **Cruceta is one per Procesion and not route-aware** — it has no Titular, Paso, Route Section, or per-Paso Cruceta model. The TARGET domain builds Titulares → Pasos → Route Sections → finalized plan → one Cruceta per Paso with Marchas assigned by Route Section. | `Cruceta.java`, `CrucetaItem.java` |
 | 8 | 🟠 Low | **No Redis caching** — consistent with procesion but missing compared to hermandad | — |
 
 ### Recommendations
@@ -133,7 +133,7 @@
 3. Verify repertorio entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) don't hit the same Hibernate 7 UUID save issue
 4. Enforce the procession's persisted `hermandadId` for Cruceta authorization; do not trust the path hierarchy alone.
 5. Let consumer failures trigger retry/DLQ handling, then move deduplication to a producer-generated `eventId`.
-6. Add named route points and route-point assignments to the Cruceta before investing in tracking or notifications.
+6. (Superseded by active roadmap) Build the TARGET Titular → Paso → Route Section → per-Paso Cruceta model rather than extending the old one-Cruceta-per-Procesion model. See `docs/plans/2026-07-28-cruceta-first-high-throughput-roadmap.md`.
 
 ---
 
@@ -150,7 +150,7 @@
 | Error responses | ✅ `ApiError` JSON | ✅ `ApiError` JSON | ✅ `ApiError` JSON |
 | Domain tests | ✅ (HermandadTest, HermandadMemberTest) | ✅ (ProcesionTest, 11 state machine tests) | ✅ (MarchaTest, CrucetaTest, KnownProcesionTest, 28 total) |
 | Integration tests | ✅ Repository + Controller | ✅ Repository + Controller | ✅ Repository + Controller |
-| Flyway migrations | V1–V7 (7) | V1–V4 (4) | V1–V6 (6) |
+| Flyway migrations | V1–V8 (8) | V1–V4 (4) | V1–V8 (8) |
 | Docker | ✅ Dockerfile + compose entry | ✅ Dockerfile + compose entry | ✅ Dockerfile + compose entry |
 | Gateway routes | ✅ `/api/hermandades/**` | ✅ `/api/procesiones/**` | ✅ `/api/marchas/**` + `/api/hermandades/*/procesiones/*/cruceta/**` |
 | Kafka consumer | ✅ Self-consumption (idempotent) | ❌ None | ✅ Cross-service (procesion-events) |

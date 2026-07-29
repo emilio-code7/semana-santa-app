@@ -94,6 +94,26 @@ Every change that touches any of these **must** update the corresponding documen
 
 ---
 
+### 0.10 AS-IS vs TARGET Domain Status
+
+**AS-IS** describes what exists today. **TARGET** describes the canonical domain model in the active roadmap. Neither is wrong — the plan builds toward TARGET incrementally.
+
+| Concept | AS-IS | TARGET |
+|---------|-------|--------|
+| **Titular** | ❌ Does not exist | Hermandad-owned catalogue of religious images |
+| **Paso** | ❌ Does not exist | Ordered floats within a Procesion, each referencing one Titular |
+| **Route** | ❌ Does not exist | Shared ordered Route Sections for all Pasos |
+| **Route Section** | ❌ Does not exist | Named ordered route segment; names may repeat |
+| **Procesion plan** | Flat CRUD (date, time, status) | Pasos + Route finalized together before Cruceta |
+| **Finalization** | ❌ Does not exist | Idempotent command making plan immutable; publishes snapshot |
+| **Cruceta** | One per Procesion (`procesion_id` is UNIQUE) | One per Paso; Marchas assigned by Route Section |
+| **CrucetaItem** | marchaId, orderIndex, notes | Adds routeSectionId, sequenceWithinSection |
+| **Run sheet** | ❌ Does not exist | Per-Paso current/next progression |
+| **KnownProcesion** | Only procesionId, hermandadId, status | Full plan snapshot (Pasos, Route Sections, Titular refs) |
+| **Tenant isolation** | Partial (Hermandad ✅, Procesion ❌, Cruceta partial) | All contexts enforced |
+
+---
+
 ## 1. Project Topology
 
 ```
@@ -168,7 +188,7 @@ shared/common  ←────── hermandad-service ←────── api
 | **Port** | 8081 |
 | **Package** | `com.repertorio.hermandad` |
 | **DB** | PostgreSQL `hermandad_db` (port 5432) |
-| **Flyway** | 7 migrations (V1–V7) |
+| **Flyway** | 8 migrations (V1–V8) |
 | **Java files** | 31 main + 11 test = 59 total |
 | **Tests** | 50 (2 integration, 9 unit/slice) |
 | **Security** | `@PreAuthorize` + custom JWT converter + `HermandadSecurityService` |
@@ -209,7 +229,7 @@ domain/
 | **Port** | 8082 |
 | **Package** | `com.repertorio.procesion` |
 | **DB** | PostgreSQL `procesion_db` (port 5434) |
-| **Flyway** | 3 migrations (V1–V3) |
+| **Flyway** | 4 migrations (V1–V4) |
 | **Java files** | 16 main + 6 test = 22 total |
 | **Tests** | 47 (12 integration, 11 domain unit, 8 service, 13 controller slice, 3 exception handler) |
 | **Security** | `anyRequest().authenticated()` + custom JWT converter — no `@PreAuthorize` |
@@ -247,7 +267,7 @@ domain/
 | **Port** | 8083 |
 | **Package** | `com.repertorio.marcha` |
 | **DB** | PostgreSQL `repertorio_db` (port 5433) |
-| **Flyway** | 6 migrations (V1–V6) |
+| **Flyway** | 8 migrations (V1–V8) |
 | **Java files** | 51 main + 12 test = 63 total |
 | **Tests** | 75 (28 domain + 14 service + 11 controller slice + 5 consumer unit + 17 integration) |
 | **Security** | `anyRequest().authenticated()` + custom JWT converter + `RepertorioSecurityService` |
@@ -257,7 +277,7 @@ domain/
 | **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache. Validates cruceta definition against known procesions. |
 | **SB4** | Migrated (`tools.jackson`) |
 
-**Current product boundary and risks:** A Cruceta is currently an ordered, procession-specific setlist. The intended product is route-aware: a marcha assigned to a named route point or segment. Before adding that capability, Cruceta mutation must verify that `KnownProcesion.hermandadId` equals the `{hermandadId}` authorized in the request path. `ProcesionEventProcessor` now propagates failures to the transport listener, so the transport (Kafka or SQS) can retry or route to a DLQ. Producer-generated event IDs are planned work.
+**Current product boundary and risks (AS-IS):** A Cruceta is currently one per Procesion (`procesion_id` is UNIQUE), with items having only marchaId/orderIndex/notes — no Route Section or per-Paso model. KnownProcesion projects only procesionId/hermandadId/status — no Pasos, Route Sections, or Titular references. The TARGET model moves to one Cruceta per Paso with Route Section assignments. See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
 
 **Key directories:**
 ```
@@ -552,7 +572,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL |
 
-**Flyway migrations**: V1 (create tables) → V2 (outbox) → V3 (alter payload column) → V4 (unique name) → V5 (description) → V6 (processed_event) → V7 (updated_at)
+**Flyway migrations**: V1 (create tables) → V2 (outbox) → V3 (alter payload column) → V4 (unique name) → V5 (description) → V6 (processed_event) → V7 (updated_at) → V8 (add @version column)
 
 ### 5.2 Procesion DB (`procesion_db`)
 
@@ -591,7 +611,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `processed_at` | TIMESTAMPTZ nullable |
 | `processed` | BOOLEAN DEFAULT FALSE |
 
-**Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload)
+**Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload) → V4 (add @version column)
 
 ### 5.3 Repertorio DB (`repertorio_db`)
 
@@ -610,7 +630,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `updated_at` | TIMESTAMPTZ | NOT NULL |
 | | | INDEX idx_marcha_band_type, idx_marcha_composer |
 
-#### `cruceta` table
+#### `cruceta` table (AS-IS: one per Procesion; TARGET: one per Paso)
 
 | Column | Type | Constraints |
 |--------|------|-------------|
@@ -619,7 +639,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `created_at` | TIMESTAMPTZ | NOT NULL |
 | `updated_at` | TIMESTAMPTZ | NOT NULL |
 
-#### `cruceta_item` table
+#### `cruceta_item` table (AS-IS: no Route Section binding; TARGET: adds route_section_id, sequence_within_section)
 
 | Column | Type | Constraints |
 |--------|------|-------------|
@@ -650,7 +670,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event)
+**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox)
 
 ### 5.4 Domain Entity ↔ DB Mapping
 
@@ -862,6 +882,55 @@ Request with Bearer JWT
 | 11 | 🟡 Medium | ✅ ~~**Repertorio has no integration tests** — missing repository + controller integration tests unlike hermandad and procesion~~ | `repertorio-service/src/test/` | Done |
 | 12 | 🟡 Medium | **Procesion service Hibernate 7 fix** — `Procesion` entity needed `Persistable` interface for UUID save. Check if repertorio entities (MarchaEntity, CrucetaEntity, CrucetaItemEntity) need same fix. KnownProcesionEntity and ProcessedEventEntity use manual UUIDs — not affected. | `Procesion.java`, repertorio entities | Open |
 | 13 | 🔴 High | **Procesion Hibernate 7 UUID regression** — commit 0577a09 added `Persistable` to `Procesion` to fix save. Root cause unclear — Hibernate 7 may have same issue on all entities | `Procesion.java:1-8` | 🔴 Open |
+
+---
+
+## 10. Target Domain Model (Roadmap)
+
+> Canonical glossary at [`docs/agents/domain.md`](agents/domain.md). Active plan at [`docs/plans/2026-07-28-cruceta-first-high-throughput-roadmap.md`](plans/2026-07-28-cruceta-first-high-throughput-roadmap.md).
+
+### Bounded Contexts
+
+| Context | Service | Owns | Receives via outbox |
+|---------|---------|------|---------------------|
+| Hermandad | hermandad-service | Hermandad, HermandadMember, Titular | — |
+| Procesion Plan | procesion-service | Procesion, Paso, Route Section, finalization | KnownTitular (from Hermandad) |
+| Musical Plan | repertorio-service | Marcha, Cruceta per Paso | ProcesionPlanFinalizedEvent |
+
+### Target Event Flow
+
+```
+Hermandad publishes TitularCreatedEvent → Hermandad outbox → Kafka
+  → Procesion consumes: KnownTitular projection
+
+Procesion finalizes plan → ProcesionPlanFinalizedEvent → Procesion outbox → Kafka
+  → Repertorio consumes: local plan projection (Pasos, Route Sections, Titular refs)
+
+Repertorio owns per-Paso Cruceta creation → validates against local plan + Marcha catalogue
+  → Outbox events for Cruceta changes
+```
+
+No synchronous cross-service REST calls. Outbox at-least-once. No false exactly-once claims.
+
+### ProcesionPlanFinalizedEvent Snapshot
+
+When a Procesion plan is finalized, the event contains:
+
+```
+- hermandadId
+- procesionId, date, time, status, planFinalizedAt
+- pasos: [{id, position, titularId}]
+- routeSections: [{id, name, position, notes}]
+```
+
+### Key TARGET Invariants
+
+- One Titular per Paso (Titular may appear in different processions over time).
+- One shared Route per Procesion; all Pasos follow the same sections.
+- Route Section names may repeat (outbound and return).
+- Zero or more Cruceta Items per Route Section; same Marcha may recur in different sections.
+- Each Paso has independent Cruceta progression.
+- Finalized plan is immutable for this MVP; rain amendment is deferred.
 
 ---
 

@@ -1,4 +1,10 @@
-# Sprint 10 — Route-Aware Cruceta
+# ⚠️ SUPERSEDED — Sprint 10 — Route-Aware Cruceta
+
+> **This plan is superseded by the active [`2026-07-28-cruceta-first-high-throughput-roadmap.md`](2026-07-28-cruceta-first-high-throughput-roadmap.md).**
+>
+> **Why superseded:** It assumes one Cruceta per Procesion and RoutePoint terminology, before the Titular/Paso/Route Section model was clarified. The active plan uses Route Sections, per-Paso Crucetas, and plan finalization.
+>
+> Retained as historical context only. Do not implement against this document.
 
 ## Product Goal
 

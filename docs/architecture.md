@@ -31,13 +31,40 @@ adapter/      — Infrastructure:
 |---|---|---|
 | `hermandad-service` | Hermandades (brotherhoods) and their members | hermandad-db |
 | `procesion-service` | Processions (MVP: CRUD + state machine) | procesion-db |
-| `repertorio-service` | Musical repertoire, marches | repertorio-db |
+| `repertorio-service` | Marcha catalogue and Cruceta (AS-IS: one per Procesion) | repertorio-db |
 | `tracking-service` | Real-time GPS positions of processions | tracking-db |
 | `notification-service` | Push notifications / alerts | notification-db |
 | `api-gateway` | Spring Cloud Gateway | — |
 | `discovery-server` | Eureka | — |
 
 No shared databases. Communication via Kafka events for async flows.
+
+## AS-IS vs TARGET Domain Context Ownership
+
+### AS-IS (current implementation)
+
+| Context | Owns | Notes |
+|---------|------|-------|
+| Hermandad | Hermandad, HermandadMember | No Titular entity |
+| Procesion | Procesion (flat: id, hermandadId, date, time, status) | No Pasos, no Route Sections, no finalized plan |
+| Repertorio | Marcha, Cruceta (one per Procesion), KnownProcesion projection | CrucetaItem has marchaId/orderIndex/notes only |
+
+### TARGET (active roadmap)
+
+Procesion context is expanded to own the full finalized plan. Repertorio shifts to per-Paso Crucetas.
+
+| Context | Owns | Projected locally |
+|---------|------|-------------------|
+| Hermandad | Hermandad, HermandadMember, **Titular** | — |
+| Procesion | **Procesion plan**, **Pasos**, **shared Route Sections**, **finalization** | KnownTitular (from Hermandad) |
+| Repertorio | Marcha, **Cruceta per Paso**, **local finalized-plan projection** | KnownProcesion plan (Pasos, Route Sections, Titular refs) |
+
+**Key rules:**
+- No synchronous cross-service REST calls. Procesion publishes finalized plan via outbox; Repertorio maintains a local projection.
+- The finalized Route is immutable for this MVP — rain/emergency amendment is deferred.
+- Tenant isolation is enforced in every context: reads require owning-tenant membership; writes additionally require the approved role.
+
+---
 
 ## Aggregate Design
 
@@ -72,23 +99,24 @@ The poller processes events in `ORDER BY created_at ASC`, capped at 100 rows per
 
 ### Domain Events
 
-All domain events implement the `DomainEvent` interface (`application/port/DomainEvent.java`) with:
+All domain events implement the `DomainEvent` interface (in `shared/common` or per-service `domain/event` package) with:
+- `eventId()` — producer-generated event identity
+- `occurredAt()` — producer occurrence timestamp
 - `aggregateType()` — logical aggregate name for routing (e.g., `hermandad-member`)
 - `aggregateId()` — the aggregate's UUID
 - `eventType()` — event discriminant (e.g., `MEMBER_ADDED`)
 
-### Idempotent Kafka Consumer
+### Idempotent Kafka Consumer (AS-IS)
 
-Kafka consumers use an idempotency pattern to safely handle duplicate message delivery (at-least-once semantics):
+Kafka consumers currently use payload-hash check-before-process idempotency via the `processed_event` table:
 
-1. **`processed_event` table** — stores `(event_id UUID PK, consumer_name VARCHAR(100), processed_at TIMESTAMP)` per processed event.
-2. **Deterministic event ID** — derived from the full payload via `UUID.nameUUIDFromBytes(payload.getBytes())`. Same payload always produces the same ID.
-3. **Check-before-process** — consumer checks `processed_event` before handling; skips if event_id exists.
-4. **Register on first process** — stores event_id + consumer_name + timestamp after successful processing.
+1. **Deterministic event ID** — derived from the full payload via `UUID.nameUUIDFromBytes(payload.getBytes())`. Same payload always produces the same ID.
+2. **Check-before-process** — consumer checks `processed_event` before handling; skips if event_id exists.
+3. **Register on first process** — stores event_id + consumer_name + timestamp after successful processing.
+
+**TARGET** (active roadmap): Producer-generated `eventId` replaces payload hash. Transactional `INSERT ... ON CONFLICT DO NOTHING` with `(consumer_name, event_id)` composite key eliminates the check-then-insert race. See event-migration Tickets 12–14 and atomic-idempotency Ticket 17 in the active plan.
 
 Topics follow `{aggregate-type}-events` naming (e.g., `hermandad-events`, `hermandad-member-events`). Consumer group: `hermandad-service-group`.
-
-Reference implementation: `IdempotentEventConsumer` in `adapter/inbound/kafka/`. Copy-paste ready for other services — only the processing logic (log line) needs replacement.
 
 ### Event Publishing
 
@@ -144,10 +172,10 @@ When upgrading either, update both. The compatibility verifier (`spring.cloud.co
 
 ### API Specification
 
-The REST API is documented via **springdoc-openapi** (`/v3/api-docs`, Swagger UI at `/swagger-ui.html`). The live spec is generated from controller annotations — no manual sync needed.
+[`docs/openapi.yaml`](./openapi.yaml) is the contract and source of truth — updated first before any controller change. The pre-commit hook enforces this.
+
+The generated springdoc-openAPI spec (`/v3/api-docs`, Swagger UI at `/swagger-ui.html`) reflects running code and is used for validation and interactive exploration, not as the primary contract.
 
 For Postman: File → Import → Link → `http://localhost:8080/v3/api-docs`.
 
 Or browse interactively at `http://localhost:8080/swagger-ui.html`.
-
-A hand-written contract-first spec lives in [`docs/openapi.yaml`](./openapi.yaml) for design-stage reference, but the running code is the source of truth.
