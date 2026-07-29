@@ -15,9 +15,12 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Validate OpenAPI spec is valid JSON
-        run: |
-          python3 -c "import json; json.load(open('docs/openapi.yaml')); print('OpenAPI spec valid')"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate OpenAPI specification
+        run: npx --yes @redocly/cli@2.41.0 lint docs/openapi.yaml
 
       - name: Validate OpenAPI spec consistency with controllers
         run: |
