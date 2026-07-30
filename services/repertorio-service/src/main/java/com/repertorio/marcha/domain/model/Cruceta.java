@@ -8,7 +8,7 @@ import java.util.UUID;
 public class Cruceta {
 
     private final UUID id;
-    private final UUID procesionId;
+    private final UUID pasoId;
     private int version;
     private List<CrucetaItem> items;
     private Instant createdAt;
@@ -17,12 +17,12 @@ public class Cruceta {
     // JPA reconstruction
     protected Cruceta() {
         this.id = null;
-        this.procesionId = null;
+        this.pasoId = null;
     }
 
-    public Cruceta(UUID procesionId, List<CrucetaItem> items) {
+    public Cruceta(UUID pasoId, List<CrucetaItem> items) {
         this.id = UUID.randomUUID();
-        this.procesionId = procesionId;
+        this.pasoId = pasoId;
         this.version = 0;
         setItems(items);
         this.createdAt = Instant.now();
@@ -36,10 +36,7 @@ public class Cruceta {
 
     private void setItems(List<CrucetaItem> items) {
         if (items == null) throw new IllegalArgumentException("items must not be null");
-        var orderIndexes = items.stream().map(CrucetaItem::getOrderIndex).toList();
-        if (orderIndexes.stream().distinct().count() != orderIndexes.size()) {
-            throw new IllegalArgumentException("duplicate orderIndex values");
-        }
+        // ponytail: no duplicate (routeSectionId, sequenceWithinSection) check — items are replaced atomically
         this.items = new ArrayList<>(items);
     }
 
@@ -48,24 +45,24 @@ public class Cruceta {
     }
 
     // ponytail: reconstruct for adapter mapping
-    private Cruceta(UUID id, int version, UUID procesionId, List<CrucetaItem> items,
+    private Cruceta(UUID id, int version, UUID pasoId, List<CrucetaItem> items,
                     Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.version = version;
-        this.procesionId = procesionId;
+        this.pasoId = pasoId;
         this.items = new ArrayList<>(items);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static Cruceta reconstruct(UUID id, int version, UUID procesionId, List<CrucetaItem> items,
+    public static Cruceta reconstruct(UUID id, int version, UUID pasoId, List<CrucetaItem> items,
                                        Instant createdAt, Instant updatedAt) {
-        return new Cruceta(id, version, procesionId, items, createdAt, updatedAt);
+        return new Cruceta(id, version, pasoId, items, createdAt, updatedAt);
     }
 
     public UUID getId() { return id; }
     public int getVersion() { return version; }
-    public UUID getProcesionId() { return procesionId; }
+    public UUID getPasoId() { return pasoId; }
     public List<CrucetaItem> getItems() { return List.copyOf(items); }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

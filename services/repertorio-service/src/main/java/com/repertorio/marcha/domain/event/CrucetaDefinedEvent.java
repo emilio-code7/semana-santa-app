@@ -8,11 +8,11 @@ public record CrucetaDefinedEvent(
         UUID eventId,
         Instant occurredAt,
         UUID crucetaId,
-        UUID procesionId,
+        UUID pasoId,
         int itemCount
 ) implements DomainEvent {
-    public CrucetaDefinedEvent(UUID crucetaId, UUID procesionId, int itemCount) {
-        this(UUID.randomUUID(), Instant.now(), crucetaId, procesionId, itemCount);
+    public CrucetaDefinedEvent(UUID crucetaId, UUID pasoId, int itemCount) {
+        this(UUID.randomUUID(), Instant.now(), crucetaId, pasoId, itemCount);
     }
 
     @Override
