@@ -1,6 +1,7 @@
 package com.repertorio.procesion.adapter.inbound.rest;
 
 import com.repertorio.procesion.adapter.inbound.rest.dto.ApiError;
+import com.repertorio.procesion.domain.model.ForbiddenException;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProcesionNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ProcesionNotFoundException ex) {
         var status = HttpStatus.NOT_FOUND;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex) {
+        var status = HttpStatus.FORBIDDEN;
         var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
         return ResponseEntity.status(status).body(body);
     }
