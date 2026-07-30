@@ -30,6 +30,10 @@ public class PasoService {
         if (!procesion.getHermandadId().equals(hermandadId)) {
             throw new ForbiddenException("Procesion does not belong to this hermandad");
         }
+        if (procesion.isPlanFinalized()) {
+            throw new IllegalStateException("Plan is already finalized — pasos are immutable");
+        }
+
 
         // 2. Validate unique positions
         var positions = items.stream().map(PasoItem::position).toList();

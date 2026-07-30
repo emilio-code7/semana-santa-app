@@ -47,7 +47,7 @@ class ProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
         var hermandadId = UUID.randomUUID();
         var saved = procesionRepo.save(
                 new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
-                        ProcesionStatus.PLANNED, null, null));
+                        ProcesionStatus.PLANNED, null, null, null));
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getHermandadId()).isEqualTo(hermandadId);
@@ -67,7 +67,7 @@ class ProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
         for (int i = 0; i < 5; i++) {
             procesionRepo.save(new ProcesionEntity(null, hermandadId,
                     LocalDate.of(2026, 4, 13).plusDays(i), LocalTime.of(18, 0),
-                    ProcesionStatus.PLANNED, null, null));
+                    ProcesionStatus.PLANNED, null, null, null));
         }
 
         Page<ProcesionEntity> page1 = procesionRepo.findByHermandadId(hermandadId, PageRequest.of(0, 2));
@@ -86,7 +86,7 @@ class ProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
     void statusTransitionsPersistCorrectly() {
         var procesion = procesionRepo.save(
                 new ProcesionEntity(null, UUID.randomUUID(), LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
-                        ProcesionStatus.PLANNED, null, null));
+                        ProcesionStatus.PLANNED, null, null, null));
 
         procesionRepo.save(procesion);
 
@@ -99,7 +99,7 @@ class ProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
     void defaultStatusIsPlanned() {
         var procesion = procesionRepo.save(
                 new ProcesionEntity(null, UUID.randomUUID(), LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
-                        ProcesionStatus.PLANNED, null, null));
+                        ProcesionStatus.PLANNED, null, null, null));
         assertThat(procesion.getStatus()).isEqualTo(ProcesionStatus.PLANNED);
     }
 }

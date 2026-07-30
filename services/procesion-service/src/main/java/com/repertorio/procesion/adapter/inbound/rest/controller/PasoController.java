@@ -46,7 +46,8 @@ public class PasoController {
             @ApiResponse(responseCode = "200", description = "Pasos replaced"),
             @ApiResponse(responseCode = "400", description = "Invalid input (validation error or duplicate position)"),
             @ApiResponse(responseCode = "403", description = "Forbidden — cross-tenant or titular from another hermandad"),
-            @ApiResponse(responseCode = "404", description = "Procesion not found")
+            @ApiResponse(responseCode = "404", description = "Procesion not found"),
+            @ApiResponse(responseCode = "409", description = "Conflict — plan already finalized, pasos are immutable")
     })
     public ResponseEntity<ReplacePasosResponse> replacePasos(
             @PathVariable UUID hermandadId,
