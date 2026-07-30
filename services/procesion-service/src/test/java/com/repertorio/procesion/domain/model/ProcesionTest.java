@@ -111,4 +111,44 @@ class ProcesionTest {
         procesion.changeStatus(ProcesionStatus.IN_PROGRESS);
         assertTrue(procesion.getUpdatedAt().isAfter(before));
     }
+
+    // --- finalizePlan ---
+
+    @Test
+    void finalizePlan_shouldSetPlanFinalizedAt() {
+        Procesion procesion = aPlannedProcesion();
+        assertNull(procesion.getPlanFinalizedAt());
+        procesion.finalizePlan();
+        assertNotNull(procesion.getPlanFinalizedAt());
+    }
+
+    @Test
+    void finalizePlan_shouldBeIdempotent() {
+        Procesion procesion = aPlannedProcesion();
+        procesion.finalizePlan();
+        Instant first = procesion.getPlanFinalizedAt();
+        procesion.finalizePlan();
+        assertEquals(first, procesion.getPlanFinalizedAt());
+    }
+
+    @Test
+    void finalizePlan_shouldUpdateUpdatedAt() {
+        Procesion procesion = aPlannedProcesion();
+        Instant before = procesion.getUpdatedAt();
+        try { Thread.sleep(1); } catch (InterruptedException e) { throw new RuntimeException(e); }
+        procesion.finalizePlan();
+        assertTrue(procesion.getUpdatedAt().isAfter(before));
+    }
+
+    @Test
+    void isPlanFinalized_shouldReturnFalseInitially() {
+        assertFalse(aPlannedProcesion().isPlanFinalized());
+    }
+
+    @Test
+    void isPlanFinalized_shouldReturnTrueAfterFinalize() {
+        Procesion procesion = aPlannedProcesion();
+        procesion.finalizePlan();
+        assertTrue(procesion.isPlanFinalized());
+    }
 }

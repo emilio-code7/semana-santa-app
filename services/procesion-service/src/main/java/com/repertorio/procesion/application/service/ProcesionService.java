@@ -2,6 +2,7 @@ package com.repertorio.procesion.application.service;
 
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
+import com.repertorio.procesion.domain.event.ProcesionPlanFinalizedEvent;
 import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
@@ -51,6 +52,16 @@ public class ProcesionService {
     @Transactional(readOnly = true)
     public Page<Procesion> listByHermandad(UUID hermandadId, Pageable pageable) {
         return procesionRepository.findByHermandadId(hermandadId, pageable);
+    }
+
+    @Transactional
+    public Procesion finalizePlan(UUID id) {
+        var procesion = getProcesion(id);
+        procesion.finalizePlan();
+        procesion = procesionRepository.save(procesion);
+        eventPublisher.publish(new ProcesionPlanFinalizedEvent(
+                id, procesion.getHermandadId(), procesion.getDate(), procesion.getTime(), procesion.getPlanFinalizedAt()));
+        return procesion;
     }
 
     @Transactional

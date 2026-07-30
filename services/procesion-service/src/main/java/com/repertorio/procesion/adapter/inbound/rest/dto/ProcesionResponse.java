@@ -13,6 +13,7 @@ public record ProcesionResponse(
         LocalDate date,
         LocalTime time,
         String status,
+        Instant planFinalizedAt,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -23,6 +24,7 @@ public record ProcesionResponse(
                 procesion.getDate(),
                 procesion.getTime(),
                 procesion.getStatus().name(),
+                procesion.getPlanFinalizedAt(),
                 procesion.getCreatedAt(),
                 procesion.getUpdatedAt()
         );

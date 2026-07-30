@@ -397,6 +397,20 @@
         }
       }
     },
+    "/api/procesiones/{id}/finalize-plan": {
+      "post": {
+        "tags": ["procesion-controller"],
+        "summary": "Finalize the plan for a procesion (idempotent)",
+        "operationId": "finalizePlan",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Plan finalized", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProcesionResponse" } } } },
+          "404": { "description": "Procesion not found" }
+        }
+      }
+    },
     "/api/procesiones/{id}/status": {
       "patch": {
         "tags": ["procesion-controller"],
@@ -754,6 +768,7 @@
           "date": { "type": "string", "format": "date" },
           "time": { "type": "string", "format": "time" },
           "status": { "type": "string", "enum": ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+          "planFinalizedAt": { "type": "string", "format": "date-time", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
         }

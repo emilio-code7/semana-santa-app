@@ -3,6 +3,7 @@ package com.repertorio.procesion.application.service;
 import com.repertorio.common.event.DomainEvent;
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
+import com.repertorio.procesion.domain.event.ProcesionPlanFinalizedEvent;
 import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionStatus;
@@ -18,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -136,6 +138,43 @@ class ProcesionServiceTest {
         procesionService.deleteProcesion(id);
 
         verify(procesionRepository).delete(procesion);
+    }
+
+    @Test
+    void finalizePlanFinalizesAndPublishesEvent() {
+        var id = UUID.randomUUID();
+        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
+
+        when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
+        when(procesionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = procesionService.finalizePlan(id);
+
+        assertThat(result.getPlanFinalizedAt()).isNotNull();
+        assertThat(result.isPlanFinalized()).isTrue();
+        verify(eventPublisher).publish(eventCaptor.capture());
+        var event = (ProcesionPlanFinalizedEvent) eventCaptor.getValue();
+        assertThat(event.id()).isEqualTo(id);
+        assertThat(event.planFinalizedAt()).isNotNull();
+    }
+
+    @Test
+    void finalizePlanIsIdempotent() {
+        var id = UUID.randomUUID();
+        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
+        procesion.finalizePlan();
+        Instant firstFinalizedAt = procesion.getPlanFinalizedAt();
+
+        when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
+        when(procesionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = procesionService.finalizePlan(id);
+
+        assertThat(result.getPlanFinalizedAt()).isEqualTo(firstFinalizedAt);
+        // still publishes the event — the caller decides idempotency semantics
+        verify(eventPublisher).publish(eventCaptor.capture());
+        var event = (ProcesionPlanFinalizedEvent) eventCaptor.getValue();
+        assertThat(event.planFinalizedAt()).isEqualTo(firstFinalizedAt);
     }
 
     @Test

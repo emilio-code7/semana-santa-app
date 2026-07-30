@@ -83,6 +83,18 @@ public class ProcesionController {
         return ResponseEntity.ok(ProcesionResponse.from(procesion));
     }
 
+    @PostMapping("/{id}/finalize-plan")
+    @Operation(summary = "Finalize the plan for a procesion (idempotent)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Plan finalized"),
+            @ApiResponse(responseCode = "404", description = "Procesion not found")
+    })
+    public ResponseEntity<ProcesionResponse> finalizePlan(@PathVariable UUID id) {
+        log.info("Finalizing plan for procesion {}", id);
+        var procesion = procesionService.finalizePlan(id);
+        return ResponseEntity.ok(ProcesionResponse.from(procesion));
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a procesion")
