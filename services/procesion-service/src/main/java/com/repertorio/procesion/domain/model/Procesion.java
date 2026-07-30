@@ -12,18 +12,21 @@ public class Procesion {
     private LocalDate date;
     private LocalTime time;
     private ProcesionStatus status = ProcesionStatus.PLANNED;
+    private Instant planFinalizedAt;
     private Instant createdAt;
     private Instant updatedAt;
 
     protected Procesion() {}
 
     private Procesion(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
-                      ProcesionStatus status, Instant createdAt, Instant updatedAt) {
+                      ProcesionStatus status, Instant planFinalizedAt,
+                      Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.hermandadId = hermandadId;
         this.date = date;
         this.time = time;
         this.status = status;
+        this.planFinalizedAt = planFinalizedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -36,6 +39,7 @@ public class Procesion {
                 date,
                 time,
                 ProcesionStatus.PLANNED,
+                null,
                 now,
                 now
         );
@@ -65,9 +69,25 @@ public class Procesion {
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * Finalizes the plan. Returns true if this call actually finalized (was not already finalized).
+     * Returns false if already finalized (idempotent).
+     */
+    public boolean finalizePlan() {
+        if (planFinalizedAt != null) return false;
+        this.planFinalizedAt = Instant.now();
+        this.updatedAt = Instant.now();
+        return true;
+    }
+
+    public boolean isPlanFinalized() {
+        return planFinalizedAt != null;
+    }
+
     public static Procesion reconstruct(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
-                                         ProcesionStatus status, Instant createdAt, Instant updatedAt) {
-        return new Procesion(id, hermandadId, date, time, status, createdAt, updatedAt);
+                                         ProcesionStatus status, Instant planFinalizedAt,
+                                         Instant createdAt, Instant updatedAt) {
+        return new Procesion(id, hermandadId, date, time, status, planFinalizedAt, createdAt, updatedAt);
     }
 
     public UUID getId() { return id; }
@@ -75,6 +95,7 @@ public class Procesion {
     public LocalDate getDate() { return date; }
     public LocalTime getTime() { return time; }
     public ProcesionStatus getStatus() { return status; }
+    public Instant getPlanFinalizedAt() { return planFinalizedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

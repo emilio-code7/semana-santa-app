@@ -111,4 +111,55 @@ class ProcesionTest {
         procesion.changeStatus(ProcesionStatus.IN_PROGRESS);
         assertTrue(procesion.getUpdatedAt().isAfter(before));
     }
+
+    // --- Plan finalization ---
+
+    @Test
+    void newProcesion_shouldNotBeFinalized() {
+        Procesion procesion = aPlannedProcesion();
+        assertFalse(procesion.isPlanFinalized());
+        assertNull(procesion.getPlanFinalizedAt());
+    }
+
+    @Test
+    void finalizePlan_shouldSetPlanFinalizedAt() {
+        Procesion procesion = aPlannedProcesion();
+        boolean result = procesion.finalizePlan();
+        assertTrue(result);
+        assertTrue(procesion.isPlanFinalized());
+        assertNotNull(procesion.getPlanFinalizedAt());
+    }
+
+    @Test
+    void finalizePlan_shouldBeIdempotent() {
+        Procesion procesion = aPlannedProcesion();
+        procesion.finalizePlan();
+        Instant finalizedAt = procesion.getPlanFinalizedAt();
+
+        // Second call returns false (already finalized)
+        boolean secondResult = procesion.finalizePlan();
+        assertFalse(secondResult);
+        assertEquals(finalizedAt, procesion.getPlanFinalizedAt());
+    }
+
+    @Test
+    void finalizePlan_shouldUpdateUpdatedAt() {
+        Procesion procesion = aPlannedProcesion();
+        Instant before = procesion.getUpdatedAt();
+        try { Thread.sleep(1); } catch (InterruptedException e) { throw new RuntimeException(e); }
+        procesion.finalizePlan();
+        assertTrue(procesion.getUpdatedAt().isAfter(before));
+    }
+
+    @Test
+    void reconstruct_shouldPreservePlanFinalizedAt() {
+        var id = UUID.randomUUID();
+        var hermandadId = UUID.randomUUID();
+        var finalizedAt = Instant.now();
+        var now = Instant.now();
+        var procesion = Procesion.reconstruct(id, hermandadId, LocalDate.now(), LocalTime.now(),
+                ProcesionStatus.PLANNED, finalizedAt, now, now);
+        assertTrue(procesion.isPlanFinalized());
+        assertEquals(finalizedAt, procesion.getPlanFinalizedAt());
+    }
 }

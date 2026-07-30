@@ -35,6 +35,9 @@ public class ProcesionEntity implements Persistable<UUID> {
     @Column(nullable = false, length = 20)
     private ProcesionStatus status = ProcesionStatus.PLANNED;
 
+    @Column
+    private Instant planFinalizedAt;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -44,12 +47,14 @@ public class ProcesionEntity implements Persistable<UUID> {
     protected ProcesionEntity() {}
 
     public ProcesionEntity(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
-                           ProcesionStatus status, Instant createdAt, Instant updatedAt) {
+                           ProcesionStatus status, Instant planFinalizedAt,
+                           Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.hermandadId = hermandadId;
         this.date = date;
         this.time = time;
         this.status = status;
+        this.planFinalizedAt = planFinalizedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -75,6 +80,7 @@ public class ProcesionEntity implements Persistable<UUID> {
                 domain.getDate(),
                 domain.getTime(),
                 domain.getStatus(),
+                domain.getPlanFinalizedAt(),
                 domain.getCreatedAt(),
                 domain.getUpdatedAt()
         );
@@ -82,7 +88,7 @@ public class ProcesionEntity implements Persistable<UUID> {
 
     public Procesion toDomain() {
         return Procesion.reconstruct(
-                id, hermandadId, date, time, status, createdAt, updatedAt
+                id, hermandadId, date, time, status, planFinalizedAt, createdAt, updatedAt
         );
     }
 
@@ -92,6 +98,7 @@ public class ProcesionEntity implements Persistable<UUID> {
     public LocalDate getDate() { return date; }
     public LocalTime getTime() { return time; }
     public ProcesionStatus getStatus() { return status; }
+    public Instant getPlanFinalizedAt() { return planFinalizedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

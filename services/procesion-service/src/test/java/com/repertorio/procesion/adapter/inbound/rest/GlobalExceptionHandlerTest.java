@@ -1,6 +1,7 @@
 package com.repertorio.procesion.adapter.inbound.rest;
 
 import com.repertorio.procesion.adapter.inbound.rest.dto.ApiError;
+import com.repertorio.procesion.domain.model.ForbiddenException;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,32 @@ class GlobalExceptionHandlerTest {
         assertEquals(404, response.getBody().status());
         assertEquals("Not Found", response.getBody().error());
         assertTrue(response.getBody().message().contains(id.toString()));
+    }
+
+    @Test
+    void handleForbiddenReturns403WithApiError() {
+        var ex = new ForbiddenException("Cross-tenant access");
+
+        ResponseEntity<ApiError> response = handler.handleForbidden(ex);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(403, response.getBody().status());
+        assertEquals("Forbidden", response.getBody().error());
+        assertEquals("Cross-tenant access", response.getBody().message());
+    }
+
+    @Test
+    void handleConflictReturns409WithApiError() {
+        var ex = new IllegalStateException("Plan is already finalized");
+
+        ResponseEntity<ApiError> response = handler.handleConflict(ex);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(409, response.getBody().status());
+        assertEquals("Conflict", response.getBody().error());
+        assertEquals("Plan is already finalized", response.getBody().message());
     }
 
     @Test
