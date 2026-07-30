@@ -107,6 +107,10 @@ Before declaring any task complete:
 
 This gate is non-negotiable. A PR with conflicts or failing checks is not complete, and claiming otherwise wastes review cycles.
 
+### Merging and Closing
+
+**The implementation agent must not merge or deploy PRs without explicit authorization from the user.** Opening a PR and verifying CI is the agent's job. Merging, deploying, and closing issues are the user's decision. Use `Closes #XX` in the PR body so issues auto-close on merge, but never merge the PR yourself unless explicitly told to.
+
 ## Secret Safety
 
 MUST load the `aws-secrets-manager` skill first for any secret/credential/API key/token/password task. MUST NOT call `secretsmanager get-secret-value` or `batch-get-secret-value`, and MUST NOT hit the Secrets Manager Agent daemon directly. MUST use `{{resolve:secretsmanager:secret-id:SecretString:json-key}}` with `asm-exec` so the secret resolves at runtime without entering context.
