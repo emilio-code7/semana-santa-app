@@ -100,7 +100,7 @@ Every change that touches any of these **must** update the corresponding documen
 
 | Concept | AS-IS | TARGET |
 |---------|-------|--------|
-| **Titular** | ❌ Does not exist | Hermandad-owned catalogue of religious images |
+| **Titular** | ✅ Hermandad-owned catalogue, projected into Procesion service as KnownTitular | Hermandad-owned catalogue of religious images |
 | **Paso** | ❌ Does not exist | Ordered floats within a Procesion, each referencing one Titular |
 | **Route** | ❌ Does not exist | Shared ordered Route Sections for all Pasos |
 | **Route Section** | ❌ Does not exist | Named ordered route segment; names may repeat |

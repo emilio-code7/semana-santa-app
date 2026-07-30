@@ -94,6 +94,7 @@ services:
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic procesion-events      --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic marcha-events         --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic cruceta-events        --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic titular-events        --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification-commands --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic tracking-events       --partitions 6 --replication-factor 1 &&
         echo 'All topics created.'

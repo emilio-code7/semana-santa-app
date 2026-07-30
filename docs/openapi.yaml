@@ -420,6 +420,70 @@
         }
       }
     },
+    "/api/hermandades/{hermandadId}/titulares": {
+      "post": {
+        "tags": ["titular-controller"],
+        "summary": "Create a titular for a hermandad",
+        "operationId": "createTitular",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateTitularRequest" } } } },
+        "responses": {
+          "201": { "description": "Titular created", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/TitularResponse" } } } },
+          "400": { "description": "Invalid input (validation error)" },
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — not admin or capataz of this hermandad" }
+        }
+      },
+      "get": {
+        "tags": ["titular-controller"],
+        "summary": "List titulares of a hermandad",
+        "operationId": "listTitulares",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "List of titulares", "content": { "*/*": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TitularResponse" } } } } },
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — not a member of this hermandad" }
+        }
+      }
+    },
+    "/api/hermandades/{hermandadId}/titulares/{id}": {
+      "get": {
+        "tags": ["titular-controller"],
+        "summary": "Get a titular by ID",
+        "operationId": "getTitular",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Titular found", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/TitularResponse" } } } },
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — not a member of this hermandad" },
+          "404": { "description": "Titular not found" }
+        }
+      },
+      "put": {
+        "tags": ["titular-controller"],
+        "summary": "Update a titular",
+        "operationId": "updateTitular",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateTitularRequest" } } } },
+        "responses": {
+          "200": { "description": "Titular updated", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/TitularResponse" } } } },
+          "400": { "description": "Invalid input (validation error)" },
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — not admin or capataz of this hermandad" },
+          "404": { "description": "Titular not found" }
+        }
+      }
+    },
     "/api/hermandades/{hermandadId}/members/{userId}": {
       "delete": {
         "tags": [
@@ -743,6 +807,33 @@
           "durationSeconds": { "type": "integer", "format": "int32" },
           "compositionYear": { "type": "integer", "format": "int32", "nullable": true },
           "youtubeUrl": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateTitularRequest": {
+        "required": ["name"],
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "UpdateTitularRequest": {
+        "required": ["name"],
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "TitularResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "hermandadId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
         }
