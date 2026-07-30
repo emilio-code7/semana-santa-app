@@ -24,6 +24,7 @@ public class PasoService {
     @Transactional
     public List<Paso> replacePasos(UUID hermandadId, UUID procesionId, List<PasoItem> items) {
 
+        // 1. Validate procesion exists and belongs to hermandad
         var procesion = procesionRepository.findById(procesionId)
                 .orElseThrow(() -> new ProcesionNotFoundException(procesionId));
         if (!procesion.getHermandadId().equals(hermandadId)) {
@@ -33,11 +34,14 @@ public class PasoService {
             throw new IllegalStateException("Plan is already finalized — pasos are immutable");
         }
 
+
+        // 2. Validate unique positions
         var positions = items.stream().map(PasoItem::position).toList();
         if (new HashSet<>(positions).size() != positions.size()) {
             throw new IllegalArgumentException("Duplicate position in paso list");
         }
 
+        // 3. Validate each titular exists and belongs to the same hermandad
         for (var item : items) {
             var titular = knownTitularRepository.findById(item.titularId())
                     .orElseThrow(() -> new ForbiddenException("Titular not accessible"));
@@ -46,6 +50,7 @@ public class PasoService {
             }
         }
 
+        // 4. Delete existing pasos, then recreate
         pasoRepository.deleteByProcesionId(procesionId);
 
         var result = new ArrayList<Paso>();

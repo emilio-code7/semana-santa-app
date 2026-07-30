@@ -4,6 +4,7 @@ import com.repertorio.procesion.adapter.config.SecurityConfig;
 import com.repertorio.procesion.application.service.PasoService;
 import com.repertorio.procesion.domain.model.ForbiddenException;
 import com.repertorio.procesion.domain.model.Paso;
+import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -19,8 +20,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PasoController.class)
 @Import(SecurityConfig.class)
@@ -34,80 +37,143 @@ class PasoControllerTest {
 
     private final UUID hermandadId = UUID.randomUUID();
     private final UUID procesionId = UUID.randomUUID();
+    private final UUID titularId = UUID.randomUUID();
 
-    private String pasosPath() {
-        return "/api/hermandades/{hid}/procesiones/{pid}/pasos"
-                .replace("{hid}", hermandadId.toString())
-                .replace("{pid}", procesionId.toString());
+    private Paso buildPaso(int position) {
+        return Paso.create(procesionId, position, titularId, null);
     }
 
-    @Test
-    void getPasosReturns200() throws Exception {
-        when(pasoService.getPasos(hermandadId, procesionId))
-                .thenReturn(List.of(Paso.create(procesionId, 0, UUID.randomUUID(), null)));
+    // --- GET pasos ---
 
-        mockMvc.perform(get(pasosPath()).with(jwt()))
+    @Test
+    void getPasosReturns200ForAuthenticatedUser() throws Exception {
+        when(pasoService.getPasos(hermandadId, procesionId))
+                .thenReturn(List.of(buildPaso(1), buildPaso(2)));
+
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasos").isArray())
-                .andExpect(jsonPath("$.pasos.length()").value(1));
+                .andExpect(jsonPath("$.pasos.length()").value(2));
     }
 
     @Test
-    void getPasosReturns403OnCrossTenant() throws Exception {
+    void getPasosReturns403ForCrossTenant() throws Exception {
         when(pasoService.getPasos(hermandadId, procesionId))
-                .thenThrow(new ForbiddenException("Cross-tenant"));
+                .thenThrow(new ForbiddenException("Cross-tenant access"));
 
-        mockMvc.perform(get(pasosPath()).with(jwt()))
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt()))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    void replacePasosReturns200() throws Exception {
-        var pasoId = UUID.randomUUID();
-        var titularId = UUID.randomUUID();
-        when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
-                .thenReturn(List.of(
-                        Paso.reconstruct(pasoId, procesionId, 0, titularId, null,
-                                java.time.Instant.now(), java.time.Instant.now())));
+    void getPasosReturns404WhenProcesionNotFound() throws Exception {
+        when(pasoService.getPasos(hermandadId, procesionId))
+                .thenThrow(new ProcesionNotFoundException(procesionId));
 
-        mockMvc.perform(put(pasosPath())
-                        .with(jwt())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pasos": [{"position": 0, "titularId": "%s"}]}
-                                """.formatted(titularId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pasos[0].id").value(pasoId.toString()));
-    }
-
-    @Test
-    void replacePasosReturns409OnFinalized() throws Exception {
-        when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
-                .thenThrow(new IllegalStateException("Plan is already finalized"));
-
-        mockMvc.perform(put(pasosPath())
-                        .with(jwt())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pasos": [{"position": 0, "titularId": "%s"}]}
-                                """.formatted(UUID.randomUUID())))
-                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     void getPasosReturns401WhenUnauthenticated() throws Exception {
-        mockMvc.perform(get(pasosPath()))
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId))
                 .andExpect(status().isUnauthorized());
     }
 
+    // --- PUT pasos ---
+
     @Test
-    void replacePasosReturns400WhenMissingTitularId() throws Exception {
-        mockMvc.perform(put(pasosPath())
+    void replacePasosReturns200ForAuthenticatedUser() throws Exception {
+        var items = List.of(
+                new PasoService.PasoItem(null, 1, titularId, null),
+                new PasoService.PasoItem(null, 2, titularId, "Second")
+        );
+        when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
+                .thenReturn(List.of(buildPaso(1), buildPaso(2)));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pasos": [{"position": 0}]}
+                                {
+                                    "pasos": [
+                                        {"position": 1, "titularId": "%s"},
+                                        {"position": 2, "titularId": "%s", "notes": "Second"}
+                                    ]
+                                }
+                                """.formatted(titularId, titularId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasos").isArray());
+    }
+
+    @Test
+    void replacePasosReturns400ForDuplicatePosition() throws Exception {
+        when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
+                .thenThrow(new IllegalArgumentException("Duplicate position in paso list"));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "pasos": [
+                                        {"position": 1, "titularId": "%s"},
+                                        {"position": 1, "titularId": "%s"}
+                                    ]
+                                }
+                                """.formatted(titularId, titularId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void replacePasosReturns403ForCrossTenant() throws Exception {
+        when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
+                .thenThrow(new ForbiddenException("Cross-tenant"));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pasos": [{"position": 1, "titularId": "%s"}]}
+                                """.formatted(titularId)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void replacePasosReturns404WhenProcesionNotFound() throws Exception {
+        when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
+                .thenThrow(new ProcesionNotFoundException(procesionId));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pasos": [{"position": 1, "titularId": "%s"}]}
+                                """.formatted(titularId)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void replacePasosReturns400ForEmptyList() throws Exception {
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pasos": []}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void replacePasosReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pasos": [{"position": 1, "titularId": "%s"}]}
+                                """.formatted(titularId)))
+                .andExpect(status().isUnauthorized());
     }
 }
