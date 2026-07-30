@@ -88,6 +88,25 @@ Before declaring any task complete:
 - Conventional commit: `type(scope): description` (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`)
 - One concern per commit
 
+### Completion Gate (applies before any "done" or "ready" claim)
+
+**Never claim an issue or PR is complete until all of these pass:**
+
+1. **No merge conflicts.** Merge `origin/main` into the branch and verify clean auto-merge before reporting success. If conflicts exist, resolve them and re-verify. Do not report "done" with unresolved conflicts.
+
+2. **All CI checks green.** After pushing, poll `gh pr checks` until all jobs complete with `pass`. If any job fails:
+   - Read the failure log
+   - Fix the root cause in the branch
+   - Push the fix
+   - Poll again until all green
+   Do not move to the next ticket while a PR has failing checks.
+
+3. **OpenAPI validation passes.** `npx @redocly/cli lint docs/openapi.yaml` must exit 0 with no errors (warnings from pre-existing code are acceptable but must not be new). Duplicate operationIds, unresolved $refs, and duplicate YAML keys are hard errors.
+
+4. **Flyway migration numbering is contiguous.** Check that migrations in each service follow the same version sequence as `origin/main`. If a migration number already exists on main, the branch's migration must be renumbered to the next available version. Never ship two migrations with the same version number.
+
+This gate is non-negotiable. A PR with conflicts or failing checks is not complete, and claiming otherwise wastes review cycles.
+
 ## Secret Safety
 
 MUST load the `aws-secrets-manager` skill first for any secret/credential/API key/token/password task. MUST NOT call `secretsmanager get-secret-value` or `batch-get-secret-value`, and MUST NOT hit the Secrets Manager Agent daemon directly. MUST use `{{resolve:secretsmanager:secret-id:SecretString:json-key}}` with `asm-exec` so the secret resolves at runtime without entering context.
