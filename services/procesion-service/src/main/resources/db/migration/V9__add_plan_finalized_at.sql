@@ -1,1 +1,0 @@
-ALTER TABLE procesion ADD COLUMN plan_finalized_at TIMESTAMP WITH TIME ZONE;
