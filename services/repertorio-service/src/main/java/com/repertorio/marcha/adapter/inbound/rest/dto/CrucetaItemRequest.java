@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record CrucetaItemRequest(
         @NotNull UUID marchaId,
-        @PositiveOrZero int orderIndex,
+        @NotNull UUID routeSectionId,
+        @PositiveOrZero int sequenceWithinSection,
         String notes
 ) {}

@@ -3,6 +3,7 @@ package com.repertorio.marcha.adapter.inbound.rest;
 import com.repertorio.marcha.adapter.inbound.rest.dto.ApiError;
 import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
 import com.repertorio.marcha.domain.model.MarchaNotFoundException;
+import com.repertorio.marcha.domain.model.PasoNotFoundException;
 import com.repertorio.marcha.domain.model.ProcesionNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProcesionNotFoundException.class)
     public ResponseEntity<ApiError> handleProcesionNotFound(ProcesionNotFoundException ex) {
+        var status = HttpStatus.NOT_FOUND;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(PasoNotFoundException.class)
+    public ResponseEntity<ApiError> handlePasoNotFound(PasoNotFoundException ex) {
         var status = HttpStatus.NOT_FOUND;
         var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
         return ResponseEntity.status(status).body(body);

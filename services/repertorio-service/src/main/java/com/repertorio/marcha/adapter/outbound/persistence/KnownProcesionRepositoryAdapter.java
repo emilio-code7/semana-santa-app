@@ -55,4 +55,14 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
         pasoJpa.saveAll(pasos.stream().map(KnownPasoEntity::from).toList());
         routeSectionJpa.saveAll(routeSections.stream().map(KnownRouteSectionEntity::from).toList());
     }
+
+    @Override
+    public boolean existsPasoById(UUID pasoId) {
+        return pasoJpa.existsById(pasoId);
+    }
+
+    @Override
+    public boolean existsRouteSectionById(UUID routeSectionId) {
+        return routeSectionJpa.existsById(routeSectionId);
+    }
 }

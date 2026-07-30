@@ -10,15 +10,16 @@ class CrucetaTest {
 
     @Test
     void createWithValidItems() {
-        var procesionId = UUID.randomUUID();
+        var pasoId = UUID.randomUUID();
+        var routeSectionId = UUID.randomUUID();
         var items = List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, null),
-                new CrucetaItem(UUID.randomUUID(), 1, "second marcha")
+                new CrucetaItem(UUID.randomUUID(), routeSectionId, 0, null),
+                new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, "second marcha")
         );
-        var cruceta = new Cruceta(procesionId, items);
+        var cruceta = new Cruceta(pasoId, items);
 
         assertNotNull(cruceta.getId());
-        assertEquals(procesionId, cruceta.getProcesionId());
+        assertEquals(pasoId, cruceta.getPasoId());
         assertEquals(2, cruceta.getItems().size());
         assertNotNull(cruceta.getCreatedAt());
         assertNotNull(cruceta.getUpdatedAt());
@@ -31,27 +32,17 @@ class CrucetaTest {
     }
 
     @Test
-    void createWithDuplicateOrderIndex() {
-        var marchaId = UUID.randomUUID();
-        var items = List.of(
-                new CrucetaItem(marchaId, 0, null),
-                new CrucetaItem(UUID.randomUUID(), 0, "duplicate index")
-        );
-        assertThrows(IllegalArgumentException.class, () ->
-                new Cruceta(UUID.randomUUID(), items));
-    }
-
-    @Test
     void redefineReplacesItems() {
-        var procesionId = UUID.randomUUID();
+        var pasoId = UUID.randomUUID();
+        var routeSectionId = UUID.randomUUID();
         var initialItems = List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, null)
+                new CrucetaItem(UUID.randomUUID(), routeSectionId, 0, null)
         );
-        var cruceta = new Cruceta(procesionId, initialItems);
+        var cruceta = new Cruceta(pasoId, initialItems);
 
         var newItems = List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, "replaced"),
-                new CrucetaItem(UUID.randomUUID(), 1, "new item")
+                new CrucetaItem(UUID.randomUUID(), routeSectionId, 0, "replaced"),
+                new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, "new item")
         );
         cruceta.redefine(newItems);
 
@@ -60,23 +51,12 @@ class CrucetaTest {
     }
 
     @Test
-    void redefineWithDuplicateOrderIndexThrows() {
-        var cruceta = new Cruceta(UUID.randomUUID(), List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, null)
-        ));
-        assertThrows(IllegalArgumentException.class, () ->
-                cruceta.redefine(List.of(
-                        new CrucetaItem(UUID.randomUUID(), 0, "a"),
-                        new CrucetaItem(UUID.randomUUID(), 0, "b")
-                )));
-    }
-
-    @Test
     void containsMarchaReturnsTrue() {
         var marchaId = UUID.randomUUID();
+        var routeSectionId = UUID.randomUUID();
         var items = List.of(
-                new CrucetaItem(marchaId, 0, null),
-                new CrucetaItem(UUID.randomUUID(), 1, null)
+                new CrucetaItem(marchaId, routeSectionId, 0, null),
+                new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, null)
         );
         var cruceta = new Cruceta(UUID.randomUUID(), items);
 
@@ -86,7 +66,7 @@ class CrucetaTest {
     @Test
     void containsMarchaReturnsFalse() {
         var items = List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, null)
+                new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 0, null)
         );
         var cruceta = new Cruceta(UUID.randomUUID(), items);
 
@@ -96,23 +76,23 @@ class CrucetaTest {
     @Test
     void getItemsReturnsImmutableCopy() {
         var items = List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, null)
+                new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 0, null)
         );
         var cruceta = new Cruceta(UUID.randomUUID(), items);
 
         assertThrows(UnsupportedOperationException.class, () ->
-                cruceta.getItems().add(new CrucetaItem(UUID.randomUUID(), 1, null)));
+                cruceta.getItems().add(new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 1, null)));
     }
 
     @Test
     void redefineTicksUpdatedAt() throws InterruptedException {
         var cruceta = new Cruceta(UUID.randomUUID(), List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, null)
+                new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 0, null)
         ));
         var beforeUpdate = cruceta.getUpdatedAt();
         Thread.sleep(1);
         cruceta.redefine(List.of(
-                new CrucetaItem(UUID.randomUUID(), 0, "updated")
+                new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 0, "updated")
         ));
         assertTrue(cruceta.getUpdatedAt().isAfter(beforeUpdate));
     }

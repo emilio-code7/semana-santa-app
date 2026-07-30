@@ -2,7 +2,8 @@ package com.repertorio.marcha.adapter.inbound.rest.controller;
 
 import com.repertorio.marcha.adapter.inbound.kafka.ProcesionEventConsumer;
 import com.repertorio.common.outbox.OutboxEventJpaRepository;
-import com.repertorio.marcha.adapter.outbound.persistence.KnownProcesionJpaRepository;
+import com.repertorio.marcha.adapter.outbound.persistence.KnownPasoJpaRepository;
+import com.repertorio.marcha.adapter.outbound.persistence.KnownRouteSectionJpaRepository;
 import com.repertorio.common.JdbcIntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,24 +53,32 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
     private ProcesionEventConsumer procesionEventConsumer;
 
     @MockitoBean
-    private KnownProcesionJpaRepository knownProcesionJpaRepository;
+    private KnownPasoJpaRepository knownPasoJpaRepository;
+
+    @MockitoBean
+    private KnownRouteSectionJpaRepository knownRouteSectionJpaRepository;
+
+    private final UUID routeSectionId = UUID.randomUUID();
 
     @Test
     void defineCrucetaReturns200() throws Exception {
         var hermandadId = UUID.randomUUID();
         var procesionId = UUID.randomUUID();
-        when(knownProcesionJpaRepository.existsByProcesionId(procesionId)).thenReturn(true);
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.fromString("a0000001-0000-0000-0000-000000000001");
+        when(knownPasoJpaRepository.existsById(pasoId)).thenReturn(true);
+        when(knownRouteSectionJpaRepository.existsById(routeSectionId)).thenReturn(true);
 
-        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt().authorities(
                                 new SimpleGrantedAuthority("HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"a0000001-0000-0000-0000-000000000001","orderIndex":0}]}
-                                """))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":0}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.procesionId").value(procesionId.toString()))
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()))
                 .andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.items.length()").value(1));
     }
@@ -78,42 +87,45 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
     void getCrucetaReturns200() throws Exception {
         var hermandadId = UUID.randomUUID();
         var procesionId = UUID.randomUUID();
-        when(knownProcesionJpaRepository.existsByProcesionId(procesionId)).thenReturn(true);
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.fromString("a0000001-0000-0000-0000-000000000001");
+        when(knownPasoJpaRepository.existsById(pasoId)).thenReturn(true);
+        when(knownRouteSectionJpaRepository.existsById(routeSectionId)).thenReturn(true);
 
         // First define the cruceta
-        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt().authorities(
                                 new SimpleGrantedAuthority("HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"a0000001-0000-0000-0000-000000000001","orderIndex":0}]}
-                                """))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":0}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isOk());
 
         // Then retrieve it
-        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.procesionId").value(procesionId.toString()))
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()))
                 .andExpect(jsonPath("$.items").isArray());
     }
 
     @Test
     void getCrucetaReturns404() throws Exception {
-        var procesionId = UUID.randomUUID();
+        var pasoId = UUID.randomUUID();
 
-        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        UUID.randomUUID(), procesionId)
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        UUID.randomUUID(), UUID.randomUUID(), pasoId)
                         .with(jwt()))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void returns401WhenUnauthenticated() throws Exception {
-        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        UUID.randomUUID(), UUID.randomUUID()))
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()))
                 .andExpect(status().isUnauthorized());
     }
 }
