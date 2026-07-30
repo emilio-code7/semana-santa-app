@@ -65,5 +65,8 @@ QODER.md
 .mcp.json
 .github/code-review-graph.instruction.md
 
+# Frontend session cache (bloat)
+frontend_session.json
+
 # Added by code-review-graph
 .code-review-graph/
