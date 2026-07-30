@@ -1,3 +1,7 @@
+ALTER TABLE known_procesion ADD COLUMN IF NOT EXISTS date DATE;
+ALTER TABLE known_procesion ADD COLUMN IF NOT EXISTS time TIME;
+ALTER TABLE known_procesion ADD COLUMN IF NOT EXISTS plan_finalized_at TIMESTAMP WITH TIME ZONE;
+
 CREATE TABLE known_paso (
     id UUID PRIMARY KEY,
     procesion_id UUID NOT NULL REFERENCES known_procesion(procesion_id),
