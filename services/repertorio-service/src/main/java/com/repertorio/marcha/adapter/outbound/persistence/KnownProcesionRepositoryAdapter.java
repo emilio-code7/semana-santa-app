@@ -55,4 +55,18 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
         pasoJpa.saveAll(pasos.stream().map(KnownPasoEntity::from).toList());
         routeSectionJpa.saveAll(routeSections.stream().map(KnownRouteSectionEntity::from).toList());
     }
+
+    @Override
+    public List<KnownRouteSection> findRouteSectionsByProcesionId(UUID procesionId) {
+        return routeSectionJpa.findByProcesionId(procesionId).stream()
+                .map(KnownRouteSectionEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<KnownPaso> findPasosByProcesionId(UUID procesionId) {
+        return pasoJpa.findByProcesionId(procesionId).stream()
+                .map(KnownPasoEntity::toDomain)
+                .toList();
+    }
 }

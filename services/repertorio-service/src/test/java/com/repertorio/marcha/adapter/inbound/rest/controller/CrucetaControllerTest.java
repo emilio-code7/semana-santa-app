@@ -2,10 +2,13 @@ package com.repertorio.marcha.adapter.inbound.rest.controller;
 
 import com.repertorio.marcha.adapter.config.security.RepertorioSecurityService;
 import com.repertorio.marcha.adapter.config.security.SecurityConfig;
+import com.repertorio.marcha.adapter.inbound.rest.dto.AdvanceCurrentRequest;
+import com.repertorio.marcha.adapter.inbound.rest.dto.RunSheetResponse;
 import com.repertorio.marcha.application.service.CrucetaService;
 import com.repertorio.marcha.domain.model.Cruceta;
 import com.repertorio.marcha.domain.model.CrucetaItem;
 import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -33,15 +36,19 @@ class CrucetaControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockitoBean
     private CrucetaService crucetaService;
 
     private final UUID hermandadId = UUID.randomUUID();
     private final UUID procesionId = UUID.randomUUID();
     private final UUID marchaId = UUID.randomUUID();
+    private final UUID routeSectionId = UUID.randomUUID();
 
     private Cruceta buildCruceta() {
-        var items = List.of(new CrucetaItem(marchaId, 1, "Opening"));
+        var items = List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Opening"));
         return new Cruceta(procesionId, items);
     }
 
@@ -79,8 +86,8 @@ class CrucetaControllerTest {
                                 "HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"%s","orderIndex":1,"notes":"Opening"}]}
-                                """.formatted(marchaId)))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","orderIndex":1,"notes":"Opening"}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.procesionId").value(procesionId.toString()));
     }
@@ -91,8 +98,8 @@ class CrucetaControllerTest {
                         hermandadId, procesionId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"%s","orderIndex":1}]}
-                                """.formatted(marchaId)))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","orderIndex":1}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -103,8 +110,61 @@ class CrucetaControllerTest {
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"%s","orderIndex":1}]}
-                                """.formatted(marchaId)))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","orderIndex":1}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getRunSheetReturns200() throws Exception {
+        var pasoId = UUID.randomUUID();
+        var runSheet = new RunSheetResponse(pasoId, List.of());
+        when(crucetaService.getRunSheet(procesionId, pasoId)).thenReturn(runSheet);
+
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta/run-sheet",
+                        hermandadId, procesionId, pasoId)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(
+                                "HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
+    }
+
+    @Test
+    void getRunSheetReturns403WhenNotAdmin() throws Exception {
+        var pasoId = UUID.randomUUID();
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta/run-sheet",
+                        hermandadId, procesionId, pasoId)
+                        .with(jwt()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void advanceCurrentReturns200() throws Exception {
+        var pasoId = UUID.randomUUID();
+        var runSheet = new RunSheetResponse(pasoId, List.of());
+        when(crucetaService.advanceCurrent(eq(procesionId), eq(pasoId), eq(routeSectionId), eq(null)))
+                .thenReturn(runSheet);
+
+        var request = new AdvanceCurrentRequest(routeSectionId, null);
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta/current",
+                        hermandadId, procesionId, pasoId)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(
+                                "HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
+    }
+
+    @Test
+    void advanceCurrentReturns401WhenUnauthenticated() throws Exception {
+        var pasoId = UUID.randomUUID();
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta/current",
+                        hermandadId, procesionId, pasoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"routeSectionId":"%s"}
+                                """.formatted(routeSectionId)))
+                .andExpect(status().isUnauthorized());
     }
 }

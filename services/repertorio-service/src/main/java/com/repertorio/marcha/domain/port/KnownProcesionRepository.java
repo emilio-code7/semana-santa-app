@@ -18,4 +18,8 @@ public interface KnownProcesionRepository {
      * its child KnownPaso and KnownRouteSection entries atomically.
      */
     void saveFullPlan(KnownProcesion knownProcesion, List<KnownPaso> pasos, List<KnownRouteSection> routeSections);
+
+    List<KnownRouteSection> findRouteSectionsByProcesionId(UUID procesionId);
+
+    List<KnownPaso> findPasosByProcesionId(UUID procesionId);
 }

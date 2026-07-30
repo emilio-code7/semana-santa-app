@@ -1,19 +1,17 @@
 package com.repertorio.marcha.application.service;
 
+import com.repertorio.marcha.adapter.inbound.rest.dto.RunSheetResponse;
 import com.repertorio.marcha.application.port.DomainEventPublisher;
 import com.repertorio.marcha.domain.event.CrucetaDefinedEvent;
-import com.repertorio.marcha.domain.model.Cruceta;
-import com.repertorio.marcha.domain.model.CrucetaItem;
-import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
-import com.repertorio.marcha.domain.model.ProcesionNotFoundException;
+import com.repertorio.marcha.domain.model.*;
 import com.repertorio.marcha.domain.port.CrucetaRepository;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +26,6 @@ public class CrucetaService {
         if (!knownProcesionRepository.existsByProcesionId(procesionId)) {
             throw new ProcesionNotFoundException(procesionId);
         }
-        // Load existing aggregate and redefine in place — preserves aggregate ID and revision
         var cruceta = crucetaRepository.findByProcesionId(procesionId)
                 .map(existing -> {
                     existing.redefine(items);
@@ -46,5 +43,167 @@ public class CrucetaService {
     public Cruceta getCruceta(UUID procesionId) {
         return crucetaRepository.findByProcesionId(procesionId)
                 .orElseThrow(() -> new CrucetaNotFoundException(procesionId));
+    }
+
+    @Transactional(readOnly = true)
+    public RunSheetResponse getRunSheet(UUID procesionId, UUID pasoId) {
+        var cruceta = crucetaRepository.findByProcesionId(procesionId)
+                .orElseThrow(() -> new CrucetaNotFoundException(procesionId));
+        var routeSections = knownProcesionRepository.findRouteSectionsByProcesionId(procesionId);
+        var itemsBySection = cruceta.getItems().stream()
+                .collect(Collectors.groupingBy(CrucetaItem::getRouteSectionId));
+
+        // Get or create progression for this paso
+        var progression = crucetaRepository.findProgressionByPasoId(cruceta.getId(), pasoId)
+                .orElse(null);
+
+        var sortedSections = routeSections.stream()
+                .sorted(Comparator.comparingInt(KnownRouteSection::getPosition))
+                .toList();
+
+        UUID currentSectionId = progression != null ? progression.getCurrentRouteSectionId() : null;
+        UUID currentItemId = progression != null ? progression.getCurrentCrucetaItemId().orElse(null) : null;
+
+        // Determine next section/item
+        UUID nextSectionId = findNextSectionId(sortedSections, itemsBySection, currentSectionId, currentItemId);
+        UUID nextItemId = findNextItemId(itemsBySection, currentSectionId, currentItemId);
+
+        var sections = sortedSections.stream().map(section -> {
+            var sectionItems = itemsBySection.getOrDefault(section.getId(), List.of()).stream()
+                    .sorted(Comparator.comparingInt(CrucetaItem::getOrderIndex))
+                    .map(item -> new RunSheetResponse.RunSheetItem(
+                            item.getId(),
+                            item.getMarchaId(),
+                            item.getOrderIndex(),
+                            item.getId().equals(currentItemId),
+                            item.getId().equals(nextItemId),
+                            item.getNotes()
+                    ))
+                    .toList();
+
+            boolean isCurrent = section.getId().equals(currentSectionId);
+            boolean isNext = section.getId().equals(nextSectionId);
+
+            return new RunSheetResponse.RunSheetSection(
+                    section.getId(),
+                    section.getName(),
+                    section.getPosition(),
+                    isCurrent,
+                    isNext,
+                    sectionItems
+            );
+        }).toList();
+
+        return new RunSheetResponse(pasoId, sections);
+    }
+
+    @Transactional
+    public RunSheetResponse advanceCurrent(UUID procesionId, UUID pasoId, UUID routeSectionId, UUID crucetaItemId) {
+        var cruceta = crucetaRepository.findByProcesionId(procesionId)
+                .orElseThrow(() -> new CrucetaNotFoundException(procesionId));
+
+        // Validate routeSectionId belongs to this procesion
+        var routeSections = knownProcesionRepository.findRouteSectionsByProcesionId(procesionId);
+        if (routeSections.stream().noneMatch(rs -> rs.getId().equals(routeSectionId))) {
+            throw new IllegalArgumentException("routeSectionId does not belong to this procesion");
+        }
+
+        // If crucetaItemId provided, validate it belongs to the requested section and cruceta
+        if (crucetaItemId != null) {
+            boolean itemExists = cruceta.getItems().stream()
+                    .anyMatch(item -> item.getId().equals(crucetaItemId)
+                            && item.getRouteSectionId().equals(routeSectionId));
+            if (!itemExists) {
+                throw new IllegalArgumentException("crucetaItemId does not belong to the requested section or cruceta");
+            }
+        }
+
+        // Check if already at this position (idempotent)
+        var existingProgression = crucetaRepository.findProgressionByPasoId(cruceta.getId(), pasoId);
+        if (existingProgression.isPresent()) {
+            var prog = existingProgression.get();
+            if (prog.getCurrentRouteSectionId().equals(routeSectionId)
+                    && prog.getCurrentCrucetaItemId().orElse(null) == crucetaItemId
+                    && !(prog.getCurrentCrucetaItemId().isPresent() && crucetaItemId == null)) {
+                // Same state — no-op; return current run-sheet
+                return getRunSheet(procesionId, pasoId);
+            }
+            prog.advance(routeSectionId, crucetaItemId);
+            crucetaRepository.saveProgression(prog);
+        } else {
+            var newProgression = new CrucetaProgression(cruceta.getId(), pasoId, routeSectionId);
+            if (crucetaItemId != null) {
+                newProgression.advance(routeSectionId, crucetaItemId);
+            }
+            crucetaRepository.saveProgression(newProgression);
+        }
+
+        return getRunSheet(procesionId, pasoId);
+    }
+
+    // Find the next section after the current position
+    private UUID findNextSectionId(List<KnownRouteSection> sortedSections,
+                                    Map<UUID, List<CrucetaItem>> itemsBySection,
+                                    UUID currentSectionId, UUID currentItemId) {
+        if (currentSectionId == null) {
+            // No current progression — first section with items is next
+            return sortedSections.stream()
+                    .filter(s -> !itemsBySection.getOrDefault(s.getId(), List.of()).isEmpty())
+                    .map(KnownRouteSection::getId)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // If we're at a section with items and have a current item, find the next item/section
+        if (currentItemId != null) {
+            var currentSectionItems = itemsBySection.getOrDefault(currentSectionId, List.of());
+            int currentIdx = -1;
+            for (int i = 0; i < currentSectionItems.size(); i++) {
+                if (currentSectionItems.get(i).getId().equals(currentItemId)) {
+                    currentIdx = i;
+                    break;
+                }
+            }
+            if (currentIdx >= 0 && currentIdx < currentSectionItems.size() - 1) {
+                // Next item is in same section — so next section is still this one
+                return null; // null means "no next section" (next item is in current)
+            }
+        }
+
+        // Move to next section
+        boolean found = false;
+        for (var section : sortedSections) {
+            if (found) {
+                if (!itemsBySection.getOrDefault(section.getId(), List.of()).isEmpty()) {
+                    return section.getId();
+                }
+            }
+            if (section.getId().equals(currentSectionId)) {
+                found = true;
+            }
+        }
+        return null;
+    }
+
+    // Find the next item after the current position
+    private UUID findNextItemId(Map<UUID, List<CrucetaItem>> itemsBySection,
+                                 UUID currentSectionId, UUID currentItemId) {
+        if (currentSectionId == null || currentItemId == null) {
+            return null;
+        }
+
+        var currentSectionItems = itemsBySection.getOrDefault(currentSectionId, List.of());
+        int currentIdx = -1;
+        for (int i = 0; i < currentSectionItems.size(); i++) {
+            if (currentSectionItems.get(i).getId().equals(currentItemId)) {
+                currentIdx = i;
+                break;
+            }
+        }
+
+        if (currentIdx >= 0 && currentIdx < currentSectionItems.size() - 1) {
+            return currentSectionItems.get(currentIdx + 1).getId();
+        }
+        return null;
     }
 }
