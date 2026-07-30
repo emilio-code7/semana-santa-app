@@ -681,40 +681,6 @@
         }
       }
     },
-    "/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos": {
-      "get": {
-        "tags": ["paso-controller"],
-        "summary": "List pasos for a procesion",
-        "operationId": "getPasos",
-        "parameters": [
-          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": { "description": "Ordered list of pasos", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ReplacePasosResponse" } } } },
-          "401": { "description": "Unauthorized — missing or invalid JWT" },
-          "403": { "description": "Forbidden — cross-tenant access" },
-          "404": { "description": "Procesion not found" }
-        }
-      },
-      "put": {
-        "tags": ["paso-controller"],
-        "summary": "Atomically replace the ordered list of pasos for a procesion",
-        "operationId": "replacePasos",
-        "parameters": [
-          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReplacePasosRequest" } } } },
-        "responses": {
-          "200": { "description": "Pasos replaced", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ReplacePasosResponse" } } } },
-          "400": { "description": "Invalid input (validation error or duplicate position)" },
-          "401": { "description": "Unauthorized — missing or invalid JWT" },
-          "403": { "description": "Forbidden — cross-tenant or titular from another hermandad" },
-          "404": { "description": "Procesion not found" }
-        }
-      }
-    },
     "/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta": {
       "get": {
         "tags": ["cruceta-controller"],
@@ -1087,40 +1053,6 @@
           "marchaId": { "type": "string", "format": "uuid" },
           "orderIndex": { "type": "integer", "format": "int32" },
           "notes": { "type": "string", "nullable": true }
-        }
-      },
-      "ReplacePasosRequest": {
-        "required": ["pasos"],
-        "type": "object",
-        "properties": {
-          "pasos": { "type": "array", "items": { "$ref": "#/components/schemas/PasoItemRequest" }, "minItems": 1 }
-        }
-      },
-      "PasoItemRequest": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string", "format": "uuid", "nullable": true, "description": "Omit for new pasos; include existing IDs for stability" },
-          "position": { "type": "integer", "format": "int32", "minimum": 0 },
-          "titularId": { "type": "string", "format": "uuid" },
-          "notes": { "type": "string", "nullable": true }
-        }
-      },
-      "ReplacePasosResponse": {
-        "type": "object",
-        "properties": {
-          "pasos": { "type": "array", "items": { "$ref": "#/components/schemas/PasoItemResponse" } }
-        }
-      },
-      "PasoItemResponse": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "procesionId": { "type": "string", "format": "uuid" },
-          "position": { "type": "integer", "format": "int32", "minimum": 0 },
-          "titularId": { "type": "string", "format": "uuid" },
-          "notes": { "type": "string", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
         }
       }
     },
