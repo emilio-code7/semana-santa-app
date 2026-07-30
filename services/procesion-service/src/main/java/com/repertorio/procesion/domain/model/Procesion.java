@@ -69,12 +69,14 @@ public class Procesion {
     }
 
     /**
-     * Idempotently marks the plan as finalized. If already finalized, this is a no-op.
+     * Idempotently marks the plan as finalized. Returns {@code true} if newly finalized,
+     * {@code false} if already finalized.
      */
-    public void finalizePlan() {
-        if (planFinalizedAt != null) return; // idempotent
+    public boolean finalizePlan() {
+        if (planFinalizedAt != null) return false;
         this.planFinalizedAt = Instant.now();
         this.updatedAt = Instant.now();
+        return true;
     }
 
     public boolean isPlanFinalized() {

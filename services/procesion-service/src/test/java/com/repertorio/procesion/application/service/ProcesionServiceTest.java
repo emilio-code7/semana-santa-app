@@ -151,43 +151,6 @@ class ProcesionServiceTest {
     }
 
     @Test
-    void finalizePlanFinalizesAndPublishesEvent() {
-        var id = UUID.randomUUID();
-        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
-
-        when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
-        when(procesionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        var result = procesionService.finalizePlan(id);
-
-        assertThat(result.getPlanFinalizedAt()).isNotNull();
-        assertThat(result.isPlanFinalized()).isTrue();
-        verify(eventPublisher).publish(eventCaptor.capture());
-        var event = (ProcesionPlanFinalizedEvent) eventCaptor.getValue();
-        assertThat(event.id()).isEqualTo(id);
-        assertThat(event.planFinalizedAt()).isNotNull();
-    }
-
-    @Test
-    void finalizePlanIsIdempotent() {
-        var id = UUID.randomUUID();
-        var procesion = Procesion.create(UUID.randomUUID(), LocalDate.now(), LocalTime.now());
-        procesion.finalizePlan();
-        Instant firstFinalizedAt = procesion.getPlanFinalizedAt();
-
-        when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
-        when(procesionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        var result = procesionService.finalizePlan(id);
-
-        assertThat(result.getPlanFinalizedAt()).isEqualTo(firstFinalizedAt);
-        // still publishes the event — the caller decides idempotency semantics
-        verify(eventPublisher).publish(eventCaptor.capture());
-        var event = (ProcesionPlanFinalizedEvent) eventCaptor.getValue();
-        assertThat(event.planFinalizedAt()).isEqualTo(firstFinalizedAt);
-    }
-
-    @Test
     void deleteProcesionThrowsWhenNotFound() {
         var id = UUID.randomUUID();
 

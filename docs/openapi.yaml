@@ -403,7 +403,8 @@
         "summary": "Finalize the plan for a procesion (idempotent)",
         "operationId": "finalizePlan",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "hermandadId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
         "responses": {
           "200": { "description": "Plan finalized", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProcesionResponse" } } } },

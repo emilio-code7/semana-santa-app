@@ -89,9 +89,12 @@ public class ProcesionController {
             @ApiResponse(responseCode = "200", description = "Plan finalized"),
             @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
-    public ResponseEntity<ProcesionResponse> finalizePlan(@PathVariable UUID id) {
+    public ResponseEntity<ProcesionResponse> finalizePlan(
+            @PathVariable UUID id,
+            @RequestParam UUID hermandadId
+    ) {
         log.info("Finalizing plan for procesion {}", id);
-        var procesion = procesionService.finalizePlan(id);
+        var procesion = procesionService.finalizePlan(hermandadId, id);
         return ResponseEntity.ok(ProcesionResponse.from(procesion));
     }
 

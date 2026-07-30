@@ -124,7 +124,8 @@ public class ProcesionService {
                     .toList();
 
             eventPublisher.publish(new ProcesionPlanFinalizedEvent(
-                    procesionId, hermandadId, procesion.getPlanFinalizedAt(),
+                    procesionId, hermandadId, procesion.getDate(), procesion.getTime(),
+                    procesion.getStatus(), procesion.getPlanFinalizedAt(),
                     pasoSnapshots, routeSnapshots));
         }
 
@@ -134,16 +135,6 @@ public class ProcesionService {
     @Transactional(readOnly = true)
     public Page<Procesion> listByHermandad(UUID hermandadId, Pageable pageable) {
         return procesionRepository.findByHermandadId(hermandadId, pageable);
-    }
-
-    @Transactional
-    public Procesion finalizePlan(UUID id) {
-        var procesion = getProcesion(id);
-        procesion.finalizePlan();
-        procesion = procesionRepository.save(procesion);
-        eventPublisher.publish(new ProcesionPlanFinalizedEvent(
-                id, procesion.getHermandadId(), procesion.getDate(), procesion.getTime(), procesion.getPlanFinalizedAt()));
-        return procesion;
     }
 
     @Transactional
