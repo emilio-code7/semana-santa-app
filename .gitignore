@@ -68,5 +68,8 @@ QODER.md
 # Frontend session cache (bloat)
 frontend_session.json
 
+# Personal learning context
+emilio_learning_plan_context.md
+
 # Added by code-review-graph
 .code-review-graph/
