@@ -187,6 +187,35 @@ class ProcesionControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // --- FINALIZE PLAN ---
+
+    @Test
+    void finalizePlanReturns200ForAuthenticatedUser() throws Exception {
+        when(procesionService.finalizePlan(hermandadId, procesionId)).thenReturn(buildProcesion());
+
+        mockMvc.perform(post("/api/procesiones/{id}/finalize-plan", procesionId)
+                        .param("hermandadId", hermandadId.toString())
+                        .with(jwt()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void finalizePlanReturns404WhenNotFound() throws Exception {
+        when(procesionService.finalizePlan(hermandadId, procesionId))
+                .thenThrow(new ProcesionNotFoundException(procesionId));
+
+        mockMvc.perform(post("/api/procesiones/{id}/finalize-plan", procesionId)
+                        .param("hermandadId", hermandadId.toString())
+                        .with(jwt()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void finalizePlanReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(post("/api/procesiones/{id}/finalize-plan", procesionId))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     void deleteProcesionReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId))

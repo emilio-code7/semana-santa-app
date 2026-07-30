@@ -35,7 +35,7 @@ public class ProcesionEntity implements Persistable<UUID> {
     @Column(nullable = false, length = 20)
     private ProcesionStatus status = ProcesionStatus.PLANNED;
 
-    @Column
+    @Column(name = "plan_finalized_at")
     private Instant planFinalizedAt;
 
     @Column(nullable = false, updatable = false)
@@ -47,8 +47,7 @@ public class ProcesionEntity implements Persistable<UUID> {
     protected ProcesionEntity() {}
 
     public ProcesionEntity(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
-                           ProcesionStatus status, Instant planFinalizedAt,
-                           Instant createdAt, Instant updatedAt) {
+                           ProcesionStatus status, Instant planFinalizedAt, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.hermandadId = hermandadId;
         this.date = date;

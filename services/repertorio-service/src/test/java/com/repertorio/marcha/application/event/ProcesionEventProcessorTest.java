@@ -19,6 +19,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -241,6 +243,67 @@ class ProcesionEventProcessorTest {
         verify(processedEventStore).exists(eventId);
         verifyNoInteractions(knownProcesionRepository);
         verify(objectMapper, never()).readTree(anyString());
+        verify(processedEventStore, never()).record(any());
+    }
+
+    // --- PLAN FINALIZED ---
+
+    @Test
+    void processesPlanFinalizedEventForExistingKnownProcesion() throws Exception {
+        var payload = "{\"id\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"date\":\"2026-04-13\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
+        var node = realMapper.readTree(payload);
+        when(objectMapper.readTree(payload)).thenReturn(node);
+        UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
+        when(processedEventStore.exists(eventId)).thenReturn(false);
+
+        var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        var hermandadId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        var existing = new KnownProcesion(procesionId, hermandadId, "PLANNED");
+        when(knownProcesionRepository.findByProcesionId(procesionId)).thenReturn(Optional.of(existing));
+
+        processor.process(payload);
+
+        assertThat(existing.getDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 13));
+        assertThat(existing.getTime()).isEqualTo(java.time.LocalTime.of(18, 0));
+        assertThat(existing.getPlanFinalizedAt()).isEqualTo(java.time.Instant.parse("2026-04-10T10:00:00Z"));
+        verify(knownProcesionRepository).saveFullPlan(eq(existing), anyList(), anyList());
+        verify(processedEventStore).record(eventId);
+    }
+
+    @Test
+    void processesPlanFinalizedEventCreatesNewKnownProcesionIfMissing() throws Exception {
+        var payload = "{\"id\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"date\":\"2026-04-13\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
+        var node = realMapper.readTree(payload);
+        when(objectMapper.readTree(payload)).thenReturn(node);
+        UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
+        when(processedEventStore.exists(eventId)).thenReturn(false);
+
+        var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        when(knownProcesionRepository.findByProcesionId(procesionId)).thenReturn(Optional.empty());
+
+        processor.process(payload);
+
+        verify(knownProcesionRepository).saveFullPlan(knownProcesionCaptor.capture(), anyList(), anyList());
+        var saved = knownProcesionCaptor.getValue();
+        assertThat(saved.getProcesionId()).isEqualTo(procesionId);
+        assertThat(saved.getStatus()).isEqualTo("PLANNED");
+        assertThat(saved.getDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 13));
+        assertThat(saved.getPlanFinalizedAt()).isEqualTo(java.time.Instant.parse("2026-04-10T10:00:00Z"));
+        verify(processedEventStore).record(eventId);
+    }
+
+    @Test
+    void rejectsPlanFinalizedEventWithMissingDate() throws Exception {
+        var payload = "{\"id\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
+        var node = realMapper.readTree(payload);
+        when(objectMapper.readTree(payload)).thenReturn(node);
+        UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
+        when(processedEventStore.exists(eventId)).thenReturn(false);
+
+        assertThatThrownBy(() -> processor.process(payload))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(knownProcesionRepository, never()).saveFullPlan(any(), anyList(), anyList());
         verify(processedEventStore, never()).record(any());
     }
 }

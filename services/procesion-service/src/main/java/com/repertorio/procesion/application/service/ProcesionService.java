@@ -124,7 +124,8 @@ public class ProcesionService {
                     .toList();
 
             eventPublisher.publish(new ProcesionPlanFinalizedEvent(
-                    procesionId, hermandadId, procesion.getPlanFinalizedAt(),
+                    procesionId, hermandadId, procesion.getDate(), procesion.getTime(),
+                    procesion.getStatus(), procesion.getPlanFinalizedAt(),
                     pasoSnapshots, routeSnapshots));
         }
 

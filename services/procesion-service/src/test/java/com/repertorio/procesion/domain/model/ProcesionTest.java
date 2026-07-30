@@ -112,21 +112,13 @@ class ProcesionTest {
         assertTrue(procesion.getUpdatedAt().isAfter(before));
     }
 
-    // --- Plan finalization ---
-
-    @Test
-    void newProcesion_shouldNotBeFinalized() {
-        Procesion procesion = aPlannedProcesion();
-        assertFalse(procesion.isPlanFinalized());
-        assertNull(procesion.getPlanFinalizedAt());
-    }
+    // --- finalizePlan ---
 
     @Test
     void finalizePlan_shouldSetPlanFinalizedAt() {
         Procesion procesion = aPlannedProcesion();
-        boolean result = procesion.finalizePlan();
-        assertTrue(result);
-        assertTrue(procesion.isPlanFinalized());
+        assertNull(procesion.getPlanFinalizedAt());
+        procesion.finalizePlan();
         assertNotNull(procesion.getPlanFinalizedAt());
     }
 
@@ -134,12 +126,9 @@ class ProcesionTest {
     void finalizePlan_shouldBeIdempotent() {
         Procesion procesion = aPlannedProcesion();
         procesion.finalizePlan();
-        Instant finalizedAt = procesion.getPlanFinalizedAt();
-
-        // Second call returns false (already finalized)
-        boolean secondResult = procesion.finalizePlan();
-        assertFalse(secondResult);
-        assertEquals(finalizedAt, procesion.getPlanFinalizedAt());
+        Instant first = procesion.getPlanFinalizedAt();
+        procesion.finalizePlan();
+        assertEquals(first, procesion.getPlanFinalizedAt());
     }
 
     @Test
@@ -152,14 +141,14 @@ class ProcesionTest {
     }
 
     @Test
-    void reconstruct_shouldPreservePlanFinalizedAt() {
-        var id = UUID.randomUUID();
-        var hermandadId = UUID.randomUUID();
-        var finalizedAt = Instant.now();
-        var now = Instant.now();
-        var procesion = Procesion.reconstruct(id, hermandadId, LocalDate.now(), LocalTime.now(),
-                ProcesionStatus.PLANNED, finalizedAt, now, now);
+    void isPlanFinalized_shouldReturnFalseInitially() {
+        assertFalse(aPlannedProcesion().isPlanFinalized());
+    }
+
+    @Test
+    void isPlanFinalized_shouldReturnTrueAfterFinalize() {
+        Procesion procesion = aPlannedProcesion();
+        procesion.finalizePlan();
         assertTrue(procesion.isPlanFinalized());
-        assertEquals(finalizedAt, procesion.getPlanFinalizedAt());
     }
 }

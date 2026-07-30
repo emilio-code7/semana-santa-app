@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collections;
 import java.util.UUID;
 
 @Component
@@ -34,7 +38,9 @@ public class ProcesionEventProcessor {
         try {
             JsonNode root = objectMapper.readTree(payload);
 
-            if (root.has("previousStatus") || root.has("newStatus")) {
+            if (root.has("planFinalizedAt")) {
+                handlePlanFinalized(root);
+            } else if (root.has("previousStatus") || root.has("newStatus")) {
                 handleStatusChanged(root);
             } else {
                 handleCreated(root);
@@ -76,11 +82,36 @@ public class ProcesionEventProcessor {
         log.info("Updated procesion {} status to {}", procesionId, newStatus);
     }
 
+    private void handlePlanFinalized(JsonNode root) {
+        UUID procesionId = extractUuid(root, "id");
+        UUID hermandadId = extractUuid(root, "hermandadId");
+        LocalDate date = LocalDate.parse(extractText(root, "date"));
+        LocalTime time = LocalTime.parse(extractText(root, "time"));
+        Instant planFinalizedAt = Instant.parse(extractText(root, "planFinalizedAt"));
+
+        KnownProcesion known = knownProcesionRepository.findByProcesionId(procesionId)
+                .orElseGet(() -> new KnownProcesion(procesionId, hermandadId, "PLANNED"));
+
+        known.finalizePlan(date, time, planFinalizedAt);
+
+        // ponytail: pasos and route sections projected from cruceta data; empty for now
+        knownProcesionRepository.saveFullPlan(known, Collections.emptyList(), Collections.emptyList());
+        log.info("Projected finalized plan for procesion {} at {}", procesionId, planFinalizedAt);
+    }
+
     private static UUID extractUuid(JsonNode root, String field) {
         JsonNode node = root.get(field);
         if (node == null || node.asText() == null || node.asText().isBlank()) {
             throw new IllegalArgumentException("Missing required field: " + field);
         }
         return UUID.fromString(node.asText());
+    }
+
+    private static String extractText(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isTextual() || node.asText().isBlank()) {
+            throw new IllegalArgumentException("Missing or blank required field: " + field);
+        }
+        return node.asText();
     }
 }

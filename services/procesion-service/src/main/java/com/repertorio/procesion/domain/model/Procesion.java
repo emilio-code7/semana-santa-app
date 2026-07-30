@@ -19,8 +19,7 @@ public class Procesion {
     protected Procesion() {}
 
     private Procesion(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
-                      ProcesionStatus status, Instant planFinalizedAt,
-                      Instant createdAt, Instant updatedAt) {
+                       ProcesionStatus status, Instant planFinalizedAt, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.hermandadId = hermandadId;
         this.date = date;
@@ -70,8 +69,8 @@ public class Procesion {
     }
 
     /**
-     * Finalizes the plan. Returns true if this call actually finalized (was not already finalized).
-     * Returns false if already finalized (idempotent).
+     * Idempotently marks the plan as finalized. Returns {@code true} if newly finalized,
+     * {@code false} if already finalized.
      */
     public boolean finalizePlan() {
         if (planFinalizedAt != null) return false;
@@ -85,8 +84,7 @@ public class Procesion {
     }
 
     public static Procesion reconstruct(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
-                                         ProcesionStatus status, Instant planFinalizedAt,
-                                         Instant createdAt, Instant updatedAt) {
+                                         ProcesionStatus status, Instant planFinalizedAt, Instant createdAt, Instant updatedAt) {
         return new Procesion(id, hermandadId, date, time, status, planFinalizedAt, createdAt, updatedAt);
     }
 
