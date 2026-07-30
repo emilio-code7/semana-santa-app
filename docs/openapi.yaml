@@ -401,7 +401,7 @@
       "post": {
         "tags": ["procesion-controller"],
         "summary": "Finalize the plan for a procesion (idempotent)",
-        "operationId": "finalizePlan",
+        "operationId": "finalizeProcesionPlan",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "hermandadId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
