@@ -1,15 +1,15 @@
 package com.repertorio.procesion.adapter.inbound.rest;
 
 import com.repertorio.procesion.adapter.inbound.rest.dto.ApiError;
+import com.repertorio.procesion.domain.model.ForbiddenException;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.stream.Collectors;
 
@@ -20,6 +20,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProcesionNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ProcesionNotFoundException ex) {
         var status = HttpStatus.NOT_FOUND;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex) {
+        var status = HttpStatus.FORBIDDEN;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiError> handleConflict(IllegalStateException ex) {
+        var status = HttpStatus.CONFLICT;
         var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
         return ResponseEntity.status(status).body(body);
     }
