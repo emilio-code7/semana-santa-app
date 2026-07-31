@@ -196,7 +196,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections.length()").value(2));
 
-        assertThat(routeSectionRepo.count()).isEqualTo(2);
+        assertThat(routeSectionRepo.findByProcesionIdOrderByPositionAsc(procesion.getId())).hasSize(2);
 
         mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
                         hermandadId, procesion.getId())
