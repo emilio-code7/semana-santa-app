@@ -21,9 +21,10 @@ Use this skill when implementing backend changes — services, API, persistence,
 3. **Gherkin** — For non-trivial behavior changes, write `Feature:`/`Scenario:`/`Given/When/Then` blocks covering happy path, error/edge cases, and auth/permission boundaries. Present for approval before implementing.
 4. **Design review** — Consult `@oracle` only for: architecture trade-offs, hex layer placement, security decisions, hard bugs, or required non-trivial diff review. Oracle is an escalation, not a default.
 5. **Implement TDD (RED → GREEN → REFACTOR)** — This is not optional.
-   - **RED**: Write the failing test FIRST, before any implementation code.
-   - **GREEN**: Simple tasks follow AGENTS.md and use exactly one fixer; multi-file changes use bounded fixer delegation.
-   - **REFACTOR**: Clean up without changing behavior.
+   - **RED**: Write the failing test FIRST, before any implementation code, at the narrowest seam (domain unit → service → controller slice → integration). Commit the failing test alone for anything non-trivial (`test:` commit).
+   - **GREEN**: Simple tasks follow AGENTS.md and use exactly one fixer; multi-file changes use bounded fixer delegation. Implement the minimum code that makes the test pass.
+   - **REFACTOR**: Clean up without changing behavior. Re-run tests after refactoring.
+   - **Enforced**: The pre-commit hook and CI reject any commit with a Java main-source change that has no test change in the same module. Never split a feature so the test and its implementation land in different commits without the test landing first.
    - One behavior change per commit. Small commits.
 6. **Code review** — Oracle review is risk-triggered: architecture/boundary decisions, security changes, multi-service or data-integrity changes, hard bugs, or when non-trivial review is explicitly required. Routine localized changes rely on tests/build. When review is needed, include diff hash, files reviewed, issues categorized, and verdict. Fix issues and re-verify until clean.
 7. **Validate against spec** — Check OpenAPI spec matches implementation (response codes, field types, endpoint paths).

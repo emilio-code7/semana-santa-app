@@ -2,16 +2,16 @@
 
 ## Core Principle
 
-**The user implements, AI only guides/scaffolds.** The AI designs, plans, writes specs, documents, and reminds. The user writes the code. Never implement without explicit confirmation.
+**Agent-driven delivery, human-owned merge.** The orchestrator plans, delegates, and reconciles. Specialists execute bounded lanes: writers (`@fixer`, `@designer`) implement, advisors (`@explorer`, `@librarian`, `@oracle`, `@observer`) research and review. The user reviews and merges PRs — no agent merges without explicit authorization. See `AGENTS.md` for the full capability boundaries and routing rules.
 
-**TDD is mandatory:** RED (failing test) → GREEN (minimal code) → refactor. Test before code, always.
+**TDD is mandatory:** RED (failing test) → GREEN (minimal code) → REFACTOR. Test before code, always. Every non-trivial behavior change ships with a test that would fail without it — enforced by the pre-commit hook and CI (a main-source change without a test change in the same commit is rejected).
 
 ---
 
 ## Per-Task Loop
 
 ```
-Ask → Guide → User implements → Refactor → Build & Deploy → Verify → Document → Sync API → Commit
+Spec → RED (failing test) → GREEN (minimal code) → REFACTOR → Verify → Document → Sync API → Commit
 ```
 
 Each step must complete before the next. No skipping.
@@ -20,16 +20,13 @@ Each step must complete before the next. No skipping.
 
 ## Step-by-Step
 
-### 0. Ask
+### 0. Spec
 
-Before any work, ask the user for confirmation. Do not proceed without a response. The goal is to remind the user what needs to be done, not to do it for them.
+The issue/plan defines the acceptance criteria before any code. If the request is vague, ask a targeted question before proceeding. Never guess at critical details (paths, APIs, architectural decisions).
 
-### 1. Guide
+### 1. Plan
 
-- AI explains what to build, referencing the plan and backlog
-- AI provides the **test first** (RED) — the user writes the implementation (GREEN)
-- One atomic change per task
-- No scope creep — if something else needs fixing, note it and ask
+The orchestrator routes work by intent (`AGENTS.md`): backend → backend workflow, frontend → frontend workflow, infrastructure → infrastructure workflow. Simple tasks go directly to one `@fixer`. Complex work gets a short work graph with independent lanes dispatched in parallel and disjoint file ownership.
 
 ### Plan Format
 
@@ -41,27 +38,28 @@ Plans (`docs/plans/`) contain only:
 
 **No implementation code in plans.** Code belongs in files, not planning documents. The plan captures *what* and *why*, not *how*.
 
-### 2. Code Review (GREEN Analysis)
+### 2. RED — Write the Failing Test
 
-After the user implements (GREEN), AI reviews the diff:
-- **Correctness** — does it meet the acceptance criteria?
-- **Pattern fit** — does it follow existing codebase conventions?
-- **Trade-offs** — propose alternative approaches with pros/cons if applicable
-- **No nitpicking** — only raise meaningful issues (correctness, maintainability, security)
+- Write the test that fails without the behavior, at the narrowest seam (domain unit → service → controller slice → integration)
+- **One behavior per test.** Test the observable behavior, not implementation
+- Commit the failing test alone (`test:` commit) when the change is large enough to warrant it; otherwise keep RED and GREEN in the same commit with the test clearly first in the diff
+- The pre-commit hook and CI enforce pairing: a change to `src/main` without a change to `src/test` in the same commit fails the gate
 
-If issues found → flag them, let the user decide. Do not block on style preferences.
+### 3. GREEN — Minimal Implementation
 
-### 2b. Refactor
+Implement the minimum code that makes the failing test pass. No speculative abstractions, no boilerplate "for later". Simple tasks use one bounded `@fixer`; multi-file changes use bounded fixer delegation per AGENTS.md task sizing.
 
-After review, analyze whether the GREEN code needs cleanup:
+### 4. REFACTOR
+
+After GREEN, clean up without changing behavior:
 - **Duplication** — extract if the same logic appears 3+ times
 - **Naming** — does it reflect intent or just describe what it does?
 - **Structure** — does it belong where it's placed?
 - **Ponytail check** — is this the minimum code that works? Any speculative abstraction?
 
-Only refactor when it adds measurable value. No unnecessary churn. If nothing to refactor, note "No refactor needed" and move on.
+Re-run the tests after refactoring. If nothing to refactor, note "No refactor needed" and move on.
 
-### 3. Build & Deploy
+### 5. Build & Deploy
 
 ```bash
 export JAVA_HOME="$HOME/.jdks/jdk-21.0.6+7"
@@ -76,7 +74,7 @@ Verify the container starts healthy:
 docker logs hermandad-service 2>&1 | grep -E "Started|APPLICATION FAILED"
 ```
 
-### 3. Verify
+### 6. Verify
 
 Run a quick smoke test against the running service:
 
@@ -86,14 +84,15 @@ Run a quick smoke test against the running service:
 
 Only proceed if the behavior matches expectations.
 
-### 4. Update Documentation
+### 7. Update Documentation
 
-- `docs/backlog.md` — mark stories done, add new items if discovered
+- `docs/openapi.yaml` — update FIRST for any API/controller change (spec is the contract; hook enforces)
+- `docs/functional-map.md` — endpoints, topology, DB schemas, test inventory, AS-IS/TARGET status
 - `docs/architecture.md` — update patterns, decisions, or configurations that changed
 - `docs/workflow.md` — update if the process itself changes
 - Any other relevant `docs/` file
 
-### 5. Sync OpenAPI Spec
+### 8. Sync OpenAPI Spec
 
 If the API changed (new/edited endpoints, request/response schemas, status codes):
 
@@ -107,7 +106,7 @@ print(json.dumps(spec, indent=2))
 " > docs/openapi.yaml
 ```
 
-### 6. Commit
+### 9. Commit
 
 Before staging, review what changed:
 
@@ -135,8 +134,8 @@ gh pr create --title "<type>: <description>" --body "## Summary\n\nWhat changed 
 
 ## Reminders
 
-- **Ask before starting.** Never proceed without confirmation.
 - **No scope creep.** If you spot a problem unrelated to the task, mention it but don't fix it without asking.
 - **Build requires JDK 21** — set `JAVA_HOME` before every `./gradlew`.
 - **Docker images are stale after JAR changes** — rebuild always.
-- **Verify before claiming done.** Evidence over assertions.
+- **Verify before claiming done.** Evidence over assertions — CI must be green and `gh pr checks` must show pass before claiming completion.
+- **Agents never merge or deploy.** Opening PRs and verifying CI is the agent's job; merging is the user's decision.

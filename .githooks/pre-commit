@@ -2,9 +2,16 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# pre-commit — enforce spec-first development
+# pre-commit — enforce spec-first + TDD development
 # Hook runs on staged changes only (git diff --cached).
+# Wire with: git config core.hooksPath .githooks
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── 0. code-review-graph context (best-effort) ─────────────────────────────
+if command -v code-review-graph >/dev/null 2>&1; then
+    code-review-graph update || true
+    code-review-graph detect-changes --brief || true
+fi
 
 STAGED=$(git diff --cached --name-only)
 
@@ -15,6 +22,28 @@ STAGED=$(git diff --cached --name-only)
 if echo "$STAGED" | grep -q 'Controller\.java$'; then
     if ! echo "$STAGED" | grep -q 'docs/openapi\.yaml$'; then
         echo "ERROR: Changed controllers but not openapi.yaml. Update the spec first."
+        exit 1
+    fi
+fi
+
+# ── 1b. TDD pairing check (blocking) ───────────────────────────────────────
+# Any Java main-source change must come with a test change in the SAME module.
+# TDD is mandatory: RED (failing test) → GREEN (minimal code) → REFACTOR.
+MAIN_SRC=$(echo "$STAGED" | grep -E '^(services|shared)/[^/]*/src/main/.*\.java$' || true)
+TEST_SRC=$(echo "$STAGED" | grep -E '^(services|shared)/[^/]*/src/test/.*\.java$' || true)
+if [[ -n "$MAIN_SRC" ]]; then
+    UNPAIRED=""
+    while IFS= read -r f; do
+        module=$(echo "$f" | cut -d/ -f1-2)
+        if ! echo "$TEST_SRC" | grep -q "^$module/"; then
+            UNPAIRED+="$f\n"
+        fi
+    done <<< "$MAIN_SRC"
+    if [[ -n "$UNPAIRED" ]]; then
+        echo "ERROR: Main source changed without a test change in the same module."
+        echo "  TDD is mandatory: write the failing test first (RED), then implement (GREEN)."
+        echo "  Unpaired main files:"
+        echo -e "$UNPAIRED" | sed 's/^/    /'
         exit 1
     fi
 fi
@@ -35,7 +64,8 @@ fi
 SERVICES=$(echo "$STAGED" \
     | grep '^services/.*/src/main/java/' \
     | sed 's|^services/\([^/]*\)/.*|\1|' \
-    | sort -u)
+    | sort -u \
+    || true)
 
 if [[ -n "$SERVICES" ]] && command -v ./gradlew &>/dev/null; then
     # Only run if a Gradle daemon is already alive (skip to avoid cold start)

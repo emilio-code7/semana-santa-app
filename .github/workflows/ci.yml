@@ -34,6 +34,23 @@ jobs:
             echo "✅ No controller changes in this diff."
           fi
 
+      - name: Enforce TDD pairing (main source requires test in same module)
+        run: |
+          CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null)
+          FAILED=0
+          for f in $(echo "$CHANGED" | grep -E '^(services|shared)/[^/]*/src/main/.*\.java$' || true); do
+            module=$(echo "$f" | cut -d/ -f1-2)
+            if ! echo "$CHANGED" | grep -q "^$module/src/test/.*\.java$"; then
+              echo "❌ $f changed but no test file in $module/src/test."
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -ne 0 ]; then
+            echo "TDD is mandatory: RED (failing test) → GREEN (minimal code) → REFACTOR."
+            exit 1
+          fi
+          echo "✅ All main-source changes are paired with tests."
+
       - name: Shell syntax check demo scripts
         run: |
           bash -n docs/demo/phase-1.sh

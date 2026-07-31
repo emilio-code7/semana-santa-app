@@ -13,15 +13,14 @@ Failure to read these = repeating mistakes.
 
 ## Division of labor
 
-- **User implements.** I do NOT edit files, write code, or make changes unless the user explicitly asks me to.
-- My job: research, plan, diagnose compile errors, review code, answer questions, summarize findings.
-- If I make changes without being asked, I'm violating this rule. Revert immediately.
+- **Agent-driven delivery, human-owned merge.** The orchestrator plans, delegates, and reconciles. Specialists execute bounded lanes (`@fixer`, `@designer` write; `@explorer`, `@librarian`, `@oracle`, `@observer` advise). The user reviews and merges PRs — no agent merges without explicit authorization.
+- See `AGENTS.md` for capability boundaries and routing rules.
 
 ## Our flow
 
 We follow **TDD** (RED → GREEN → refactor), **DDD** (domain-driven design with hexagonal architecture), **BDD** (Given-When-Then scenarios), and **agile** (sprint-based with backlog).
 
-Per-task loop: **Ask → Guide → User implements → Build & Deploy → Verify → Document → Sync API → Commit**
+Per-task loop: **Spec → RED (failing test) → GREEN (minimal code) → REFACTOR → Verify → Document → Sync API → Commit**
 
 See `docs/workflow.md` for the full process.
 
@@ -34,10 +33,10 @@ See `docs/workflow.md` for the full process.
 | `docs/workflow.md` | Development workflow and per-task loop |
 | `docs/audit.md` | Codebase audit findings and technical debt |
 | `docs/plans/` | Implementation plans for each sprint/feature |
-| `emilio_learning_plan_context.md` | Learning goals and context |
+| `docs/functional-map.md` | Source of truth: topology, endpoints, DB schemas, test inventory |
 | `.opencode/instructions.md` | This file — startup checklist, rules |
 
 ## Git discipline
 
 - Commit after every completed task. Not at end of day — after each logical unit of work.
-- The workflow doc's step 6 has the exact commit flow (`git status` → `git diff --stat` → `git add` → `git commit`). Follow it.
+- The workflow doc's commit step has the exact flow (`git status` → `git diff --stat` → `git add` → `git commit`). Follow it.
