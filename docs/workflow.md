@@ -6,6 +6,25 @@
 
 **TDD is mandatory:** RED (failing test) → GREEN (minimal code) → REFACTOR. Test before code, always. Every non-trivial behavior change ships with a test that would fail without it — enforced by the pre-commit hook and CI (a main-source change without a test change in the same commit is rejected).
 
+## Two-Tier Orchestration
+
+The lead (the agent you talk to) stays clean: it holds intent, priorities, the issue queue, and task results — never task internals. Each non-trivial task runs in its own **task orchestrator** session, spawned with a self-contained **Task Brief** and returning a **Terminal Result**.
+
+```
+You ⇄ LEAD (permanent session)
+          │  brief in / result out
+          ▼
+      TASK ORCHESTRATOR (per task)
+          │  parallel specialist lanes
+          ▼
+      Specialists (fixer · explorer · oracle · librarian · designer)
+```
+
+- Small tasks (<20 lines, one file) go directly from the lead to one `@fixer` — no task orchestrator.
+- Medium/large tasks (API/schema changes, multi-file, cross-cutting) go through a task orchestrator per the Task Brief/Result contracts in `.agents/skills/task-orchestration/SKILL.md`.
+- If the task orchestrator needs a decision from you, it either asks once with bounded options (recommended first) or assumes, flags it in the result, and you veto on review.
+- Task orchestrators can be resumed for follow-ups on the same task (e.g., PR fixes) — same session, no re-warmup.
+
 ---
 
 ## Per-Task Loop

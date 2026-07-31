@@ -6,10 +6,13 @@ Semana Santa management system: 3 Spring Boot microservices (hermandad, procesio
 
 ## Operating Principle
 
-**Orchestrator** reasons, decides, and delegates.
-**Sub-agents** receive one specific task, start with a clean context, produce an artifact, and do nothing else — no sub-orchestration, no scope creep, no second-guessing.
+Two-tier orchestration with a hard context boundary. **Lead** (conversation owner) reasons, decides, and delegates; **Task Orchestrators** own individual tasks end-to-end; **Specialists** execute bounded leaf work.
 
-This is not negotiable. A sub-agent that drifts into analysis, re-planning, or further delegation has violated its contract.
+- **Lead** talks to the user. Holds only: user intent, priorities, issue queue (IDs + status), task briefs sent, terminal results received. Never holds task internals — no exploration dumps, no file-by-file details. Compresses aggressively; references work by path, not content.
+- **Task Orchestrator** is spawned by the lead with one self-contained **Task Brief** (`.agents/skills/task-orchestration/SKILL.md`). Owns the whole task lifecycle: exploration → lane planning → parallel dispatch → reconciliation → verification → **Terminal Result**. May spawn specialists and run commands. Does not own the conversation.
+- **Specialists (leaf)** receive one specific task, start with a clean context, produce an artifact, and do nothing else — no sub-orchestration, no scope creep, no second-guessing.
+
+This is not negotiable. A leaf specialist that drifts into analysis, re-planning, or further delegation has violated its contract. Task Orchestrators may orchestrate (that is their contract); leaf specialists never do.
 
 ## Agent Capability Boundaries
 
@@ -18,6 +21,7 @@ This is not negotiable. A sub-agent that drifts into analysis, re-planning, or f
 | `@explorer`, `@librarian`, `@oracle`, `@observer` | **Read-only advisory** — inspect, research, analyze, report only. Never edit/create/delete files, implement fixes, commit, or push. |
 | `@council` | **Review synthesis only** — may coordinate councillors internally but must not modify project files. |
 | `@fixer`, `@designer` | **Writers** — the only agents authorized to edit, create, or delete project files. |
+| `@task-orchestrator` | **Task owner** — may spawn specialists (leaf writers and advisors), run commands, and edit files only for integration-owner work (docs reconciliation, merge-conflict resolution, verification fixes). Must be spawned with a Task Brief and return a Terminal Result. |
 
 If advisory work reveals an implementation need, return a handoff to `@fixer` or `@designer` instead of implementing.
 
@@ -25,6 +29,7 @@ If advisory work reveals an implementation need, return a handoff to `@fixer` or
 
 - Preserve parallel execution for genuinely independent, non-overlapping workstreams and whenever it materially reduces elapsed time. Parallel lanes require disjoint file ownership; use one fixer per lane; never run parallel writers on shared files; the orchestrator reconciles artifacts.
 - For simple operational tasks such as committing, checking status, formatting, running one command, or making a known one-file edit, delegate exactly one bounded task to `@fixer` so the orchestrator context is preserved.
+- For medium and large tasks (multi-file, API/schema changes, cross-cutting), spawn a `@task-orchestrator` with a self-contained Task Brief — see `.agents/skills/task-orchestration/SKILL.md`. The lead stays clean: it sends the brief, receives the Terminal Result, and does not hold task internals.
 - For those simple tasks, do not create a plan or call `@explorer`, `@oracle`, `@librarian`, `@designer`, or `@council`.
 - The fixer executes the request directly, verifies proportionately, and must not delegate further.
 - The exception above applies before the mode-specific workflows; complex work may still use parallel specialist lanes.
@@ -163,10 +168,10 @@ GitHub Issues at `github.com/emilio-code7/semana-santa-app` are the canonical ex
 Match orchestration to task complexity — small tasks do not need multi-lane plans:
 
 - **Small task** (one file, <20 lines, no API/doc/schema change): delegate exactly one bounded task to `@fixer` per the Task Sizing rule. No plan, no doc lane, no extra agents.
-- **Medium task** (one service, one concern, API or schema change): one fixer lane + the orchestrator verifies OpenAPI/docs per the Documentation Protocol at merge time. Optionally run `@oracle` review for security/data-integrity risk.
-- **Large task** (multi-service, cross-cutting, or a roadmap ticket): build a short work graph before dispatching — implementation lanes (one per disjoint file group), a docs/verification lane owned by the orchestrator, and the Completion Gate. Delegate each lane to a fresh bounded specialist; reconcile artifacts yourself.
+- **Medium task** (one service, one concern, API or schema change): spawn a `@task-orchestrator` with a Task Brief — one fixer lane inside, orchestrator verifies OpenAPI/docs per the Documentation Protocol at merge time. Optionally run `@oracle` review for security/data-integrity risk.
+- **Large task** (multi-service, cross-cutting, or a roadmap ticket): spawn a `@task-orchestrator` with a Task Brief that requires planning lanes before dispatching — implementation lanes (one per disjoint file group), a docs/verification lane owned by the task orchestrator, and the Completion Gate. Delegate each lane to a fresh bounded specialist; the task orchestrator reconciles artifacts and returns a Terminal Result.
 
-For large tasks the orchestrator must **plan lanes before dispatching** (per the workflow rule): identify which parts are independent, dispatch them in parallel, then reconcile the terminal results and own the documentation reconciliation at merge time. Do not hand the whole large task to a single fixer and let it run end-to-end; the orchestrator stays the integration owner.
+For medium and large tasks the task orchestrator must **plan lanes before dispatching** (per the workflow rule): identify which parts are independent, dispatch them in parallel, then reconcile the terminal results and own the documentation reconciliation at merge time. Do not hand the whole task to a single fixer and let it run end-to-end; the task orchestrator stays the integration owner. The lead never holds task internals — brief in, Terminal Result out.
 
 ### Discovery and creation
 
