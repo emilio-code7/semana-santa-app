@@ -18,4 +18,10 @@ public interface KnownProcesionRepository {
      * its child KnownPaso and KnownRouteSection entries atomically.
      */
     void saveFullPlan(KnownProcesion knownProcesion, List<KnownPaso> pasos, List<KnownRouteSection> routeSections);
+
+    /** Returns true if the given paso ID exists in the local plan projection. */
+    boolean existsPasoById(UUID pasoId);
+
+    /** Returns true if the given route section ID exists in the local plan projection. */
+    boolean existsRouteSectionById(UUID routeSectionId);
 }

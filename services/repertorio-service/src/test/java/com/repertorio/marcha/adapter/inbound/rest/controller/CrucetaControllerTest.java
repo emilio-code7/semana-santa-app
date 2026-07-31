@@ -38,32 +38,34 @@ class CrucetaControllerTest {
 
     private final UUID hermandadId = UUID.randomUUID();
     private final UUID procesionId = UUID.randomUUID();
+    private final UUID pasoId = UUID.randomUUID();
     private final UUID marchaId = UUID.randomUUID();
+    private final UUID routeSectionId = UUID.randomUUID();
 
     private Cruceta buildCruceta() {
-        var items = List.of(new CrucetaItem(marchaId, 1, "Opening"));
-        return new Cruceta(procesionId, items);
+        var items = List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Opening"));
+        return new Cruceta(pasoId, items);
     }
 
     @Test
     void getCrucetaReturns200() throws Exception {
         var cruceta = buildCruceta();
-        when(crucetaService.getCruceta(procesionId)).thenReturn(cruceta);
+        when(crucetaService.getCruceta(pasoId)).thenReturn(cruceta);
 
-        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.procesionId").value(procesionId.toString()));
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
     }
 
     @Test
     void getCrucetaReturns404WhenNotFound() throws Exception {
-        when(crucetaService.getCruceta(procesionId))
-                .thenThrow(new CrucetaNotFoundException(procesionId));
+        when(crucetaService.getCruceta(pasoId))
+                .thenThrow(new CrucetaNotFoundException(pasoId));
 
-        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt()))
                 .andExpect(status().isNotFound());
     }
@@ -71,40 +73,40 @@ class CrucetaControllerTest {
     @Test
     void defineCrucetaReturns200ForAdmin() throws Exception {
         var cruceta = buildCruceta();
-        when(crucetaService.defineCruceta(eq(procesionId), any())).thenReturn(cruceta);
+        when(crucetaService.defineCruceta(eq(pasoId), any())).thenReturn(cruceta);
 
-        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt().authorities(new SimpleGrantedAuthority(
                                 "HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"%s","orderIndex":1,"notes":"Opening"}]}
-                                """.formatted(marchaId)))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1,"notes":"Opening"}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.procesionId").value(procesionId.toString()));
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
     }
 
     @Test
     void defineCrucetaReturns401WhenUnauthenticated() throws Exception {
-        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"%s","orderIndex":1}]}
-                                """.formatted(marchaId)))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void defineCrucetaReturns403WhenNotAdmin() throws Exception {
-        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/cruceta",
-                        hermandadId, procesionId)
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"items":[{"marchaId":"%s","orderIndex":1}]}
-                                """.formatted(marchaId)))
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isForbidden());
     }
 }

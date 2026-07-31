@@ -10,15 +10,16 @@ class CrucetaItemEntityTest {
 
     @Test
     void freshlyConstructedEntityIsNew() {
-        var entity = new CrucetaItemEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, null);
-        // @Transient isNew defaults to true for any new instance, even with non-null ID
+        var entity = new CrucetaItemEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), 0, null);
         assertThat(entity.isNew()).isTrue();
     }
 
     @Test
     void postLoadMarksEntityNotNew() {
-        var entity = new CrucetaItemEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, null);
-        entity.markNotNew();  // simulates @PostLoad
+        var entity = new CrucetaItemEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), 0, null);
+        entity.markNotNew();
         assertThat(entity.isNew()).isFalse();
     }
 }
