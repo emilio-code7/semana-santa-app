@@ -42,7 +42,7 @@ class CrucetaRepositoryLifecycleTest {
         var item2 = new CrucetaItem(UUID.randomUUID(), routeSectionId, 2, "Closing");
         var beforeCrucetaId = UUID.randomUUID();
         var cruceta = Cruceta.reconstruct(beforeCrucetaId, 0, UUID.randomUUID(),
-                List.of(item1, item2), now, now);
+                List.of(item1, item2), List.of(), now, now);
 
         var saved = adapter.save(cruceta);
         entityManager.flush();
@@ -61,7 +61,7 @@ class CrucetaRepositoryLifecycleTest {
         var oldItems = List.of(
                 new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, "Old Item")
         );
-        var cruceta = Cruceta.reconstruct(crucetaId, 0, pasoId, oldItems, now, now);
+        var cruceta = Cruceta.reconstruct(crucetaId, 0, pasoId, oldItems, List.of(), now, now);
 
         var saved = adapter.save(cruceta);
         entityManager.flush();
@@ -120,7 +120,7 @@ class CrucetaRepositoryLifecycleTest {
         var item1 = new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, "Opening");
         var item2 = new CrucetaItem(UUID.randomUUID(), routeSectionId, 2, "Closing");
         var cruceta = Cruceta.reconstruct(UUID.randomUUID(), 0, UUID.randomUUID(),
-                List.of(item1, item2), now, now);
+                List.of(item1, item2), List.of(), now, now);
         var saved = adapter.save(cruceta);
         entityManager.flush();
         entityManager.clear();
@@ -172,7 +172,7 @@ class CrucetaRepositoryLifecycleTest {
         var now = Instant.now();
 
         var itemA = new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, "A");
-        var cruceta = Cruceta.reconstruct(crucetaId, 0, pasoId, List.of(itemA), now, now);
+        var cruceta = Cruceta.reconstruct(crucetaId, 0, pasoId, List.of(itemA), List.of(), now, now);
         var saved = adapter.save(cruceta);
         entityManager.flush();
 
@@ -203,7 +203,7 @@ class CrucetaRepositoryLifecycleTest {
         var pasoId = UUID.randomUUID();
         var crucetaId = UUID.randomUUID();
         var item = new CrucetaItem(UUID.randomUUID(), routeSectionId, 1, "Original");
-        var cruceta = Cruceta.reconstruct(crucetaId, 0, pasoId, List.of(item), now, now);
+        var cruceta = Cruceta.reconstruct(crucetaId, 0, pasoId, List.of(item), List.of(), now, now);
         var saved = adapter.save(cruceta);
         entityManager.flush();
         entityManager.clear();
