@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public interface CrucetaRepository {
     Cruceta save(Cruceta cruceta);
-    Optional<Cruceta> findByProcesionId(UUID procesionId);
+    Optional<Cruceta> findByPasoId(UUID pasoId);
     Optional<CrucetaProgression> findProgressionByPasoId(UUID crucetaId, UUID pasoId);
     void saveProgression(CrucetaProgression progression);
-    void deleteByProcesionId(UUID procesionId);
-    boolean existsByProcesionId(UUID procesionId);
+    void deleteByPasoId(UUID pasoId);
+    boolean existsByPasoId(UUID pasoId);
 }

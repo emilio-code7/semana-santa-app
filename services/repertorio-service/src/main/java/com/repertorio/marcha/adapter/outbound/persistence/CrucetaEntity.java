@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cruceta", indexes = @Index(name = "idx_cruceta_procesion_id", columnList = "procesion_id", unique = true))
+@Table(name = "cruceta", indexes = @Index(name = "idx_cruceta_paso_id", columnList = "paso_id", unique = true))
 public class CrucetaEntity implements Persistable<UUID> {
 
     @Id
@@ -20,8 +20,8 @@ public class CrucetaEntity implements Persistable<UUID> {
     @Version
     private int version;
 
-    @Column(name = "procesion_id", nullable = false)
-    private UUID procesionId;
+    @Column(name = "paso_id", nullable = false)
+    private UUID pasoId;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -41,9 +41,9 @@ public class CrucetaEntity implements Persistable<UUID> {
 
     protected CrucetaEntity() {}
 
-    public CrucetaEntity(UUID id, UUID procesionId, Instant createdAt, Instant updatedAt) {
+    public CrucetaEntity(UUID id, UUID pasoId, Instant createdAt, Instant updatedAt) {
         this.id = id;
-        this.procesionId = procesionId;
+        this.pasoId = pasoId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -58,7 +58,7 @@ public class CrucetaEntity implements Persistable<UUID> {
     void markNotNew() { this.isNew = false; }
 
     public int getVersion() { return version; }
-    public UUID getProcesionId() { return procesionId; }
+    public UUID getPasoId() { return pasoId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public List<CrucetaItemEntity> getItems() { return items; }

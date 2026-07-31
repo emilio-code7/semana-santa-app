@@ -1,5 +1,7 @@
 # Reliability-First High-Throughput Roadmap
 
+> **SUPERSEDED** — the active roadmap is `2026-07-28-cruceta-first-high-throughput-roadmap.md`; all GitHub issues were filed against it. This document is retained for decision history only. Do not create issues, branches, or worktrees from this plan. (Marked 2026-07-31.)
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal**: Within four months, evolve the current single-replica, at-least-once implementation and prove that Repertorio can sustain 1,000 HTTP req/s and 500 events/s at p95 <300 ms with event freshness <5 s on disposable multi-node infrastructure.

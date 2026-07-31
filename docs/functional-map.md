@@ -89,6 +89,9 @@ Every change that touches any of these **must** update the corresponding documen
 | Technical debt, backlog, completed sprints | `docs/backlog.md` |
 | Feature implementation | `docs/plans/<plan-file>` |
 | Functional map (this document) | `docs/functional-map.md` |
+| Capabilities, run instructions, AS-IS/TARGET | `README.md` |
+
+The canonical protocol — including who owns doc reconciliation (the orchestrator, not the feature fixer) — lives in `AGENTS.md` → "Documentation Protocol".
 
 **Order matters**: OpenAPI spec first (it's the contract), then docs, then code. The pre-commit hook enforces this: if a controller changes without openapi.yaml, the commit is blocked. The CI pipeline validates the spec on every push.
 
@@ -101,15 +104,15 @@ Every change that touches any of these **must** update the corresponding documen
 | Concept | AS-IS | TARGET |
 |---------|-------|--------|
 | **Titular** | ✅ Hermandad-owned catalogue, projected into Procesion service as KnownTitular | Hermandad-owned catalogue of religious images |
-| **Paso** | ❌ Does not exist | Ordered floats within a Procesion, each referencing one Titular |
-| **Route** | ❌ Does not exist | Shared ordered Route Sections for all Pasos |
-| **Route Section** | ❌ Does not exist | Named ordered route segment; names may repeat |
-| **Procesion plan** | Flat CRUD (date, time, status) | Pasos + Route finalized together before Cruceta |
-| **Finalization** | ❌ Does not exist | Idempotent command making plan immutable; publishes snapshot |
-| **Cruceta** | One per Procesion (`procesion_id` is UNIQUE) | One per Paso; Marchas assigned by Route Section |
-| **CrucetaItem** | marchaId, orderIndex, notes | Adds routeSectionId, sequenceWithinSection |
-| **Run sheet** | ❌ Does not exist | Per-Paso current/next progression |
-| **KnownProcesion** | Only procesionId, hermandadId, status | Full plan snapshot (Pasos, Route Sections, Titular refs) |
+| **Paso** | ✅ Ordered Pasos per Procesion, each referencing a Titular | Ordered floats within a Procesion, each referencing one Titular |
+| **Route** | ✅ Shared ordered Route Sections for all Pasos | Shared ordered Route Sections for all Pasos |
+| **Route Section** | ✅ Named ordered route segment; names may repeat | Named ordered route segment; names may repeat |
+| **Procesion plan** | ✅ Pasos + Route finalized together; snapshot projected into Repertorio | Pasos + Route finalized together before Cruceta |
+| **Finalization** | ✅ Idempotent command; publishes `ProcesionPlanFinalizedEvent` | Idempotent command making plan immutable; publishes snapshot |
+| **Cruceta** | One per Procesion (`procesion_id` is UNIQUE) — per-Paso in open PR | One per Paso; Marchas assigned by Route Section |
+| **CrucetaItem** | marchaId, orderIndex, notes — routeSectionId in open PR | Adds routeSectionId, sequenceWithinSection |
+| **Run sheet** | ❌ Does not exist (open PR) | Per-Paso current/next progression |
+| **KnownProcesion** | ✅ Plan snapshot (date, time, status, planFinalizedAt) + KnownPaso + KnownRouteSection | Full plan snapshot (Pasos, Route Sections, Titular refs) |
 | **Tenant isolation** | Partial (Hermandad ✅, Procesion ❌, Cruceta partial) | All contexts enforced |
 
 ---
@@ -229,7 +232,7 @@ domain/
 | **Port** | 8082 |
 | **Package** | `com.repertorio.procesion` |
 | **DB** | PostgreSQL `procesion_db` (port 5434) |
-| **Flyway** | 4 migrations (V1–V4) |
+| **Flyway** | 8 migrations (V1–V8) |
 | **Java files** | 16 main + 6 test = 22 total |
 | **Tests** | 47 (12 integration, 11 domain unit, 8 service, 13 controller slice, 3 exception handler) |
 | **Security** | `anyRequest().authenticated()` + custom JWT converter — no `@PreAuthorize` |
@@ -277,7 +280,7 @@ domain/
 | **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache. Validates cruceta definition against known procesions. |
 | **SB4** | Migrated (`tools.jackson`) |
 
-**Current product boundary and risks (AS-IS):** A Cruceta is currently one per Procesion (`procesion_id` is UNIQUE), with items having only marchaId/orderIndex/notes — no Route Section or per-Paso model. KnownProcesion projects only procesionId/hermandadId/status — no Pasos, Route Sections, or Titular references. The TARGET model moves to one Cruceta per Paso with Route Section assignments. See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
+**Current product boundary and risks (AS-IS):** A Cruceta is currently one per Procesion (`procesion_id` is UNIQUE), with items having only marchaId/orderIndex/notes — no Route Section or per-Paso model (per-Paso Cruceta is in an open PR). KnownProcesion projects the finalized plan snapshot (date/time/status/planFinalizedAt) plus KnownPaso and KnownRouteSection. The TARGET model moves to one Cruceta per Paso with Route Section assignments. See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
 
 **Key directories:**
 ```
@@ -490,8 +493,13 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `GET` | `/api/procesiones?hermandadId={id}` | authenticated | `listByHermandad()` | `ProcesionController.java:60` |
 | `PATCH` | `/api/procesiones/{id}/status` | authenticated | `changeStatus()` | `ProcesionController.java:77` |
 | `DELETE` | `/api/procesiones/{id}` | authenticated | `deleteProcesion()` | `ProcesionController.java:93` |
+| `GET` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | authenticated | `getPasos()` | `PasoController.java:27` |
+| `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | authenticated | `replacePasos()` | `PasoController.java:43` |
+| `GET` | `/api/hermandades/{hid}/procesiones/{pid}/route` | authenticated | `getRouteSections()` | `ProcesionPlanController.java:29` |
+| `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/route` | authenticated | `replaceRouteSections()` | `ProcesionPlanController.java:45` |
+| `POST` | `/api/hermandades/{hid}/procesiones/{pid}/plan/finalize` | authenticated | `finalizePlan()` | `ProcesionPlanController.java:68` |
 
-**Note**: Procesion service has no `@PreAuthorize` — only `anyRequest().authenticated()`. `@EnableMethodSecurity` is declared but unused.
+**Note**: Procesion service has no `@PreAuthorize` — only `anyRequest().authenticated()`. `@EnableMethodSecurity` is declared but unused. Tenant isolation on these endpoints is tracked as an open issue.
 
 ### 4.3 Repertorio Service (`/api/marchas`, `/api/.../cruceta`)
 

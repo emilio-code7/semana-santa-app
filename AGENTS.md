@@ -103,9 +103,31 @@ Before declaring any task complete:
 
 3. **OpenAPI validation passes.** `npx @redocly/cli lint docs/openapi.yaml` must exit 0 with no errors (warnings from pre-existing code are acceptable but must not be new). Duplicate operationIds, unresolved $refs, and duplicate YAML keys are hard errors.
 
-4. **Flyway migration numbering is contiguous.** Check that migrations in each service follow the same version sequence as `origin/main`. If a migration number already exists on main, the branch's migration must be renumbered to the next available version. Never ship two migrations with the same version number.
+4. **Flyway migration numbering is contiguous.** Check that migrations in each service follow the same version sequence as `origin/main`. If a migration number already exists on main, the branch's migration must be renumbered to the next available version. Never ship two migrations with the same version number. Check this **before** opening the PR, not after.
 
 This gate is non-negotiable. A PR with conflicts or failing checks is not complete, and claiming otherwise wastes review cycles.
+
+### Documentation Protocol (applies before any "done" or "ready" claim)
+
+Every behavior change must keep the narrative docs truthful — a merged feature that the README or functional map still describes as "not existing" is an incomplete change. Before closing out work, verify the docs that describe the changed behavior are updated:
+
+| Change affects | Document to update |
+|----------------|-------------------|
+| API endpoints, request/response shapes | `docs/openapi.yaml` **(first!)** |
+| Endpoints, topology, DB schemas, test inventory, AS-IS/TARGET status | `docs/functional-map.md` |
+| Services, architecture, cross-service flow | `docs/architecture.md` |
+| Domain terms, aggregates, ubiquitous language | `docs/agents/domain.md` |
+| Capabilities, architecture diagram, run instructions | `README.md` |
+| AWS resources, deployment, migration rationale | `docs/aws-guide.md` |
+| Completed work vs roadmap | active roadmap doc in `docs/plans/` |
+
+- The **orchestrator/integration owner** owns documentation reconciliation — not the feature fixer. After merging implementation lanes, check `README.md` and `docs/functional-map.md` against the merged behavior and update them (directly, or via one bounded `docs:` fixer lane).
+- If a fixer lane's scope includes docs, the orchestrator still verifies the narrative docs at merge time; a fixer that finishes implementation and silently skips doc updates has not completed the issue.
+- `docs/` and `README.md` are central files: parallel implementation lanes do not edit them; the integration lane owns them.
+
+### Merging and Closing
+
+**The implementation agent must not merge or deploy PRs without explicit authorization from the user.** Opening a PR and verifying CI is the agent's job. Merging, deploying, and closing issues are the user's decision. Use `Closes #XX` in the PR body so issues auto-close on merge, but never merge the PR yourself unless explicitly told to.
 
 ## Secret Safety
 
@@ -136,6 +158,16 @@ Fall back to Grep/Glob/Read only when the graph doesn't cover what you need.
 
 GitHub Issues at `github.com/emilio-code7/semana-santa-app` are the canonical executable work queue. Plans and documentation provide context, but an issue is the implementation unit.
 
+### Coordination level is set by task size
+
+Match orchestration to task complexity — small tasks do not need multi-lane plans:
+
+- **Small task** (one file, <20 lines, no API/doc/schema change): delegate exactly one bounded task to `@fixer` per the Task Sizing rule. No plan, no doc lane, no extra agents.
+- **Medium task** (one service, one concern, API or schema change): one fixer lane + the orchestrator verifies OpenAPI/docs per the Documentation Protocol at merge time. Optionally run `@oracle` review for security/data-integrity risk.
+- **Large task** (multi-service, cross-cutting, or a roadmap ticket): build a short work graph before dispatching — implementation lanes (one per disjoint file group), a docs/verification lane owned by the orchestrator, and the Completion Gate. Delegate each lane to a fresh bounded specialist; reconcile artifacts yourself.
+
+For large tasks the orchestrator must **plan lanes before dispatching** (per the workflow rule): identify which parts are independent, dispatch them in parallel, then reconcile the terminal results and own the documentation reconciliation at merge time. Do not hand the whole large task to a single fixer and let it run end-to-end; the orchestrator stays the integration owner.
+
 ### Discovery and creation
 
 - Before any implementation, search open and closed issues for the concern. Never duplicate. If no issue exists, create one before coding.
@@ -145,16 +177,25 @@ GitHub Issues at `github.com/emilio-code7/semana-santa-app` are the canonical ex
 ### Selecting and executing work
 
 - Only implement frontier issues whose blockers are all **closed** and which carry the `ready-for-agent` label. Gates carry `ready-for-human`. Do not bypass blockers or self-promote blocked issues.
+- **Dispatch checklist (mandatory before labeling `ready-for-agent` or starting work):**
+  1. Read the issue body's **Blocked by** section: `gh issue view <n> --json body,state`
+  2. Verify every blocker is **closed**: `gh issue view <blocker> --json state` — a blocker with an open PR is NOT closed. Do not label or start the issue while any blocker is open.
+  3. Check for overlapping open PRs: `gh pr list --state open --json headRefName,files` — if any open PR touches the same files, do not dispatch until it merges (or stack per the rule below).
+  4. Check Flyway versions on `origin/main` (see Completion Gate #4) so the migration number is correct from the first commit.
 - Before coding, read the issue, its comments, `AGENTS.md`, `docs/functional-map.md`, and any linked plan or roadmap document.
 - Follow OpenAPI-first (update the spec before writing controller code) and TDD (failing test first, then implementation, then refactor).
 - Stay strictly inside the issue scope. When new or related work is discovered, create a follow-up issue instead of expanding the current branch or PR.
 
+**Stacking rule:** if issue B is blocked by A and A's PR is still open, do **not** start B by default. Wait for A to merge. The only exception is explicit user authorization to stack: then branch B is created **off A's branch** and B's PR base is A's branch (stacked PR). Never build a blocked issue on `main` while its blocker is in review.
+
 ### Branching, PRs, and closing
 
-- One issue or concern per short-lived branch from an updated `main`. Branch names include the issue number as documented in the repository Git workflow.
+- One issue or concern per short-lived branch from an updated `main`. Branch names include the **GitHub issue number** (not the plan ticket number) as documented in the repository Git workflow: `<type>/<issue>-<kebab-summary>`. Plan docs keep ticket numbers only for the dependency graph — never use them in branch or worktree names.
 - Complete work through a PR. The PR body must include `Closes #<issue-number>` and the verification evidence.
+- **Do not open a PR while CI on the head commit is failing.** If checks fail after opening, fix before requesting review or claiming completion. A claim of "tests pass" requires `gh pr checks` output showing pass.
 - CI must pass. The implementation agent must not merge or deploy without explicit authorization.
 - Keep the issue open during review. A squash merge closes it automatically.
+- **After merge: delete the branch and worktree** — `git push origin --delete <branch>` and `git worktree remove <path>`. Never leave merged branches or `check-*` review branches behind.
 - After merge, the integration owner verifies completion and promotes newly unblocked implementation issues to `ready-for-agent`. Gates remain `ready-for-human`.
 
 ## AWS Guidance

@@ -8,6 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface CrucetaJpaRepository extends JpaRepository<CrucetaEntity, UUID> {
-    Optional<CrucetaEntity> findByProcesionId(UUID procesionId);
-    void deleteByProcesionId(UUID procesionId);
+    Optional<CrucetaEntity> findByPasoId(UUID pasoId);
+    void deleteByPasoId(UUID pasoId);
 }

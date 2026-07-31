@@ -2,12 +2,10 @@ package com.repertorio.marcha.application.service;
 
 import com.repertorio.marcha.application.port.DomainEventPublisher;
 import com.repertorio.marcha.domain.event.CrucetaDefinedEvent;
-import com.repertorio.marcha.domain.model.Cruceta;
-import com.repertorio.marcha.domain.model.CrucetaItem;
-import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
-import com.repertorio.marcha.domain.model.ProcesionNotFoundException;
+import com.repertorio.marcha.domain.model.*;
 import com.repertorio.marcha.domain.port.CrucetaRepository;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
+import com.repertorio.marcha.domain.port.MarchaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,19 +31,27 @@ class CrucetaServiceTest {
     DomainEventPublisher eventPublisher;
     @Mock
     KnownProcesionRepository knownProcesionRepository;
+    @Mock
+    MarchaRepository marchaRepository;
     @InjectMocks
     CrucetaService crucetaService;
 
+    private final UUID routeSectionId = UUID.randomUUID();
+
     @Test
     void defineCruceta_createsNew() {
-        var procesionId = UUID.randomUUID();
-        var items = List.of(new CrucetaItem(UUID.randomUUID(), 1, "Opening"));
-        when(knownProcesionRepository.existsByProcesionId(procesionId)).thenReturn(true);
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.randomUUID();
+        var items = List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Opening"));
+        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(marchaRepository.existsById(marchaId)).thenReturn(true);
+        when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(true);
+        when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.empty());
         when(crucetaRepository.save(any(Cruceta.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var cruceta = crucetaService.defineCruceta(procesionId, items);
+        var cruceta = crucetaService.defineCruceta(pasoId, items);
 
-        assertEquals(procesionId, cruceta.getProcesionId());
+        assertEquals(pasoId, cruceta.getPasoId());
         assertEquals(1, cruceta.getItems().size());
         verify(crucetaRepository).save(any(Cruceta.class));
         verify(eventPublisher).publish(any(CrucetaDefinedEvent.class));
@@ -53,17 +59,20 @@ class CrucetaServiceTest {
 
     @Test
     void defineCruceta_replacesExisting() {
-        var procesionId = UUID.randomUUID();
-        var existing = new Cruceta(procesionId, List.of(new CrucetaItem(UUID.randomUUID(), 1, "Old")));
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.randomUUID();
+        var existing = new Cruceta(pasoId, List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Old")));
         var existingId = existing.getId();
-        when(knownProcesionRepository.existsByProcesionId(procesionId)).thenReturn(true);
-        when(crucetaRepository.findByProcesionId(procesionId)).thenReturn(Optional.of(existing));
+        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(marchaRepository.existsById(marchaId)).thenReturn(true);
+        when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(true);
+        when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.of(existing));
         when(crucetaRepository.save(any(Cruceta.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var newItems = List.of(new CrucetaItem(UUID.randomUUID(), 1, "New"));
-        var cruceta = crucetaService.defineCruceta(procesionId, newItems);
+        var newItems = List.of(new CrucetaItem(marchaId, routeSectionId, 1, "New"));
+        var cruceta = crucetaService.defineCruceta(pasoId, newItems);
 
-        assertEquals(procesionId, cruceta.getProcesionId());
+        assertEquals(pasoId, cruceta.getPasoId());
         assertEquals(existingId, cruceta.getId(), "aggregate ID must be preserved on replacement");
         assertEquals(1, cruceta.getItems().size());
         assertEquals("New", cruceta.getItems().getFirst().getNotes());
@@ -75,46 +84,76 @@ class CrucetaServiceTest {
 
     @Test
     void getCruceta_returnsWhenFound() {
-        var procesionId = UUID.randomUUID();
-        var cruceta = new Cruceta(procesionId, List.of());
-        when(crucetaRepository.findByProcesionId(procesionId)).thenReturn(Optional.of(cruceta));
+        var pasoId = UUID.randomUUID();
+        var cruceta = new Cruceta(pasoId, List.of());
+        when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.of(cruceta));
 
-        var result = crucetaService.getCruceta(procesionId);
+        var result = crucetaService.getCruceta(pasoId);
 
-        assertEquals(procesionId, result.getProcesionId());
+        assertEquals(pasoId, result.getPasoId());
     }
 
     @Test
     void getCruceta_throwsWhenNotFound() {
-        var procesionId = UUID.randomUUID();
-        when(crucetaRepository.findByProcesionId(procesionId)).thenReturn(Optional.empty());
+        var pasoId = UUID.randomUUID();
+        when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.empty());
 
-        assertThrows(CrucetaNotFoundException.class, () -> crucetaService.getCruceta(procesionId));
+        assertThrows(CrucetaNotFoundException.class, () -> crucetaService.getCruceta(pasoId));
     }
 
     @Test
-    void defineCrucetaThrowsWhenProcesionNotKnown() {
-        var procesionId = UUID.randomUUID();
-        when(knownProcesionRepository.existsByProcesionId(procesionId)).thenReturn(false);
+    void defineCrucetaThrowsWhenPasoNotKnown() {
+        var pasoId = UUID.randomUUID();
+        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(false);
 
-        assertThrows(ProcesionNotFoundException.class,
-                () -> crucetaService.defineCruceta(procesionId, List.of()));
+        assertThrows(PasoNotFoundException.class,
+                () -> crucetaService.defineCruceta(pasoId, List.of()));
     }
 
     @Test
-    void defineCrucetaSucceedsWhenProcesionIsKnown() {
-        var procesionId = UUID.randomUUID();
-        var items = List.of(new CrucetaItem(UUID.randomUUID(), 0, null));
+    void defineCrucetaThrowsWhenMarchaNotFound() {
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.randomUUID();
+        var items = List.of(new CrucetaItem(marchaId, routeSectionId, 0, null));
 
-        when(knownProcesionRepository.existsByProcesionId(procesionId)).thenReturn(true);
-        when(crucetaRepository.findByProcesionId(procesionId)).thenReturn(Optional.empty());
+        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(marchaRepository.existsById(marchaId)).thenReturn(false);
+
+        assertThrows(MarchaNotFoundException.class,
+                () -> crucetaService.defineCruceta(pasoId, items));
+    }
+
+    @Test
+    void defineCrucetaThrowsWhenRouteSectionNotFound() {
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.randomUUID();
+        var items = List.of(new CrucetaItem(marchaId, routeSectionId, 0, null));
+
+        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(marchaRepository.existsById(marchaId)).thenReturn(true);
+        when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> crucetaService.defineCruceta(pasoId, items));
+    }
+
+    @Test
+    void defineCrucetaSucceedsWhenPasoIsKnown() {
+        var pasoId = UUID.randomUUID();
+        var marchaId = UUID.randomUUID();
+        var items = List.of(new CrucetaItem(marchaId, routeSectionId, 0, null));
+
+        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(marchaRepository.existsById(marchaId)).thenReturn(true);
+        when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(true);
+        when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.empty());
         when(crucetaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        var result = crucetaService.defineCruceta(procesionId, items);
+        var result = crucetaService.defineCruceta(pasoId, items);
 
         assertNotNull(result);
-        assertEquals(procesionId, result.getProcesionId());
+        assertEquals(pasoId, result.getPasoId());
         assertEquals(1, result.getItems().size());
-        verify(knownProcesionRepository).existsByProcesionId(procesionId);
+        verify(knownProcesionRepository).existsPasoById(pasoId);
     }
 }

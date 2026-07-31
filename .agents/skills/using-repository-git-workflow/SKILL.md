@@ -13,12 +13,13 @@ Trunk-based development with a single long-lived branch (`main`), short-lived fe
 
 - **`main` is the only long-lived branch.** Never push directly to it.
 - **One issue/concern per branch.** Start from an updated `main`.
-- **Branch format:** `<type>/<issue>-<kebab-summary>`
+- **Branch format:** `<type>/<issue>-<kebab-summary>` — the `<issue>` is the **GitHub issue number**, never the plan/ticket number. Plan docs keep ticket numbers only for the dependency graph.
   - Types: `feat`, `fix`, `infra`, `refactor`, `test`, `docs`, `chore`
   - Example: `feat/42-add-marcha-search` or `fix/17-fix-cruceta-ordering`
 - **GitHub Issues + Milestones** organize sprint work. Never use long-lived sprint branches.
-- **PR required.** CI must pass. PR description links to or closes the issue.
+- **PR required.** CI must pass on the head commit before the PR is opened. PR description links to or closes the issue.
 - **Squash merge only.** Final PR title/commit follows `type(scope): description` format (e.g. `feat(repertorio): add marcha search endpoint`). Delete branch after merge.
+- **Post-merge cleanup is mandatory:** `git push origin --delete <branch>` and `git worktree remove <path>`. Never leave merged branches or `check-*` review branches behind.
 - **Releases** are annotated SemVer tags from `main`: `git tag -a v1.2.3 -m "v1.2.3"`. Tagging does not imply deployment unless a reviewed workflow says so.
 - **Hotfixes** still use a short-lived branch + PR. No undocumented bypass.
 

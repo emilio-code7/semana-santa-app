@@ -6,6 +6,7 @@ import com.repertorio.marcha.domain.event.CrucetaDefinedEvent;
 import com.repertorio.marcha.domain.model.*;
 import com.repertorio.marcha.domain.port.CrucetaRepository;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
+import com.repertorio.marcha.domain.port.MarchaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,35 +21,45 @@ public class CrucetaService {
     private final CrucetaRepository crucetaRepository;
     private final DomainEventPublisher eventPublisher;
     private final KnownProcesionRepository knownProcesionRepository;
+    private final MarchaRepository marchaRepository;
 
     @Transactional
-    public Cruceta defineCruceta(UUID procesionId, List<CrucetaItem> items) {
-        if (!knownProcesionRepository.existsByProcesionId(procesionId)) {
-            throw new ProcesionNotFoundException(procesionId);
+    public Cruceta defineCruceta(UUID pasoId, List<CrucetaItem> items) {
+        if (!knownProcesionRepository.existsPasoById(pasoId)) {
+            throw new PasoNotFoundException(pasoId);
         }
-        var cruceta = crucetaRepository.findByProcesionId(procesionId)
+        for (var item : items) {
+            if (!marchaRepository.existsById(item.getMarchaId())) {
+                throw new MarchaNotFoundException(item.getMarchaId());
+            }
+            if (!knownProcesionRepository.existsRouteSectionById(item.getRouteSectionId())) {
+                throw new IllegalArgumentException("Route section not found: " + item.getRouteSectionId());
+            }
+        }
+        // Load existing aggregate and redefine in place — preserves aggregate ID and revision
+        var cruceta = crucetaRepository.findByPasoId(pasoId)
                 .map(existing -> {
                     existing.redefine(items);
                     return crucetaRepository.save(existing);
                 })
                 .orElseGet(() -> {
-                    var newCruceta = new Cruceta(procesionId, items);
+                    var newCruceta = new Cruceta(pasoId, items);
                     return crucetaRepository.save(newCruceta);
                 });
-        eventPublisher.publish(new CrucetaDefinedEvent(cruceta.getId(), procesionId, items.size()));
+        eventPublisher.publish(new CrucetaDefinedEvent(cruceta.getId(), pasoId, items.size()));
         return cruceta;
     }
 
     @Transactional(readOnly = true)
-    public Cruceta getCruceta(UUID procesionId) {
-        return crucetaRepository.findByProcesionId(procesionId)
-                .orElseThrow(() -> new CrucetaNotFoundException(procesionId));
+    public Cruceta getCruceta(UUID pasoId) {
+        return crucetaRepository.findByPasoId(pasoId)
+                .orElseThrow(() -> new CrucetaNotFoundException(pasoId));
     }
 
     @Transactional(readOnly = true)
     public RunSheetResponse getRunSheet(UUID procesionId, UUID pasoId) {
-        var cruceta = crucetaRepository.findByProcesionId(procesionId)
-                .orElseThrow(() -> new CrucetaNotFoundException(procesionId));
+        var cruceta = crucetaRepository.findByPasoId(pasoId)
+                .orElseThrow(() -> new CrucetaNotFoundException(pasoId));
         var routeSections = knownProcesionRepository.findRouteSectionsByProcesionId(procesionId);
         var itemsBySection = cruceta.getItems().stream()
                 .collect(Collectors.groupingBy(CrucetaItem::getRouteSectionId));
@@ -70,11 +81,11 @@ public class CrucetaService {
 
         var sections = sortedSections.stream().map(section -> {
             var sectionItems = itemsBySection.getOrDefault(section.getId(), List.of()).stream()
-                    .sorted(Comparator.comparingInt(CrucetaItem::getOrderIndex))
+                    .sorted(Comparator.comparingInt(CrucetaItem::getSequenceWithinSection))
                     .map(item -> new RunSheetResponse.RunSheetItem(
                             item.getId(),
                             item.getMarchaId(),
-                            item.getOrderIndex(),
+                            item.getSequenceWithinSection(),
                             item.getId().equals(currentItemId),
                             item.getId().equals(nextItemId),
                             item.getNotes()
@@ -99,8 +110,8 @@ public class CrucetaService {
 
     @Transactional
     public RunSheetResponse advanceCurrent(UUID procesionId, UUID pasoId, UUID routeSectionId, UUID crucetaItemId) {
-        var cruceta = crucetaRepository.findByProcesionId(procesionId)
-                .orElseThrow(() -> new CrucetaNotFoundException(procesionId));
+        var cruceta = crucetaRepository.findByPasoId(pasoId)
+                .orElseThrow(() -> new CrucetaNotFoundException(pasoId));
 
         // Validate routeSectionId belongs to this procesion
         var routeSections = knownProcesionRepository.findRouteSectionsByProcesionId(procesionId);

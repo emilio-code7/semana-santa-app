@@ -19,27 +19,27 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/hermandades/{hermandadId}/procesiones/{procesionId}")
+@RequestMapping("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta")
 @RequiredArgsConstructor
 @Slf4j
 public class CrucetaController {
 
     private final CrucetaService crucetaService;
 
-    @GetMapping("/cruceta")
-    @Operation(summary = "Get cruceta for a procesion")
+    @GetMapping
+    @Operation(summary = "Get cruceta for a paso")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cruceta found"),
             @ApiResponse(responseCode = "404", description = "Cruceta not found")
     })
-    public ResponseEntity<CrucetaResponse> getCruceta(@PathVariable UUID procesionId) {
-        log.info("Getting cruceta for procesion {}", procesionId);
-        var cruceta = crucetaService.getCruceta(procesionId);
+    public ResponseEntity<CrucetaResponse> getCruceta(@PathVariable UUID pasoId) {
+        log.info("Getting cruceta for paso {}", pasoId);
+        var cruceta = crucetaService.getCruceta(pasoId);
         return ResponseEntity.ok(CrucetaResponse.from(cruceta));
     }
 
-    @PutMapping("/cruceta")
-    @Operation(summary = "Define or replace cruceta for a procesion")
+    @PutMapping
+    @Operation(summary = "Define or replace cruceta for a paso")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cruceta defined"),
             @ApiResponse(responseCode = "400", description = "Invalid input"),
@@ -48,17 +48,17 @@ public class CrucetaController {
     @PreAuthorize("@repertorioSecurity.isAdmin(#hermandadId)")
     public ResponseEntity<CrucetaResponse> defineCruceta(
             @PathVariable UUID hermandadId,
-            @PathVariable UUID procesionId,
+            @PathVariable UUID pasoId,
             @Valid @RequestBody CrucetaRequest request) {
-        log.info("Defining cruceta for procesion {} (hermandad {})", procesionId, hermandadId);
+        log.info("Defining cruceta for paso {} (hermandad {})", pasoId, hermandadId);
         var items = request.items().stream()
-                .map(i -> new CrucetaItem(i.marchaId(), i.routeSectionId(), i.orderIndex(), i.notes()))
+                .map(i -> new CrucetaItem(i.marchaId(), i.routeSectionId(), i.sequenceWithinSection(), i.notes()))
                 .toList();
-        var cruceta = crucetaService.defineCruceta(procesionId, items);
+        var cruceta = crucetaService.defineCruceta(pasoId, items);
         return ResponseEntity.ok(CrucetaResponse.from(cruceta));
     }
 
-    @GetMapping("/pasos/{pasoId}/cruceta/run-sheet")
+    @GetMapping("/run-sheet")
     @Operation(summary = "Get run sheet for a paso with current/next indicators")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Run sheet returned"),
@@ -75,7 +75,7 @@ public class CrucetaController {
         return ResponseEntity.ok(runSheet);
     }
 
-    @PutMapping("/pasos/{pasoId}/cruceta/current")
+    @PutMapping("/current")
     @Operation(summary = "Advance current progression item for a paso (idempotent)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Current item advanced"),

@@ -697,14 +697,15 @@
         }
       }
     },
-    "/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta": {
+    "/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta": {
       "get": {
         "tags": ["cruceta-controller"],
-        "summary": "Get cruceta for a procesion",
+        "summary": "Get cruceta for a paso",
         "operationId": "getCruceta",
         "parameters": [
           { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "pasoId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
         "responses": {
           "200": { "description": "Cruceta found", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/CrucetaResponse" } } } },
@@ -713,18 +714,19 @@
       },
       "put": {
         "tags": ["cruceta-controller"],
-        "summary": "Define or replace cruceta for a procesion",
+        "summary": "Define or replace cruceta for a paso",
         "operationId": "defineCruceta",
         "parameters": [
           { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "pasoId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CrucetaRequest" } } } },
         "responses": {
           "200": { "description": "Cruceta defined", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/CrucetaResponse" } } } },
           "400": { "description": "Invalid input (validation error)" },
           "403": { "description": "Forbidden — not admin of this hermandad" },
-          "404": { "description": "Procesion not known yet (consumer may still be processing the ProcesionCreatedEvent)" }
+          "404": { "description": "Paso not found or not known yet" }
         }
       }
     },
@@ -1051,12 +1053,12 @@
         }
       },
       "CrucetaItemRequest": {
-        "required": ["marchaId", "routeSectionId", "orderIndex"],
+        "required": ["marchaId", "routeSectionId", "sequenceWithinSection"],
         "type": "object",
         "properties": {
           "marchaId": { "type": "string", "format": "uuid" },
           "routeSectionId": { "type": "string", "format": "uuid" },
-          "orderIndex": { "type": "integer", "format": "int32", "minimum": 0 },
+          "sequenceWithinSection": { "type": "integer", "format": "int32", "minimum": 0 },
           "notes": { "type": "string", "nullable": true }
         }
       },
@@ -1064,7 +1066,7 @@
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
-          "procesionId": { "type": "string", "format": "uuid" },
+          "pasoId": { "type": "string", "format": "uuid" },
           "items": { "type": "array", "items": { "$ref": "#/components/schemas/CrucetaItemResponse" } },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
@@ -1076,7 +1078,7 @@
           "id": { "type": "string", "format": "uuid" },
           "marchaId": { "type": "string", "format": "uuid" },
           "routeSectionId": { "type": "string", "format": "uuid" },
-          "orderIndex": { "type": "integer", "format": "int32" },
+          "sequenceWithinSection": { "type": "integer", "format": "int32" },
           "notes": { "type": "string", "nullable": true }
         }
       },

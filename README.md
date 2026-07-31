@@ -11,29 +11,27 @@ REST API for managing Semana Santa (Holy Week) brotherhoods, processions, and mu
 ## Current Capabilities vs Target Direction
 
 **AS-IS (current implementation):**
-- Hermandad CRUD + member management with Keycloak admin sync.
-- Procesion CRUD with state machine (PLANNED → IN_PROGRESS → COMPLETED/CANCELLED). No Pasos, no Route Sections, no finalized plan.
+- Hermandad CRUD + member management with Keycloak admin sync. Hermandad owns Titulares (religious images).
+- Procesion CRUD with state machine (PLANNED → IN_PROGRESS → COMPLETED/CANCELLED), ordered Pasos (each referencing a Titular), shared Route Sections, and plan finalization (immutable snapshot event).
 - Marcha catalogue (global, shared).
-- One Cruceta per Procesion (not per Paso), with items having marchaId/orderIndex/notes.
-- KnownProcesion projection stores only procesionId/hermandadId/status.
-- No Titular, Paso, RouteSection code/schema/endpoints exist.
-- Tenant isolation: Hermandad service has `@PreAuthorize`; Procesion endpoints lack persisted tenant isolation; Cruceta isolation is partial.
+- One Cruceta per Procesion (not per Paso), with items having marchaId/orderIndex/notes. Per-Paso Crucetas and run-sheet progression are in open PRs.
+- Repertorio projects the finalized plan locally: `KnownProcesion` snapshot (date/time/status/planFinalizedAt) plus `KnownPaso` and `KnownRouteSection` entries.
+- Tenant isolation: Hermandad service has `@PreAuthorize`; Procesion endpoints lack persisted tenant isolation (open issue); Cruceta isolation is partial.
 
 **TARGET (active roadmap):**
-- Hermandad owns Titulares (religious images).
-- A Procesion contains ordered Pasos, each referencing one Titular.
-- Pasos and an ordered shared Route (named Route Sections) are finalized together.
-- Repertorio owns Marcha and one Cruceta per Paso, with Marchas assigned by Route Section.
-- Independent run-sheet progression per Paso.
-- Full tenant isolation on all endpoints.
+- A Procesion contains ordered Pasos, each referencing one Titular. (✅ implemented)
+- Pasos and an ordered shared Route (named Route Sections) are finalized together. (✅ implemented)
+- Repertorio owns Marcha and one Cruceta per Paso, with Marchas assigned by Route Section. (per-Paso Cruceta in PR)
+- Independent run-sheet progression per Paso. (in PR)
+- Full tenant isolation on all endpoints. (open issue)
 - See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/agents/domain.md`](docs/agents/domain.md) for details.
 
 ## Architecture
 
 ```
-hermandad-service :8081    Hermandades + members (TARGET adds Titulares)
-procesion-service :8082    Procession CRUD + state machine (TARGET adds Pasos, Route Sections, finalization)
-repertorio-service :8083   Global marcha catalog + one Cruceta per Procesion (TARGET adds per-Paso Crucetas)
+hermandad-service :8081    Hermandades + members + Titulares
+procesion-service :8082    Procession CRUD + Pasos, Route Sections, plan finalization
+repertorio-service :8083   Global marcha catalog + Cruceta per Procesion (TARGET adds per-Paso Crucetas)
 api-gateway         :8080   Spring Cloud Gateway — routes by path prefix
 discovery-server    :8761   Eureka service registry
 ```
@@ -117,7 +115,7 @@ Integration tests use Testcontainers (PostgreSQL), skip gracefully if unavailabl
 |----------|-----------|
 | **Hexagonal + DDD** | Domain purity, testability, framework independence — domain layer has zero Spring imports |
 | **Outbox pattern** | Guarantees at-least-once delivery to Kafka without distributed transactions |
-| **Kafka-based cross-service validation (AS-IS → TARGET)** | AS-IS: Repertorio validates references against `KnownProcesion` (only procesionId/hermandadId/status). TARGET: Procesion publishes a finalized-plan snapshot (`ProcesionPlanFinalizedEvent`) with Pasos, Route Sections, Titular refs; Repertorio consumes and validates locally. No synchronous REST in either case. |
+| **Kafka-based cross-service validation** | Repertorio validates references against the locally projected finalized-plan snapshot (`KnownProcesion` + `KnownPaso` + `KnownRouteSection`, populated from `ProcesionPlanFinalizedEvent`). No synchronous REST in either case. |
 | **Per-service database** | Independent Flyway histories, no migration conflicts, clean service boundaries |
 | **Spring Cloud Gateway** | Centralized routing, auth filtering, API docs aggregation — replaces per-service URL management |
 

@@ -1,7 +1,4 @@
--- Add route_section_id to cruceta_item for per-section marcha grouping
-ALTER TABLE cruceta_item ADD COLUMN route_section_id UUID;
-
--- Create cruceta_progression table for per-Paso progression tracking within a Cruceta
+-- Per-Paso run-sheet progression tracking (route_section_id already on cruceta_item via V10).
 CREATE TABLE cruceta_progression (
     id UUID PRIMARY KEY,
     cruceta_id UUID NOT NULL REFERENCES cruceta(id) ON DELETE CASCADE,

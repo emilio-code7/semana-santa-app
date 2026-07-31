@@ -69,4 +69,14 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
                 .map(KnownPasoEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public boolean existsPasoById(UUID pasoId) {
+        return pasoJpa.existsById(pasoId);
+    }
+
+    @Override
+    public boolean existsRouteSectionById(UUID routeSectionId) {
+        return routeSectionJpa.existsById(routeSectionId);
+    }
 }
