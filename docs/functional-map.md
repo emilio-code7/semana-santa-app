@@ -146,7 +146,7 @@ repertorio/
 ├── services/
 │   ├── hermandad-service/    ✅ Active       # Brotherhoods + members, port 8081 (59 Java files, 50 tests)
 │   ├── procesion-service/    ✅ Active       # Processions + state machine, port 8082 (22 Java files, 47 tests)
-│   ├── repertorio-service/   ✅ Active       # Marcha catalog + Cruceta, port 8083 (51 Java files, 75 tests)
+│   ├── repertorio-service/   ✅ Active       # Marcha catalog + Cruceta, port 8083 (51 Java files, 82 tests)
 │   ├── tracking-service/     ⚠️ Stub         # GPS tracking — build.gradle.kts only, no src/
 │   └── notification-service/ ⚠️ Stub         # Push notifications — build.gradle.kts only, no src/
 │
@@ -848,7 +848,7 @@ Request with Bearer JWT
 | `MarchaServiceTest.java` | Unit (mock service) | 8 | CRUD, events, search, existence check |
 | `CrucetaServiceTest.java` | Unit (mock service) | 6 | Get/define cruceta, item validation, ProcesionNotFoundException on unknown procesion |
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 6 | All endpoints, 401 scenarios, search |
-| `CrucetaControllerTest.java` | Web slice (MockMvc) | 5 | Get/define cruceta, 401 scenarios |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 12 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403) |
 | `ProcesionEventConsumerTest.java` | Unit (mock service) | 5 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
 | `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
