@@ -10,6 +10,7 @@
   "presets": {
     "custom": {
       "orchestrator": { "model": "opencode-go/deepseek-v4-pro" },
+      "task-orchestrator": { "model": "opencode-go/deepseek-v4-pro" },
       "oracle":       { "model": "opencode-go/qwen3.7-max" },
       "librarian":    { "model": "opencode-go/deepseek-v4-flash" },
       "explorer":     { "model": "opencode-go/deepseek-v4-flash" },
