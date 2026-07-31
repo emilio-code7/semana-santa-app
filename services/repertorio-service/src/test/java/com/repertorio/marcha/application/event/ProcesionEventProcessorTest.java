@@ -1,7 +1,9 @@
 package com.repertorio.marcha.application.event;
 
 import com.repertorio.marcha.application.port.ProcessedEventStore;
+import com.repertorio.marcha.domain.model.KnownPaso;
 import com.repertorio.marcha.domain.model.KnownProcesion;
+import com.repertorio.marcha.domain.model.KnownRouteSection;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,6 +43,12 @@ class ProcesionEventProcessorTest {
 
     @Captor
     private ArgumentCaptor<KnownProcesion> knownProcesionCaptor;
+
+    @Captor
+    private ArgumentCaptor<List<KnownPaso>> pasosCaptor;
+
+    @Captor
+    private ArgumentCaptor<List<KnownRouteSection>> routeSectionsCaptor;
 
     private final ObjectMapper realMapper = new ObjectMapper();
 
@@ -250,7 +259,7 @@ class ProcesionEventProcessorTest {
 
     @Test
     void processesPlanFinalizedEventForExistingKnownProcesion() throws Exception {
-        var payload = "{\"id\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"date\":\"2026-04-13\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
+        var payload = "{\"procesionId\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"date\":\"2026-04-13\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\",\"pasos\":[{\"id\":\"33333333-3333-3333-3333-333333333333\",\"position\":0,\"titularId\":\"44444444-4444-4444-4444-444444444444\"}],\"routeSections\":[{\"id\":\"55555555-5555-5555-5555-555555555555\",\"name\":\"Salida\",\"position\":0,\"notes\":\"Salida notes\"}]}";
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
@@ -266,13 +275,29 @@ class ProcesionEventProcessorTest {
         assertThat(existing.getDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 13));
         assertThat(existing.getTime()).isEqualTo(java.time.LocalTime.of(18, 0));
         assertThat(existing.getPlanFinalizedAt()).isEqualTo(java.time.Instant.parse("2026-04-10T10:00:00Z"));
-        verify(knownProcesionRepository).saveFullPlan(eq(existing), anyList(), anyList());
+        verify(knownProcesionRepository).saveFullPlan(eq(existing), pasosCaptor.capture(), routeSectionsCaptor.capture());
+
+        assertThat(pasosCaptor.getValue()).hasSize(1);
+        var paso = pasosCaptor.getValue().get(0);
+        assertThat(paso.getId()).hasToString("33333333-3333-3333-3333-333333333333");
+        assertThat(paso.getProcesionId()).isEqualTo(procesionId);
+        assertThat(paso.getPosition()).isZero();
+        assertThat(paso.getTitularId()).hasToString("44444444-4444-4444-4444-444444444444");
+
+        assertThat(routeSectionsCaptor.getValue()).hasSize(1);
+        var section = routeSectionsCaptor.getValue().get(0);
+        assertThat(section.getId()).hasToString("55555555-5555-5555-5555-555555555555");
+        assertThat(section.getProcesionId()).isEqualTo(procesionId);
+        assertThat(section.getName()).isEqualTo("Salida");
+        assertThat(section.getPosition()).isZero();
+        assertThat(section.getNotes()).isEqualTo("Salida notes");
+
         verify(processedEventStore).record(eventId);
     }
 
     @Test
     void processesPlanFinalizedEventCreatesNewKnownProcesionIfMissing() throws Exception {
-        var payload = "{\"id\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"date\":\"2026-04-13\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
+        var payload = "{\"procesionId\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"date\":\"2026-04-13\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\",\"pasos\":[{\"id\":\"33333333-3333-3333-3333-333333333333\",\"position\":0,\"titularId\":\"44444444-4444-4444-4444-444444444444\"}],\"routeSections\":[{\"id\":\"55555555-5555-5555-5555-555555555555\",\"name\":\"Salida\",\"position\":0,\"notes\":\"Salida notes\"}]}";
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
@@ -283,18 +308,34 @@ class ProcesionEventProcessorTest {
 
         processor.process(payload);
 
-        verify(knownProcesionRepository).saveFullPlan(knownProcesionCaptor.capture(), anyList(), anyList());
+        verify(knownProcesionRepository).saveFullPlan(knownProcesionCaptor.capture(), pasosCaptor.capture(), routeSectionsCaptor.capture());
         var saved = knownProcesionCaptor.getValue();
         assertThat(saved.getProcesionId()).isEqualTo(procesionId);
         assertThat(saved.getStatus()).isEqualTo("PLANNED");
         assertThat(saved.getDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 13));
         assertThat(saved.getPlanFinalizedAt()).isEqualTo(java.time.Instant.parse("2026-04-10T10:00:00Z"));
+
+        assertThat(pasosCaptor.getValue()).hasSize(1);
+        var paso = pasosCaptor.getValue().get(0);
+        assertThat(paso.getId()).hasToString("33333333-3333-3333-3333-333333333333");
+        assertThat(paso.getProcesionId()).isEqualTo(procesionId);
+        assertThat(paso.getPosition()).isZero();
+        assertThat(paso.getTitularId()).hasToString("44444444-4444-4444-4444-444444444444");
+
+        assertThat(routeSectionsCaptor.getValue()).hasSize(1);
+        var section = routeSectionsCaptor.getValue().get(0);
+        assertThat(section.getId()).hasToString("55555555-5555-5555-5555-555555555555");
+        assertThat(section.getProcesionId()).isEqualTo(procesionId);
+        assertThat(section.getName()).isEqualTo("Salida");
+        assertThat(section.getPosition()).isZero();
+        assertThat(section.getNotes()).isEqualTo("Salida notes");
+
         verify(processedEventStore).record(eventId);
     }
 
     @Test
     void rejectsPlanFinalizedEventWithMissingDate() throws Exception {
-        var payload = "{\"id\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
+        var payload = "{\"procesionId\":\"11111111-1111-1111-1111-111111111111\",\"hermandadId\":\"22222222-2222-2222-2222-222222222222\",\"time\":\"18:00:00\",\"planFinalizedAt\":\"2026-04-10T10:00:00Z\"}";
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
