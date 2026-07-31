@@ -18,6 +18,15 @@
       "fixer":        { "model": "opencode-go/deepseek-v4-flash" },
       "observer":     { "model": "opencode-go/minimax-m3" },
       "council":      { "model": "opencode-go/qwen3.7-max" }
+    },
+    "cheap": {
+      "task-orchestrator": { "model": "opencode-go/deepseek-v4-flash" }
+    },
+    "openai-efficient": {
+      "task-orchestrator": { "model": "openai/gpt-5.6-sol" }
+    },
+    "hybrid-luna": {
+      "task-orchestrator": { "model": "openai/gpt-5.6-luna" }
     }
   },
   "council": {
