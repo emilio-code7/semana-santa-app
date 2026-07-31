@@ -26,6 +26,7 @@ import java.util.UUID;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -195,12 +196,19 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections.length()").value(2));
 
+        assertThat(routeSectionRepo.count()).isEqualTo(2);
+
         mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
                         hermandadId, procesion.getId())
                         .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections[0].name").value("Salida"))
                 .andExpect(jsonPath("$.sections[1].name").value("Recogida"));
+
+        assertThat(routeSectionRepo.findAll())
+                .filteredOn(rs -> rs.getProcesionId().equals(procesion.getId()))
+                .extracting(rs -> rs.getName())
+                .containsExactlyInAnyOrder("Salida", "Recogida");
     }
 
     @Test
