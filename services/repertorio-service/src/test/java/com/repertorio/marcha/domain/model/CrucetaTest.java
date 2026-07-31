@@ -96,4 +96,19 @@ class CrucetaTest {
         ));
         assertTrue(cruceta.getUpdatedAt().isAfter(beforeUpdate));
     }
+
+    @Test
+    void redefineClearsProgressions() {
+        var cruceta = new Cruceta(UUID.randomUUID(), List.of(
+                new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 0, null)
+        ));
+        var p = new CrucetaProgression(cruceta.getId(), UUID.randomUUID(), UUID.randomUUID());
+        cruceta.setProgressions(List.of(p));
+        assertEquals(1, cruceta.getProgressions().size());
+
+        cruceta.redefine(List.of(
+                new CrucetaItem(UUID.randomUUID(), UUID.randomUUID(), 0, "new")
+        ));
+        assertTrue(cruceta.getProgressions().isEmpty());
+    }
 }

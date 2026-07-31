@@ -11,6 +11,7 @@ public class Cruceta {
     private final UUID pasoId;
     private int version;
     private List<CrucetaItem> items;
+    private List<CrucetaProgression> progressions;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -25,13 +26,21 @@ public class Cruceta {
         this.pasoId = pasoId;
         this.version = 0;
         setItems(items);
+        this.progressions = new ArrayList<>();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
     public void redefine(List<CrucetaItem> newItems) {
         setItems(newItems);
+        this.progressions.clear();
         this.updatedAt = Instant.now();
+    }
+
+    public List<CrucetaProgression> getProgressions() { return List.copyOf(progressions); }
+
+    public void setProgressions(List<CrucetaProgression> progressions) {
+        this.progressions = new ArrayList<>(progressions);
     }
 
     private void setItems(List<CrucetaItem> items) {
@@ -46,18 +55,19 @@ public class Cruceta {
 
     // ponytail: reconstruct for adapter mapping
     private Cruceta(UUID id, int version, UUID pasoId, List<CrucetaItem> items,
-                    Instant createdAt, Instant updatedAt) {
+                    List<CrucetaProgression> progressions, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.version = version;
         this.pasoId = pasoId;
         this.items = new ArrayList<>(items);
+        this.progressions = new ArrayList<>(progressions);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     public static Cruceta reconstruct(UUID id, int version, UUID pasoId, List<CrucetaItem> items,
-                                       Instant createdAt, Instant updatedAt) {
-        return new Cruceta(id, version, pasoId, items, createdAt, updatedAt);
+                                       List<CrucetaProgression> progressions, Instant createdAt, Instant updatedAt) {
+        return new Cruceta(id, version, pasoId, items, progressions, createdAt, updatedAt);
     }
 
     public UUID getId() { return id; }

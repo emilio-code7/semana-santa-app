@@ -729,6 +729,44 @@
           "404": { "description": "Paso not found or not known yet" }
         }
       }
+    },
+    "/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta/run-sheet": {
+      "get": {
+        "tags": ["cruceta-controller"],
+        "summary": "Get run sheet for a paso with current/next indicators",
+        "operationId": "getRunSheet",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "pasoId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Run sheet with route-ordered sections and current/next items", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/RunSheetResponse" } } } },
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — cross-tenant access" },
+          "404": { "description": "Cruceta not found for this procesion" }
+        }
+      }
+    },
+    "/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta/current": {
+      "put": {
+        "tags": ["cruceta-controller"],
+        "summary": "Advance current progression item for a paso (idempotent)",
+        "operationId": "advanceCurrent",
+        "parameters": [
+          { "name": "hermandadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "procesionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "pasoId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdvanceCurrentRequest" } } } },
+        "responses": {
+          "200": { "description": "Current item advanced", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/RunSheetResponse" } } } },
+          "400": { "description": "Invalid request — crucetaItemId does not belong to the requested section or cruceta" },
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — cross-tenant access" },
+          "404": { "description": "Cruceta not found for this procesion" }
+        }
+      }
     }
   },
   "components": {
@@ -1041,6 +1079,43 @@
           "marchaId": { "type": "string", "format": "uuid" },
           "routeSectionId": { "type": "string", "format": "uuid" },
           "sequenceWithinSection": { "type": "integer", "format": "int32" },
+          "notes": { "type": "string", "nullable": true }
+        }
+      },
+      "AdvanceCurrentRequest": {
+        "required": ["routeSectionId"],
+        "type": "object",
+        "properties": {
+          "routeSectionId": { "type": "string", "format": "uuid" },
+          "crucetaItemId": { "type": "string", "format": "uuid", "nullable": true, "description": "Omit/null for silent sections (no marcha)" }
+        }
+      },
+      "RunSheetResponse": {
+        "type": "object",
+        "properties": {
+          "pasoId": { "type": "string", "format": "uuid" },
+          "sections": { "type": "array", "items": { "$ref": "#/components/schemas/RunSheetSection" } }
+        }
+      },
+      "RunSheetSection": {
+        "type": "object",
+        "properties": {
+          "sectionId": { "type": "string", "format": "uuid" },
+          "sectionName": { "type": "string" },
+          "position": { "type": "integer" },
+          "isCurrent": { "type": "boolean" },
+          "isNext": { "type": "boolean" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/RunSheetItem" } }
+        }
+      },
+      "RunSheetItem": {
+        "type": "object",
+        "properties": {
+          "itemId": { "type": "string", "format": "uuid" },
+          "marchaId": { "type": "string", "format": "uuid" },
+          "orderIndex": { "type": "integer", "format": "int32" },
+          "isCurrent": { "type": "boolean" },
+          "isNext": { "type": "boolean" },
           "notes": { "type": "string", "nullable": true }
         }
       }

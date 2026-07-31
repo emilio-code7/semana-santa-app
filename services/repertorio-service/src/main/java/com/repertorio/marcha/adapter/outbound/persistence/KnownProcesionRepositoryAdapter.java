@@ -57,6 +57,20 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
     }
 
     @Override
+    public List<KnownRouteSection> findRouteSectionsByProcesionId(UUID procesionId) {
+        return routeSectionJpa.findByProcesionId(procesionId).stream()
+                .map(KnownRouteSectionEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<KnownPaso> findPasosByProcesionId(UUID procesionId) {
+        return pasoJpa.findByProcesionId(procesionId).stream()
+                .map(KnownPasoEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public boolean existsPasoById(UUID pasoId) {
         return pasoJpa.existsById(pasoId);
     }

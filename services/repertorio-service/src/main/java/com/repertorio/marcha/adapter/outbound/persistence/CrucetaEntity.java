@@ -34,6 +34,11 @@ public class CrucetaEntity implements Persistable<UUID> {
     @JoinColumn(name = "cruceta_id")
     private List<CrucetaItemEntity> items = new ArrayList<>();
 
+    // ponytail: same pattern — unidirectional, child owns FK
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "cruceta_id")
+    private List<CrucetaProgressionEntity> progressions = new ArrayList<>();
+
     protected CrucetaEntity() {}
 
     public CrucetaEntity(UUID id, UUID pasoId, Instant createdAt, Instant updatedAt) {
@@ -57,6 +62,14 @@ public class CrucetaEntity implements Persistable<UUID> {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public List<CrucetaItemEntity> getItems() { return items; }
+    public List<CrucetaProgressionEntity> getProgressions() { return progressions; }
+
+    public void setProgressions(List<CrucetaProgressionEntity> progressions) {
+        this.progressions.clear();
+        if (progressions != null) {
+            this.progressions.addAll(progressions);
+        }
+    }
 
     public void setItems(List<CrucetaItemEntity> items) {
         this.items.clear();

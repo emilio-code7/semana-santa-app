@@ -9,15 +9,21 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface KnownProcesionRepository {
+
     KnownProcesion save(KnownProcesion knownProcesion);
+
     Optional<KnownProcesion> findByProcesionId(UUID procesionId);
+
     boolean existsByProcesionId(UUID procesionId);
 
     /**
-     * Saves the full plan projection: updates the KnownProcesion and replaces
-     * its child KnownPaso and KnownRouteSection entries atomically.
+     * Persists the full plan projection: procesion, pasos and route sections.
      */
     void saveFullPlan(KnownProcesion knownProcesion, List<KnownPaso> pasos, List<KnownRouteSection> routeSections);
+
+    List<KnownRouteSection> findRouteSectionsByProcesionId(UUID procesionId);
+
+    List<KnownPaso> findPasosByProcesionId(UUID procesionId);
 
     /** Returns true if the given paso ID exists in the local plan projection. */
     boolean existsPasoById(UUID pasoId);

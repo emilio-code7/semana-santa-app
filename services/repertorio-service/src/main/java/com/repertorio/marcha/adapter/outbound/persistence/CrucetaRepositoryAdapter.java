@@ -2,6 +2,7 @@ package com.repertorio.marcha.adapter.outbound.persistence;
 
 import com.repertorio.marcha.domain.model.Cruceta;
 import com.repertorio.marcha.domain.model.CrucetaItem;
+import com.repertorio.marcha.domain.model.CrucetaProgression;
 import com.repertorio.marcha.domain.model.VersionMismatchException;
 import com.repertorio.marcha.domain.port.CrucetaRepository;
 import jakarta.persistence.EntityManager;
@@ -15,12 +16,14 @@ import java.util.UUID;
 public class CrucetaRepositoryAdapter implements CrucetaRepository {
 
     private final CrucetaJpaRepository jpa;
+    private final CrucetaProgressionJpaRepository progressionJpa;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    public CrucetaRepositoryAdapter(CrucetaJpaRepository jpa) {
+    public CrucetaRepositoryAdapter(CrucetaJpaRepository jpa, CrucetaProgressionJpaRepository progressionJpa) {
         this.jpa = jpa;
+        this.progressionJpa = progressionJpa;
     }
 
     @Override
@@ -41,6 +44,10 @@ public class CrucetaRepositoryAdapter implements CrucetaRepository {
         // Replace items on managed instance
         // JPQL bulk delete bypasses Hibernate's unidirectional @OneToMany UPDATE FK=null behavior
         entityManager.createQuery("DELETE FROM CrucetaItemEntity i WHERE i.crucetaId = :id")
+                .setParameter("id", existing.getId())
+                .executeUpdate();
+        // Replace progressions on managed instance
+        entityManager.createQuery("DELETE FROM CrucetaProgressionEntity p WHERE p.crucetaId = :id")
                 .setParameter("id", existing.getId())
                 .executeUpdate();
 
@@ -69,16 +76,39 @@ public class CrucetaRepositoryAdapter implements CrucetaRepository {
     }
 
     @Override
+    public Optional<CrucetaProgression> findProgressionByPasoId(UUID crucetaId, UUID pasoId) {
+        return progressionJpa.findByCrucetaIdAndPasoId(crucetaId, pasoId)
+                .map(CrucetaProgressionEntity::toDomain);
+    }
+
+    @Override
+    public void saveProgression(CrucetaProgression progression) {
+        var managed = progressionJpa.findById(progression.getId());
+        if (managed.isPresent()) {
+            var entity = managed.get();
+            entity.setCurrentRouteSectionId(progression.getCurrentRouteSectionId());
+            entity.setCurrentCrucetaItemId(progression.getCurrentCrucetaItemId().orElse(null));
+            progressionJpa.flush();
+        } else {
+            progressionJpa.save(CrucetaProgressionEntity.from(progression));
+            progressionJpa.flush();
+        }
+    }
+
+    @Override
     public void deleteByPasoId(UUID pasoId) {
         var existing = jpa.findByPasoId(pasoId);
         existing.ifPresent(entity -> {
-            // Delete items first via JPQL to avoid Hibernate's UPDATE FK=null
+            // Delete items and progressions first via JPQL to avoid Hibernate's UPDATE FK=null
             entityManager.createQuery("DELETE FROM CrucetaItemEntity i WHERE i.crucetaId = :id")
+                    .setParameter("id", entity.getId())
+                    .executeUpdate();
+            entityManager.createQuery("DELETE FROM CrucetaProgressionEntity p WHERE p.crucetaId = :id")
                     .setParameter("id", entity.getId())
                     .executeUpdate();
 
             // Flush + clear to avoid stale children in PC before parent deletion.
-            // deleteById reloads from DB (no items after JPQL delete) → safe cascade.
+            // deleteById reloads from DB (no children after JPQL delete) → safe cascade.
             jpa.flush();
             entityManager.clear();
             jpa.deleteById(entity.getId());
@@ -98,6 +128,9 @@ public class CrucetaRepositoryAdapter implements CrucetaRepository {
                         item.getSequenceWithinSection(), item.getNotes()))
                 .toList();
         entity.setItems(itemEntities);
+        entity.setProgressions(c.getProgressions().stream()
+                .map(CrucetaProgressionEntity::from)
+                .toList());
         return entity;
     }
 
@@ -106,6 +139,10 @@ public class CrucetaRepositoryAdapter implements CrucetaRepository {
                 .map(i -> CrucetaItem.reconstruct(i.getId(), i.getVersion(), i.getMarchaId(),
                         i.getRouteSectionId(), i.getSequenceWithinSection(), i.getNotes()))
                 .toList();
-        return Cruceta.reconstruct(e.getId(), e.getVersion(), e.getPasoId(), items, e.getCreatedAt(), e.getUpdatedAt());
+        var progressions = e.getProgressions().stream()
+                .map(CrucetaProgressionEntity::toDomain)
+                .toList();
+        return Cruceta.reconstruct(e.getId(), e.getVersion(), e.getPasoId(), items, progressions,
+                e.getCreatedAt(), e.getUpdatedAt());
     }
 }

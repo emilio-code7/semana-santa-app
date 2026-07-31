@@ -1,7 +1,9 @@
 package com.repertorio.marcha.adapter.inbound.rest.controller;
 
+import com.repertorio.marcha.adapter.inbound.rest.dto.AdvanceCurrentRequest;
 import com.repertorio.marcha.adapter.inbound.rest.dto.CrucetaRequest;
 import com.repertorio.marcha.adapter.inbound.rest.dto.CrucetaResponse;
+import com.repertorio.marcha.adapter.inbound.rest.dto.RunSheetResponse;
 import com.repertorio.marcha.application.service.CrucetaService;
 import com.repertorio.marcha.domain.model.CrucetaItem;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,5 +56,42 @@ public class CrucetaController {
                 .toList();
         var cruceta = crucetaService.defineCruceta(pasoId, items);
         return ResponseEntity.ok(CrucetaResponse.from(cruceta));
+    }
+
+    @GetMapping("/run-sheet")
+    @Operation(summary = "Get run sheet for a paso with current/next indicators")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Run sheet returned"),
+            @ApiResponse(responseCode = "403", description = "Cross-tenant access denied"),
+            @ApiResponse(responseCode = "404", description = "Cruceta not found")
+    })
+    @PreAuthorize("@repertorioSecurity.isAdmin(#hermandadId)")
+    public ResponseEntity<RunSheetResponse> getRunSheet(
+            @PathVariable UUID hermandadId,
+            @PathVariable UUID procesionId,
+            @PathVariable UUID pasoId) {
+        log.info("Getting run sheet for paso {} in procesion {} (hermandad {})", pasoId, procesionId, hermandadId);
+        var runSheet = crucetaService.getRunSheet(procesionId, pasoId);
+        return ResponseEntity.ok(runSheet);
+    }
+
+    @PutMapping("/current")
+    @Operation(summary = "Advance current progression item for a paso (idempotent)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Current item advanced"),
+            @ApiResponse(responseCode = "400", description = "Invalid request"),
+            @ApiResponse(responseCode = "403", description = "Cross-tenant access denied"),
+            @ApiResponse(responseCode = "404", description = "Cruceta not found")
+    })
+    @PreAuthorize("@repertorioSecurity.isAdmin(#hermandadId)")
+    public ResponseEntity<RunSheetResponse> advanceCurrent(
+            @PathVariable UUID hermandadId,
+            @PathVariable UUID procesionId,
+            @PathVariable UUID pasoId,
+            @Valid @RequestBody AdvanceCurrentRequest request) {
+        log.info("Advancing current for paso {} in procesion {} (hermandad {})", pasoId, procesionId, hermandadId);
+        var runSheet = crucetaService.advanceCurrent(procesionId, pasoId,
+                request.routeSectionId(), request.crucetaItemId());
+        return ResponseEntity.ok(runSheet);
     }
 }
