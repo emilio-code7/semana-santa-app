@@ -9,7 +9,10 @@ import com.repertorio.marcha.application.service.CrucetaService;
 import com.repertorio.marcha.domain.model.Cruceta;
 import com.repertorio.marcha.domain.model.CrucetaItem;
 import com.repertorio.marcha.domain.model.CrucetaNotFoundException;
+import com.repertorio.marcha.domain.model.VersionMismatchException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -154,6 +157,55 @@ class CrucetaControllerTest {
                                 {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
                                 """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void defineCrucetaReturns409OnVersionMismatch() throws Exception {
+        when(crucetaService.defineCruceta(eq(pasoId), any()))
+                .thenThrow(new VersionMismatchException("Cruceta", pasoId, 1, 2));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(hermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void defineCrucetaReturns409OnDataIntegrityViolation() throws Exception {
+        when(crucetaService.defineCruceta(eq(pasoId), any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "null value in column \"cruceta_id\" violates not-null constraint"));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(hermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void defineCrucetaReturns409OnOptimisticLockingFailure() throws Exception {
+        when(crucetaService.defineCruceta(eq(pasoId), any()))
+                .thenThrow(new ObjectOptimisticLockingFailureException("stale", new Object()));
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(hermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
     }
 
     @Test
