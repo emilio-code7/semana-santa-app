@@ -121,7 +121,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         ProcesionStatus.PLANNED, null, null, null));
 
         mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(procesion.getId().toString()))
                 .andExpect(jsonPath("$.hermandadId").value(hermandadId.toString()))
@@ -129,10 +129,22 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
     }
 
     @Test
-    void getProcesionReturns404() throws Exception {
+    void getUnknownProcesionReturns403() throws Exception {
         mockMvc.perform(get("/api/procesiones/{id}", UUID.randomUUID())
-                        .with(jwt()))
-                .andExpect(status().isNotFound());
+                        .with(memberJwt(hermandadId.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getProcesionReturns403ForCrossTenant() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var otherHermandad = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -165,7 +177,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .content("""
                                 { "newStatus": "IN_PROGRESS" }
                                 """)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
     }
@@ -181,8 +193,24 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .content("""
                                 { "newStatus": "COMPLETED" }
                                 """)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void changeStatusReturns403ForCrossTenant() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var otherHermandad = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "newStatus": "IN_PROGRESS" }
+                                """)
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -192,12 +220,24 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         ProcesionStatus.PLANNED, null, null, null));
 
         mockMvc.perform(delete("/api/procesiones/{id}", procesion.getId())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
-                        .with(jwt()))
-                .andExpect(status().isNotFound());
+                        .with(memberJwt(hermandadId.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteProcesionReturns403ForCrossTenant() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var otherHermandad = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/procesiones/{id}", procesion.getId())
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

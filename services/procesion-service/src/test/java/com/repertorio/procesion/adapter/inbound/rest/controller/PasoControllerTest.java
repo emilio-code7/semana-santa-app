@@ -6,6 +6,7 @@ import com.repertorio.procesion.adapter.config.SecurityConfig;
 import com.repertorio.procesion.application.service.PasoService;
 import com.repertorio.procesion.domain.model.Paso;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
+import com.repertorio.procesion.domain.repository.ProcesionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -36,6 +37,9 @@ class PasoControllerTest {
 
     @MockitoBean
     private PasoService pasoService;
+
+    @MockitoBean
+    private ProcesionRepository procesionRepository;
 
     private final UUID hermandadId = UUID.randomUUID();
     private final UUID procesionId = UUID.randomUUID();

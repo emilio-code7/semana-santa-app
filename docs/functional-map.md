@@ -509,17 +509,20 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | Method | Path | Auth | Endpoint | File |
 |--------|------|------|----------|------|
 | `POST` | `/api/procesiones` | admin | `createProcesion()` | `ProcesionController.java:37` |
-| `GET` | `/api/procesiones/{id}` | authenticated | `getProcesion()` | `ProcesionController.java:49` |
+| `GET` | `/api/procesiones/{id}` | member (persisted owner) | `getProcesion()` | `ProcesionController.java:49` |
 | `GET` | `/api/procesiones?hermandadId={id}` | member | `listByHermandad()` | `ProcesionController.java:60` |
-| `PATCH` | `/api/procesiones/{id}/status` | authenticated | `changeStatus()` | `ProcesionController.java:77` |
-| `DELETE` | `/api/procesiones/{id}` | authenticated | `deleteProcesion()` | `ProcesionController.java:93` |
+| `PATCH` | `/api/procesiones/{id}/status` | admin/capataz (persisted owner) | `changeStatus()` | `ProcesionController.java:77` |
+| `DELETE` | `/api/procesiones/{id}` | admin/capataz (persisted owner) | `deleteProcesion()` | `ProcesionController.java:93` |
 | `GET` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | member | `getPasos()` | `PasoController.java:27` |
 | `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | admin | `replacePasos()` | `PasoController.java:43` |
 | `GET` | `/api/hermandades/{hid}/procesiones/{pid}/route` | member | `getRouteSections()` | `ProcesionPlanController.java:29` |
 | `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/route` | admin | `replaceRouteSections()` | `ProcesionPlanController.java:45` |
 | `POST` | `/api/hermandades/{hid}/procesiones/{pid}/plan/finalize` | admin | `finalizePlan()` | `ProcesionPlanController.java:68` |
 
-**Note**: Procesion service has no `@PreAuthorize` — only `anyRequest().authenticated()`. `@EnableMethodSecurity` is declared but unused. Tenant isolation on these endpoints is tracked as an open issue.
+**`@PreAuthorize` guards** (all active via `@EnableMethodSecurity`):
+- Id-scoped endpoints (`GET/{id}`, `PATCH/{id}/status`, `DELETE/{id}`): `@procesionSecurity.canRead(#id)` / `canWrite(#id)` — resolve the **persisted** owning hermandad via DB lookup, then check membership (read) or `CAPATAZ`/`HERMANDAD_ADMIN` (write). Deny-by-default (403) for unknown ids.
+- Hermandad-scoped endpoints (create, list, pasos, route, finalize): JWT-claim guard (`isMember`/`isAdmin`) on the path/param hermandad, plus a service-level ownership check (`Procesion` must belong to the hermandad).
+- `isAdmin` accepts `HERMANDAD_ADMIN` **or** `CAPATAZ` for writes.
 
 ### 4.3 Repertorio Service (`/api/marchas`, `/api/.../cruceta`)
 
@@ -870,10 +873,10 @@ Request with Bearer JWT
 | `ProcesionServiceTest.java` | Unit (mock service) | 8 | CRUD, status transitions, exceptions |
 | `PasoControllerTest.java` | Web slice (MockMvc) | 12 | GET/PUT pasos, tenant guards (member read, admin write, cross-tenant 403) |
 | `ProcesionPlanControllerTest.java` | Web slice (MockMvc) | 11 | Route GET/PUT + plan finalize, tenant guards (member read, admin write, cross-tenant 403) |
-| `ProcesionControllerTest.java` | Web slice (MockMvc) | 21 | All endpoints, 401 scenarios, tenant guards (member/admin claims, cross-tenant 403), unknown path → 404 |
+| `ProcesionControllerTest.java` | Web slice (MockMvc) | 28 | All endpoints, 401 scenarios, tenant guards (member/admin claims, cross-tenant 403, persisted-owner canRead/canWrite, CAPATAZ write), unknown path → 404 |
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
-| `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 13 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, 401 |
+| `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 16 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, cross-tenant 403 on GET/{id}/PATCH status/DELETE, 401 |
 
 ### 8.4 Repertorio Tests
 

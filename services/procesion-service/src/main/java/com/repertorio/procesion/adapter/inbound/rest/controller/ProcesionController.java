@@ -44,9 +44,11 @@ public class ProcesionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@procesionSecurity.canRead(#id)")
     @Operation(summary = "Get a procesion by ID")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Procesion found"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — not a member of the owning hermandad"),
             @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
     public ResponseEntity<ProcesionResponse> getProcesion(@PathVariable UUID id) {
@@ -73,10 +75,12 @@ public class ProcesionController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("@procesionSecurity.canWrite(#id)")
     @Operation(summary = "Change procesion status")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Status changed"),
             @ApiResponse(responseCode = "400", description = "Invalid status transition"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — not an admin/capataz of the owning hermandad"),
             @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
     public ResponseEntity<ProcesionResponse> changeStatus(
@@ -107,9 +111,11 @@ public class ProcesionController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@procesionSecurity.canWrite(#id)")
     @Operation(summary = "Delete a procesion")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Procesion deleted"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — not an admin/capataz of the owning hermandad"),
             @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
     public ResponseEntity<Void> deleteProcesion(@PathVariable UUID id) {
