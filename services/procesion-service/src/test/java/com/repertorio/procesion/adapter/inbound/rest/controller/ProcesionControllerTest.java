@@ -221,4 +221,14 @@ class ProcesionControllerTest {
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId))
                 .andExpect(status().isUnauthorized());
     }
+
+    // --- UNKNOWN PATH ---
+
+    @Test
+    void getUnknownPathReturns404WithApiError() throws Exception {
+        mockMvc.perform(get("/api/not-a-real-endpoint")
+                        .with(jwt()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
 }

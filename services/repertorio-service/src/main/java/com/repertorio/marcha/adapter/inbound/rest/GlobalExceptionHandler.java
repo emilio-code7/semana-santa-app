@@ -13,6 +13,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -83,6 +84,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex) {
         var status = HttpStatus.FORBIDDEN;
+        var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResourceFound(NoResourceFoundException ex) {
+        var status = HttpStatus.NOT_FOUND;
         var body = new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage());
         return ResponseEntity.status(status).body(body);
     }

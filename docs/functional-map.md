@@ -821,8 +821,8 @@ Request with Bearer JWT
 | Module | Test Files | `@Test` Count | Integration Tests | Infrastructure |
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
 | **hermandad-service** | 27 | **131** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
-| **procesion-service** | 18 | **144** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 25 | **156** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
+| **procesion-service** | 18 | **145** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
+| **repertorio-service** | 25 | **157** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
 | **shared/common** | 5 | 10 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
@@ -851,7 +851,7 @@ Request with Bearer JWT
 |-----------|------|:-----:|----------------|
 | `ProcesionTest.java` | Domain unit | 11 | State machine (all transitions) |
 | `ProcesionServiceTest.java` | Unit (mock service) | 8 | CRUD, status transitions, exceptions |
-| `ProcesionControllerTest.java` | Web slice (MockMvc) | 13 | All endpoints, 401 scenarios |
+| `ProcesionControllerTest.java` | Web slice (MockMvc) | 17 | All endpoints, 401 scenarios, unknown path → 404 |
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
 | `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 12 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), 401 |
@@ -868,7 +868,7 @@ Request with Bearer JWT
 | `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
 | `CrucetaServiceTest.java` | Unit (mock service) | 8 | Get/define cruceta, item validation, run-sheet, advance |
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |
-| `CrucetaControllerTest.java` | Web slice (MockMvc) | 13 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403) |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 14 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403), unknown path → 404 |
 | `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
 | `ProcesionEventProcessorTest.java` | Unit (mock service) | 16 | Plan finalized → project KnownPaso/KnownRouteSection, wire-format `procesionId`, duplicate handling |
 | `MarchaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
