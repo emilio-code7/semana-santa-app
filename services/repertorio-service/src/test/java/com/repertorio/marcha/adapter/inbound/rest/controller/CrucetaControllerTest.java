@@ -72,9 +72,19 @@ class CrucetaControllerTest {
 
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
                         hermandadId, procesionId, pasoId)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
+    }
+
+    @Test
+    void getCrucetaReturns403WhenAdminOfDifferentHermandad() throws Exception {
+        var otherHermandadId = UUID.randomUUID();
+        when(crucetaService.getCruceta(pasoId)).thenReturn(buildCruceta());
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(otherHermandadId.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -84,7 +94,7 @@ class CrucetaControllerTest {
 
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
                         hermandadId, procesionId, pasoId)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isNotFound());
     }
 

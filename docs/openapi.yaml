@@ -709,6 +709,7 @@
         ],
         "responses": {
           "200": { "description": "Cruceta found", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/CrucetaResponse" } } } },
+          "403": { "description": "Forbidden — not admin of this hermandad" },
           "404": { "description": "Cruceta not found" }
         }
       },
