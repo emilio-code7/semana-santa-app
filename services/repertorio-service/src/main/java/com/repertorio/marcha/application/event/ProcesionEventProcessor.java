@@ -3,7 +3,9 @@ package com.repertorio.marcha.application.event;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.repertorio.marcha.application.port.ProcessedEventStore;
+import com.repertorio.marcha.domain.model.KnownPaso;
 import com.repertorio.marcha.domain.model.KnownProcesion;
+import com.repertorio.marcha.domain.model.KnownRouteSection;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +16,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -83,7 +87,8 @@ public class ProcesionEventProcessor {
     }
 
     private void handlePlanFinalized(JsonNode root) {
-        UUID procesionId = extractUuid(root, "id");
+        // plan-finalized records serialize the procesion id as "procesionId" (renamed in procesion-service)
+        UUID procesionId = extractUuid(root, "procesionId");
         UUID hermandadId = extractUuid(root, "hermandadId");
         LocalDate date = LocalDate.parse(extractText(root, "date"));
         LocalTime time = LocalTime.parse(extractText(root, "time"));
@@ -94,9 +99,49 @@ public class ProcesionEventProcessor {
 
         known.finalizePlan(date, time, planFinalizedAt);
 
-        // ponytail: pasos and route sections projected from cruceta data; empty for now
-        knownProcesionRepository.saveFullPlan(known, Collections.emptyList(), Collections.emptyList());
+        knownProcesionRepository.saveFullPlan(known, parsePasos(root, procesionId), parseRouteSections(root, procesionId));
         log.info("Projected finalized plan for procesion {} at {}", procesionId, planFinalizedAt);
+    }
+
+    private static List<KnownPaso> parsePasos(JsonNode root, UUID procesionId) {
+        JsonNode pasosNode = root.get("pasos");
+        if (pasosNode == null || !pasosNode.isArray()) {
+            return Collections.emptyList();
+        }
+        List<KnownPaso> pasos = new ArrayList<>();
+        for (JsonNode pasoNode : pasosNode) {
+            pasos.add(new KnownPaso(
+                    extractUuid(pasoNode, "id"),
+                    procesionId,
+                    extractInt(pasoNode, "position"),
+                    extractUuid(pasoNode, "titularId")));
+        }
+        return pasos;
+    }
+
+    private static List<KnownRouteSection> parseRouteSections(JsonNode root, UUID procesionId) {
+        JsonNode sectionsNode = root.get("routeSections");
+        if (sectionsNode == null || !sectionsNode.isArray()) {
+            return Collections.emptyList();
+        }
+        List<KnownRouteSection> sections = new ArrayList<>();
+        for (JsonNode sectionNode : sectionsNode) {
+            sections.add(new KnownRouteSection(
+                    extractUuid(sectionNode, "id"),
+                    procesionId,
+                    extractText(sectionNode, "name"),
+                    extractInt(sectionNode, "position"),
+                    sectionNode.has("notes") && sectionNode.get("notes").isTextual() ? sectionNode.get("notes").asText() : null));
+        }
+        return sections;
+    }
+
+    private static int extractInt(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || !value.canConvertToInt()) {
+            throw new IllegalArgumentException("Missing or non-numeric field: " + field);
+        }
+        return value.asInt();
     }
 
     private static UUID extractUuid(JsonNode root, String field) {
