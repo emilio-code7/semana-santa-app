@@ -822,7 +822,7 @@ Request with Bearer JWT
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
 | **hermandad-service** | 27 | **131** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
 | **procesion-service** | 18 | **156** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 27 | **163** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
+| **repertorio-service** | 28 | **167** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
 | **shared/common** | 5 | 10 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
@@ -870,7 +870,8 @@ Request with Bearer JWT
 | `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
 | `CrucetaServiceTest.java` | Unit (mock service) | 8 | Get/define cruceta, item validation, run-sheet, advance |
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |
-| `CrucetaControllerTest.java` | Web slice (MockMvc) | 14 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403), unknown path → 404 |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 17 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403), concurrent replace → 409 (version mismatch/data-integrity/optimistic-lock), unknown path → 404 |
+| `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format — version mismatch/data-integrity/optimistic-lock → 409 |
 | `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
 | `ProcesionEventProcessorTest.java` | Unit (mock service) | 16 | Plan finalized → project KnownPaso/KnownRouteSection, wire-format `procesionId`, duplicate handling |
 | `MarchaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
@@ -883,7 +884,7 @@ Request with Bearer JWT
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
 | `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
 | `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
-| `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 4 | Get cruceta, define cruceta per Paso, 404 on unknown paso |
+| `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 5 | Get cruceta, define cruceta per Paso, 404 on unknown paso, concurrent replace → never 500 (loser 409, state consistent) |
 | `ProcesionSqsConsumerTest.java` | Unit (mock) | 3 | AWS SQS consumer path |
 | `RepertorioAwsProfileContextTest.java` | Context | 3 | AWS profile context loads |
 | `RepertorioAwsYamlConfigTest.java` | Config | 4 | AWS YAML config binds |
