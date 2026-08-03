@@ -109,9 +109,9 @@ The canonical protocol — including who owns doc reconciliation (the orchestrat
 | **Route Section** | ✅ Named ordered route segment; names may repeat | Named ordered route segment; names may repeat |
 | **Procesion plan** | ✅ Pasos + Route finalized together; snapshot projected into Repertorio | Pasos + Route finalized together before Cruceta |
 | **Finalization** | ✅ Idempotent command; publishes `ProcesionPlanFinalizedEvent` | Idempotent command making plan immutable; publishes snapshot |
-| **Cruceta** | One per Procesion (`procesion_id` is UNIQUE) — per-Paso in open PR | One per Paso; Marchas assigned by Route Section |
-| **CrucetaItem** | marchaId, orderIndex, notes — routeSectionId in open PR | Adds routeSectionId, sequenceWithinSection |
-| **Run sheet** | ❌ Does not exist (open PR) | Per-Paso current/next progression |
+| **Cruceta** | ✅ One per Paso; Marchas assigned by Route Section | One per Paso; Marchas assigned by Route Section |
+| **CrucetaItem** | ✅ marchaId, routeSectionId, sequenceWithinSection, notes | marchaId, routeSectionId, sequenceWithinSection, notes |
+| **Run sheet** | ✅ Per-Paso current/next progression (`/cruceta/run-sheet`, `/cruceta/current`) | Per-Paso current/next progression |
 | **KnownProcesion** | ✅ Plan snapshot (date, time, status, planFinalizedAt) + KnownPaso + KnownRouteSection | Full plan snapshot (Pasos, Route Sections, Titular refs) |
 | **Tenant isolation** | Partial (Hermandad ✅, Procesion ❌, Cruceta partial) | All contexts enforced |
 
@@ -146,7 +146,7 @@ repertorio/
 ├── services/
 │   ├── hermandad-service/    ✅ Active       # Brotherhoods + members, port 8081 (59 Java files, 50 tests)
 │   ├── procesion-service/    ✅ Active       # Processions + state machine, port 8082 (22 Java files, 47 tests)
-│   ├── repertorio-service/   ✅ Active       # Marcha catalog + Cruceta, port 8083 (51 Java files, 82 tests)
+│   ├── repertorio-service/   ✅ Active       # Marcha catalog + per-Paso Cruceta, port 8083 (51 Java files, 156 tests)
 │   ├── tracking-service/     ⚠️ Stub         # GPS tracking — build.gradle.kts only, no src/
 │   └── notification-service/ ⚠️ Stub         # Push notifications — build.gradle.kts only, no src/
 │
@@ -272,15 +272,15 @@ domain/
 | **DB** | PostgreSQL `repertorio_db` (port 5433) |
 | **Flyway** | 8 migrations (V1–V8) |
 | **Java files** | 51 main + 12 test = 63 total |
-| **Tests** | 75 (28 domain + 14 service + 11 controller slice + 5 consumer unit + 17 integration) |
+| **Tests** | 156 (36 domain unit + 26 service/consumer unit + 34 controller slice + 4 entity + 18 persistence + 17 integration + 10 config/context + 11 messaging unit) |
 | **Security** | `anyRequest().authenticated()` + custom JWT converter + `RepertorioSecurityService` |
 | **Caching** | None |
 | **Messaging** | Kafka producer (outbox to `marcha-events`) + consumer (`procesion-events`, idempotent) |
-| **Events** | Produces: `MarchaAddedEvent`, `MarchaRemovedEvent`, `CrucetaDefinedEvent`. Consumes: `ProcesionCreatedEvent`, `ProcesionStatusChangedEvent` |
-| **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache. Validates cruceta definition against known procesions. |
+| **Events** | Produces: `MarchaAddedEvent`, `MarchaRemovedEvent`, `CrucetaDefinedEvent`. Consumes: `ProcesionCreatedEvent`, `ProcesionStatusChangedEvent`, `ProcesionPlanFinalizedEvent` |
+| **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache (procesion, pasos, route sections projected from the finalized plan). Validates cruceta definition against known pasos/route sections. |
 | **SB4** | Migrated (`tools.jackson`) |
 
-**Current product boundary and risks (AS-IS):** A Cruceta is currently one per Procesion (`procesion_id` is UNIQUE), with items having only marchaId/orderIndex/notes — no Route Section or per-Paso model (per-Paso Cruceta is in an open PR). KnownProcesion projects the finalized plan snapshot (date/time/status/planFinalizedAt) plus KnownPaso and KnownRouteSection. The TARGET model moves to one Cruceta per Paso with Route Section assignments. See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
+**Current product boundary and risks (AS-IS):** One Cruceta per Paso, with items carrying marchaId/routeSectionId/sequenceWithinSection/notes, plus per-Paso run-sheet progression. KnownProcesion projects the finalized plan snapshot (date/time/status/planFinalizedAt) plus KnownPaso and KnownRouteSection. KnownPaso/KnownRouteSection projection is populated from the finalized plan; the plan-finalized consumer path was fixed (procesionId wire format) to make this work. Tenant isolation on Procesion-scoped endpoints is still missing (see risks below). See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
 
 **Key directories:**
 ```
@@ -292,18 +292,20 @@ adapter/
     kafka/         ProcesionEventConsumer
     rest/
       controller/  MarchaController, CrucetaController
-      dto/         MarchaRequest, MarchaResponse, CrucetaRequest, CrucetaItemRequest, CrucetaResponse, ApiError
+      dto/         MarchaRequest, MarchaResponse, CrucetaRequest, CrucetaItemRequest, CrucetaResponse, RunSheetResponse, AdvanceCurrentRequest, ApiError
       GlobalExceptionHandler.java
   outbound/
     events/        DomainEventPublisherAdapter, ProcessedEventEntity, ProcessedEventJpaRepository
+    messaging/     KafkaMessageSender, SqsMessageSender
     outbox/        OutboxEventEntity, OutboxEventJpaRepository, OutboxEventPublisher, OutboxPoller
-    persistence/   MarchaEntity, MarchaJpaRepository, MarchaRepositoryAdapter, CrucetaEntity, CrucetaItemEntity, CrucetaJpaRepository, CrucetaRepositoryAdapter, KnownProcesionEntity, KnownProcesionJpaRepository, KnownProcesionRepositoryAdapter
+    persistence/   MarchaEntity, MarchaJpaRepository, MarchaRepositoryAdapter, CrucetaEntity, CrucetaItemEntity, CrucetaJpaRepository, CrucetaRepositoryAdapter, CrucetaProgressionEntity, CrucetaProgressionJpaRepository, KnownProcesionEntity, KnownProcesionJpaRepository, KnownProcesionRepositoryAdapter, KnownPasoEntity, KnownPasoJpaRepository, KnownRouteSectionEntity, KnownRouteSectionJpaRepository
 application/
   port/            DomainEventPublisher, OutboxPublisher
   service/         MarchaService, CrucetaService
+  event/           ProcesionEventProcessor
 domain/
   event/           DomainEvent, MarchaAddedEvent, MarchaRemovedEvent, CrucetaDefinedEvent
-  model/           BandType, Marcha, MarchaNotFoundException, Cruceta, CrucetaItem, CrucetaNotFoundException, KnownProcesion, ProcesionNotFoundException
+  model/           BandType, Marcha, MarchaNotFoundException, Cruceta, CrucetaItem, CrucetaProgression, CrucetaNotFoundException, KnownProcesion, KnownPaso, KnownRouteSection, ProcesionNotFoundException, PasoNotFoundException
   port/            MarchaRepository, CrucetaRepository, KnownProcesionRepository
 ```
 
@@ -336,7 +338,8 @@ Client ──HTTP──► api-gateway:8080
                   ├── /api/hermandades/** ──lb://──► hermandad-service:8081
                   ├── /api/procesiones/** ──lb://──► procesion-service:8082
                   ├── /api/marchas/**     ──lb://──► repertorio-service:8083
-                  ├── /api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta/** ──lb://──► repertorio-service:8083
+                  ├── /api/hermandades/** ──lb://──► hermandad-service:8081 ⚠️ (catch-all; swallows Month-1 pasos/route/plan/cruceta paths — see #57)
+                  ├── /api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta/** ──lb://──► repertorio-service:8083 ⚠️ (stale pre-per-Paso shape — see #57)
                   ├── /api/tracking/**    ──lb://──► ⚠️ 503 (stub)
                   ├── /api/notifications/**─lb://──► ⚠️ 503 (stub)
                   │
@@ -511,10 +514,12 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `DELETE` | `/api/marchas/{id}` | authenticated | `deleteMarcha()` | `MarchaController.java:62` |
 | `PUT` | `/api/marchas/{id}` | authenticated | `updateMarcha()` | `MarchaController.java:75` |
 | `GET` | `/api/marchas/search?q={query}` | authenticated | `searchMarchas()` | `MarchaController.java:72` |
-| `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta` | authenticated | `getCruceta()` | `CrucetaController.java:28` |
-| `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta` | authenticated | `defineCruceta()` | `CrucetaController.java:38` |
+| `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta` | authenticated | `getCruceta()` | `CrucetaController.java:29` |
+| `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta` | admin | `defineCruceta()` | `CrucetaController.java:41` |
+| `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta/run-sheet` | admin | `getRunSheet()` | `CrucetaController.java:61` |
+| `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta/current` | admin | `advanceCurrent()` | `CrucetaController.java:78` |
 
-**Note**: Marcha CRUD uses `anyRequest().authenticated()`. Cruceta management uses `@PreAuthorize` on `defineCruceta()`.
+**Note**: Marcha CRUD uses `anyRequest().authenticated()`. Cruceta is one per Paso; run-sheet/current are progression-aware and admin-only (`@PreAuthorize`).
 
 ### 4.4 Public Routes (Gateway-level)
 
@@ -638,25 +643,38 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `updated_at` | TIMESTAMPTZ | NOT NULL |
 | | | INDEX idx_marcha_band_type, idx_marcha_composer |
 
-#### `cruceta` table (AS-IS: one per Procesion; TARGET: one per Paso)
+#### `cruceta` table (AS-IS: one per Paso)
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | UUID | PK |
-| `procesion_id` | UUID | NOT NULL, UNIQUE |
+| `paso_id` | UUID | NOT NULL, UNIQUE |
+| `version` | INTEGER | DEFAULT 0, NOT NULL |
 | `created_at` | TIMESTAMPTZ | NOT NULL |
 | `updated_at` | TIMESTAMPTZ | NOT NULL |
 
-#### `cruceta_item` table (AS-IS: no Route Section binding; TARGET: adds route_section_id, sequence_within_section)
+#### `cruceta_item` table (AS-IS: route_section_id + sequence_within_section)
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `cruceta_id` | UUID | FK → cruceta(id) CASCADE, NOT NULL |
 | `marcha_id` | UUID | NOT NULL |
-| `order_index` | INTEGER | NOT NULL |
+| `route_section_id` | UUID | NOT NULL |
+| `sequence_within_section` | INTEGER | NOT NULL |
 | `notes` | TEXT | nullable |
-| | | UNIQUE(cruceta_id, order_index), INDEX idx_cruceta_item_cruceta_id, INDEX idx_cruceta_item_marcha_id |
+| | | INDEX idx_cruceta_item_cruceta_id, INDEX idx_cruceta_item_marcha_id, INDEX idx_cruceta_item_route_section_id |
+
+#### `cruceta_progression` table
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `cruceta_id` | UUID | FK → cruceta(id) CASCADE, NOT NULL |
+| `paso_id` | UUID | NOT NULL |
+| `current_route_section_id` | UUID | NOT NULL |
+| `current_cruceta_item_id` | UUID | nullable |
+| | | UNIQUE(cruceta_id, paso_id) |
 
 #### `outbox_event` table (same schema as procesion with TEXT payload)
 
@@ -678,7 +696,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox)
+**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox) → V9 (known_paso + route_section) → V10 (migrate cruceta to per-Paso) → V11 (cruceta_progression)
 
 ### 5.4 Domain Entity ↔ DB Mapping
 
@@ -802,14 +820,14 @@ Request with Bearer JWT
 
 | Module | Test Files | `@Test` Count | Integration Tests | Infrastructure |
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
-| **hermandad-service** | 12 | **56** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
-| **procesion-service** | 6 | **47** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 12 | **75** | 4 (Repository IT + Controller IT + KnownProcesion IT + Consumer unit) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
-| **shared/common** | 2 | 7 | 0 | — |
+| **hermandad-service** | 27 | **131** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
+| **procesion-service** | 18 | **144** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
+| **repertorio-service** | 25 | **156** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
+| **shared/common** | 5 | 10 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
 | **2 stub services** | 0 | 0 | 0 | ❌ |
-| **Total** | **32** | **185** | **8** | |
+| **Total** | **75** | **441** | **8** | |
 
 ### 8.2 Hermandad Tests
 
@@ -843,17 +861,30 @@ Request with Bearer JWT
 | Test File | Type | Tests | What it covers |
 |-----------|------|:-----:|----------------|
 | `MarchaTest.java` | Domain unit | 11 | Entity creation, validation, not-found, BandType string mapping |
-| `CrucetaTest.java` | Domain unit | 9 | Entity creation, item validation, duplicate order_index rejection, `redefine()`, `containsMarcha()` |
-| `KnownProcesionTest.java` | Domain unit | 8 | Creation, validation, reconstruct, status updates |
-| `MarchaServiceTest.java` | Unit (mock service) | 8 | CRUD, events, search, existence check |
-| `CrucetaServiceTest.java` | Unit (mock service) | 6 | Get/define cruceta, item validation, ProcesionNotFoundException on unknown procesion |
-| `MarchaControllerTest.java` | Web slice (MockMvc) | 6 | All endpoints, 401 scenarios, search |
+| `CrucetaTest.java` | Domain unit | 8 | Entity creation, item validation, `redefine()`, `containsMarcha()`, progression reset |
+| `KnownProcesionTest.java` | Domain unit | 11 | Creation, validation, reconstruct, status updates |
+| `KnownPasoTest.java` | Domain unit | 6 | Creation, validation, position invariants |
+| `KnownRouteSectionTest.java` | Domain unit | 6 | Creation, validation, position invariants |
+| `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
+| `CrucetaServiceTest.java` | Unit (mock service) | 8 | Get/define cruceta, item validation, run-sheet, advance |
+| `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |
 | `CrucetaControllerTest.java` | Web slice (MockMvc) | 12 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403) |
-| `ProcesionEventConsumerTest.java` | Unit (mock service) | 5 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
+| `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
+| `ProcesionEventProcessorTest.java` | Unit (mock service) | 16 | Plan finalized → project KnownPaso/KnownRouteSection, wire-format `procesionId`, duplicate handling |
+| `MarchaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
+| `CrucetaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
+| `CrucetaItemEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
+| `MarchaRepositoryLifecycleTest.java` | Persistence | 10 | Save/redefine lifecycle, version handling |
+| `CrucetaRepositoryLifecycleTest.java` | Persistence | 8 | Save/redefine lifecycle, progression persistence, version mismatch |
+| `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge |
+| `SqsMessageSenderTest.java` | Unit | 2 | MessageSender → SQS bridge (AWS profile) |
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
 | `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
 | `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
-| `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 4 | Get cruceta, define cruceta with known procesion, 404 on unknown procesion |
+| `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 4 | Get cruceta, define cruceta per Paso, 404 on unknown paso |
+| `ProcesionSqsConsumerTest.java` | Unit (mock) | 3 | AWS SQS consumer path |
+| `RepertorioAwsProfileContextTest.java` | Context | 3 | AWS profile context loads |
+| `RepertorioAwsYamlConfigTest.java` | Config | 4 | AWS YAML config binds |
 
 ### 8.5 Shared Tests
 

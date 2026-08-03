@@ -14,15 +14,15 @@ REST API for managing Semana Santa (Holy Week) brotherhoods, processions, and mu
 - Hermandad CRUD + member management with Keycloak admin sync. Hermandad owns Titulares (religious images).
 - Procesion CRUD with state machine (PLANNED → IN_PROGRESS → COMPLETED/CANCELLED), ordered Pasos (each referencing a Titular), shared Route Sections, and plan finalization (immutable snapshot event).
 - Marcha catalogue (global, shared).
-- One Cruceta per Procesion (not per Paso), with items having marchaId/orderIndex/notes. Per-Paso Crucetas and run-sheet progression are in open PRs.
-- Repertorio projects the finalized plan locally: `KnownProcesion` snapshot (date/time/status/planFinalizedAt) plus `KnownPaso` and `KnownRouteSection` entries.
-- Tenant isolation: Hermandad service has `@PreAuthorize`; Procesion endpoints lack persisted tenant isolation (open issue); Cruceta isolation is partial.
+- One Cruceta per Paso, with items carrying marchaId/routeSectionId/sequenceWithinSection/notes, and per-Paso run-sheet progression (current/next tracking via `/cruceta/run-sheet` and `/cruceta/current`).
+- Repertorio projects the finalized plan locally: `KnownProcesion` snapshot (date/time/status/planFinalizedAt) plus `KnownPaso` and `KnownRouteSection` entries (pasos + route sections projected from the finalized plan).
+- Tenant isolation: Hermandad service has `@PreAuthorize`; Procesion endpoints lack persisted tenant isolation (open issue); Cruceta isolation is admin-claim-based.
 
 **TARGET (active roadmap):**
 - A Procesion contains ordered Pasos, each referencing one Titular. (✅ implemented)
 - Pasos and an ordered shared Route (named Route Sections) are finalized together. (✅ implemented)
-- Repertorio owns Marcha and one Cruceta per Paso, with Marchas assigned by Route Section. (per-Paso Cruceta in PR)
-- Independent run-sheet progression per Paso. (in PR)
+- Repertorio owns Marcha and one Cruceta per Paso, with Marchas assigned by Route Section. (✅ implemented)
+- Independent run-sheet progression per Paso. (✅ implemented)
 - Full tenant isolation on all endpoints. (open issue)
 - See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/agents/domain.md`](docs/agents/domain.md) for details.
 

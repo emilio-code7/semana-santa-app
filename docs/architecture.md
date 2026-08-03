@@ -31,7 +31,7 @@ adapter/      — Infrastructure:
 |---|---|---|
 | `hermandad-service` | Hermandades (brotherhoods) and their members | hermandad-db |
 | `procesion-service` | Processions (MVP: CRUD + state machine) | procesion-db |
-| `repertorio-service` | Marcha catalogue and Cruceta (AS-IS: one per Procesion) | repertorio-db |
+| `repertorio-service` | Marcha catalogue and Cruceta (per Paso, with run-sheet progression) | repertorio-db |
 | `tracking-service` | Real-time GPS positions of processions | tracking-db |
 | `notification-service` | Push notifications / alerts | notification-db |
 | `api-gateway` | Spring Cloud Gateway | — |
@@ -47,7 +47,7 @@ No shared databases. Communication via Kafka events for async flows.
 |---------|------|-------|
 | Hermandad | Hermandad, HermandadMember | No Titular entity |
 | Procesion | Procesion (flat: id, hermandadId, date, time, status) | No Pasos, no Route Sections, no finalized plan |
-| Repertorio | Marcha, Cruceta (one per Procesion), KnownProcesion projection | CrucetaItem has marchaId/orderIndex/notes only |
+| Repertorio | Marcha, Cruceta (one per Paso), KnownProcesion/KnownPaso/KnownRouteSection projection, run-sheet progression | CrucetaItem has marchaId/routeSectionId/sequenceWithinSection |
 
 ### TARGET (active roadmap)
 
