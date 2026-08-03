@@ -1,0 +1,14 @@
+meta {
+  name: Get Run Sheet
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/pasos/{{paso_id}}/cruceta/run-sheet
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,14 @@
+meta {
+  name: Get Route
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/route
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

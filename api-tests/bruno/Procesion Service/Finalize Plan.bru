@@ -1,0 +1,15 @@
+meta {
+  name: Finalize Plan
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/plan/finalize
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

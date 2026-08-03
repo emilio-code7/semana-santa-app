@@ -162,7 +162,8 @@ repertorio/
     ├── functional-map.md                     # ← THIS FILE
     ├── openapi.yaml                          # Complete OpenAPI 3.0 spec
     ├── demo/
-    │   └── phase-1.sh                        # End-to-end cross-service workflow demo
+    │   ├── phase-1.sh                        # End-to-end cross-service workflow demo
+    │   └── cruceta-product-flow.sh           # Month-1 cruceta e2e demo (real tokens, full flow)
     └── plans/                                # Sprint plans
 ```
 

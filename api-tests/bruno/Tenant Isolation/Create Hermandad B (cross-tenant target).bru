@@ -1,0 +1,30 @@
+meta {
+  name: Create Hermandad B (cross-tenant target)
+  type: http
+  seq: 37
+}
+
+post {
+  url: {{base_url}}/api/hermandades
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Hermandad B {{$randUid}}",
+    "city": "Sevilla",
+    "foundedYear": 1900,
+    "description": "Cross-tenant isolation target"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("hermandad_id_b", data.id);
+}

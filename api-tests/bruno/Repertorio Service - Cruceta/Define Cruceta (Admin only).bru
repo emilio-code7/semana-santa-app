@@ -1,13 +1,19 @@
 meta {
   name: Define Cruceta (Admin only)
   type: http
-  seq: 26
+  seq: 27
 }
 
 put {
-  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/cruceta
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/pasos/{{paso_id}}/cruceta
   body: json
   auth: none
+}
+
+script:pre-request {
+  // Pacing: plan-finalized event must project KnownPaso to repertorio (outbox →
+  // Kafka → consumer) before the paso is known to the cruceta service.
+  await new Promise(resolve => setTimeout(resolve, 12000));
 }
 
 headers {
@@ -20,8 +26,15 @@ body:json {
     "items": [
       {
         "marchaId": "{{marcha_id}}",
-        "orderIndex": 1,
-        "notes": "Opening marcha"
+        "routeSectionId": "{{route_section_id}}",
+        "sequenceWithinSection": 0,
+        "notes": "Salida"
+      },
+      {
+        "marchaId": "{{marcha_id}}",
+        "routeSectionId": "{{route_section_id_2}}",
+        "sequenceWithinSection": 0,
+        "notes": "Recogida"
       }
     ]
   }

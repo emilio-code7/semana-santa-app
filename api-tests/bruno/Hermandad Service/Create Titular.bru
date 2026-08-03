@@ -1,11 +1,11 @@
 meta {
-  name: Create Procesion
+  name: Create Titular
   type: http
-  seq: 18
+  seq: 10
 }
 
 post {
-  url: {{base_url}}/api/procesiones
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/titulares
   body: json
   auth: none
 }
@@ -17,13 +17,12 @@ headers {
 
 body:json {
   {
-    "hermandadId": "{{hermandad_id}}",
-    "date": "2026-04-01",
-    "time": "18:00:00"
+    "name": "Jesús Nazareno",
+    "description": "Paso de misterio"
   }
 }
 
 script:post-response {
   const data = res.getBody();
-  bru.setVar("procesion_id", data.id);
+  bru.setVar("titular_id", data.id);
 }

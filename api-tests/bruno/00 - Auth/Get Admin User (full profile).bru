@@ -1,0 +1,31 @@
+meta {
+  name: Get Admin User (full profile)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{keycloak_url}}/admin/realms/{{realm}}/users/{{admin_kc_id}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{kc_token}}
+  Content-Type: application/json
+}
+
+script:post-response {
+  // Keycloak 24 replace semantics: a partial PUT (attributes only) wipes
+  // email/firstName/lastName and breaks every login in the realm. We take the
+  // FULL UserRepresentation from this response, replace only the membership
+  // attribute, and store the whole object for the Update request to PUT back.
+  const user = res.getBody();
+  if (!user || !user.id) {
+    throw new Error("Full admin profile not found - run 'Get Admin User ID' first");
+  }
+  user.attributes = user.attributes || {};
+  user.attributes.hermandad_memberships = [
+    '[{"hermandadId":"' + bru.getVar("hermandad_id") + '","role":"HERMANDAD_ADMIN"}]'
+  ];
+  bru.setVar("admin_user_body", JSON.stringify(user));
+}

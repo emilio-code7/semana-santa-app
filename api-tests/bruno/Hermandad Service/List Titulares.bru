@@ -1,0 +1,14 @@
+meta {
+  name: List Titulares
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/titulares
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

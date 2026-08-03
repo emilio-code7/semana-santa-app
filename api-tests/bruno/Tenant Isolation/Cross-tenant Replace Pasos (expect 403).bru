@@ -1,0 +1,37 @@
+meta {
+  name: Cross-tenant Replace Pasos (expect 403)
+  type: http
+  seq: 38
+}
+
+put {
+  url: {{base_url}}/api/hermandades/{{hermandad_id_b}}/procesiones/{{procesion_id}}/pasos
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "pasos": [
+      {
+        "position": 0,
+        "titularId": "{{titular_id}}",
+        "notes": "Cross-tenant write attempt"
+      }
+    ]
+  }
+}
+
+script:post-response {
+  // docs: tenant isolation - admin token has no claim on hermandad_id_b,
+  // so this cross-tenant write must be rejected with 403.
+  const status = res.getStatus();
+  test("cross-tenant write denied with 403", () => {
+    expect(status).to.equal(403);
+  });
+}

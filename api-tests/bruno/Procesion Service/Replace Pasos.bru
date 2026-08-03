@@ -1,0 +1,48 @@
+meta {
+  name: Replace Pasos
+  type: http
+  seq: 22
+}
+
+put {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/pasos
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  // Pacing: titular + procesion events must propagate (outbox → Kafka →
+  // consumer) before pasos can reference the titular. Mirrors the 12s wait in
+  // test-api.sh.
+  await new Promise(resolve => setTimeout(resolve, 12000));
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "pasos": [
+      {
+        "position": 0,
+        "titularId": "{{titular_id}}",
+        "notes": "Primer paso"
+      },
+      {
+        "position": 1,
+        "titularId": "{{titular_id}}",
+        "notes": "Segundo paso"
+      }
+    ]
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.pasos && data.pasos.length >= 2) {
+    bru.setVar("paso_id", data.pasos[0].id);
+    bru.setVar("paso_id_2", data.pasos[1].id);
+  }
+}

@@ -57,6 +57,7 @@ jobs:
       - name: Shell syntax check demo scripts
         run: |
           bash -n docs/demo/phase-1.sh
+          bash -n docs/demo/cruceta-product-flow.sh
           echo "✅ Demo script syntax OK"
 
   test:

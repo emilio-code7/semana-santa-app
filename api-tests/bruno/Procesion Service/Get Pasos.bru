@@ -1,0 +1,14 @@
+meta {
+  name: Get Pasos
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/pasos
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

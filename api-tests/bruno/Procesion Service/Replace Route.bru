@@ -1,0 +1,39 @@
+meta {
+  name: Replace Route
+  type: http
+  seq: 24
+}
+
+put {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/route
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "sections": [
+      {
+        "name": "Salida",
+        "position": 0
+      },
+      {
+        "name": "Calle Feria",
+        "position": 1
+      }
+    ]
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.sections && data.sections.length >= 2) {
+    bru.setVar("route_section_id", data.sections[0].id);
+    bru.setVar("route_section_id_2", data.sections[1].id);
+  }
+}
