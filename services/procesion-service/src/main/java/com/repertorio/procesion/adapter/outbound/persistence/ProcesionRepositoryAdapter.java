@@ -19,6 +19,11 @@ public class ProcesionRepositoryAdapter implements ProcesionRepository {
     @Override
     public Procesion save(Procesion procesion) {
         var entity = ProcesionEntity.from(procesion);
+        if (!entity.isNew()) {
+            // carry the persisted version so the merge optimistic-lock check passes
+            jpaRepository.findById(entity.getId())
+                    .ifPresent(existing -> entity.setVersion(existing.getVersion()));
+        }
         var saved = jpaRepository.save(entity);
         return saved.toDomain();
     }
