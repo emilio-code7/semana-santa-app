@@ -2,9 +2,13 @@ package com.repertorio.procesion.adapter.inbound.rest.controller;
 
 import com.repertorio.common.JdbcIntegrationTestBase;
 import com.repertorio.common.outbox.OutboxEventJpaRepository;
+import com.repertorio.procesion.adapter.outbound.persistence.KnownTitularEntity;
+import com.repertorio.procesion.adapter.outbound.persistence.KnownTitularJpaRepository;
+import com.repertorio.procesion.adapter.outbound.persistence.PasoJpaRepository;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionJpaRepository;
 import com.repertorio.procesion.adapter.outbound.persistence.RouteSectionJpaRepository;
+import com.repertorio.procesion.domain.model.KnownTitular;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +54,12 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
 
     @Autowired
     private RouteSectionJpaRepository routeSectionRepo;
+
+    @Autowired
+    private PasoJpaRepository pasoRepo;
+
+    @Autowired
+    private KnownTitularJpaRepository knownTitularRepo;
 
     @MockitoBean
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -245,5 +255,79 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections[0].name").value("Second"));
+    }
+
+    @Test
+    void replacePasosReturns200AndPersists() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var titularId = UUID.randomUUID();
+        knownTitularRepo.save(KnownTitularEntity.from(
+                new KnownTitular(titularId, hermandadId, "Jesus del Gran Poder")));
+
+        var stableId = UUID.randomUUID();
+        mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
+                        hermandadId, procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "pasos": [
+                                        { "id": "%s", "position": 0, "titularId": "%s", "notes": "first" },
+                                        { "position": 1, "titularId": "%s" }
+                                    ]
+                                }
+                                """.formatted(stableId, titularId, titularId))
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasos.length()").value(2));
+
+        assertThat(pasoRepo.findByProcesionIdOrderByPositionAsc(procesion.getId())).hasSize(2);
+
+        mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
+                        hermandadId, procesion.getId())
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasos[0].position").value(0))
+                .andExpect(jsonPath("$.pasos[1].position").value(1));
+    }
+
+    @Test
+    void replacePasosReDefineUpdatesInPlace() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var titularId = UUID.randomUUID();
+        knownTitularRepo.save(KnownTitularEntity.from(
+                new KnownTitular(titularId, hermandadId, "Jesus del Gran Poder")));
+
+        var stableId = UUID.randomUUID();
+        mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
+                        hermandadId, procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "pasos": [ { "id": "%s", "position": 0, "titularId": "%s", "notes": "First" } ]
+                                }
+                                """.formatted(stableId, titularId))
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
+                        hermandadId, procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "pasos": [ { "id": "%s", "position": 0, "titularId": "%s", "notes": "Second" } ]
+                                }
+                                """.formatted(stableId, titularId))
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
+                        hermandadId, procesion.getId())
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasos[0].notes").value("Second"));
     }
 }
