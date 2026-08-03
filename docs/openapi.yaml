@@ -385,7 +385,7 @@
         "responses": {
           "200": { "description": "Procesion found", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProcesionResponse" } } } },
           "401": { "description": "Unauthorized — missing or invalid JWT" },
-          "403": { "description": "Forbidden — not a member of the hermandad that owns this procesion", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+          "403": { "description": "Forbidden — not a member of the hermandad that owns this procesion (403 also for unknown ids, deny-by-default)", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
           "404": { "description": "Procesion not found" }
         }
       },
@@ -399,7 +399,7 @@
         "responses": {
           "204": { "description": "Procesion deleted" },
           "401": { "description": "Unauthorized — missing or invalid JWT" },
-          "403": { "description": "Forbidden — not a member of the hermandad that owns this procesion", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+          "403": { "description": "Forbidden — CAPATAZ or HERMANDAD_ADMIN of the owning hermandad required (403 also for unknown ids, deny-by-default)", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
           "404": { "description": "Procesion not found" }
         }
       }
@@ -440,7 +440,7 @@
           "200": { "description": "Status changed", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProcesionResponse" } } } },
           "400": { "description": "Invalid status transition" },
           "401": { "description": "Unauthorized — missing or invalid JWT" },
-          "403": { "description": "Forbidden — not a member of the hermandad that owns this procesion", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+          "403": { "description": "Forbidden — CAPATAZ or HERMANDAD_ADMIN of the owning hermandad required (403 also for unknown ids, deny-by-default)", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
           "404": { "description": "Procesion not found" }
         }
       }

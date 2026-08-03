@@ -23,17 +23,17 @@ Tenant-isolation invariants per service, verified live on the dev stack (issue #
 | Service | Status | Details |
 |---------|--------|---------|
 | Hermandad | ✅ Enforced | `@PreAuthorize` active on member-management endpoints; public `GET /api/hermandades` and `GET /api/hermandades/{id}`. |
-| Procesion | ⚠️ Partial | `@EnableMethodSecurity` is declared but **inactive**. A service-level ownership check returns 403 for **cross-tenant** requests (path hermandad != procesion's hermandad, e.g. admin token + hermandad-B path), but a no-membership user on its **own** path does NOT get 403 (200 for GET, 409 for PUT after finalize). |
+| Procesion | ✅ Enforced | `@PreAuthorize` active on all endpoints. Id-scoped endpoints (`GET/{id}`, `PATCH/{id}/status`, `DELETE/{id}`) resolve the **persisted** owning hermandad via DB lookup (`canRead`/`canWrite`), deny-by-default (403) for unknown ids. Hermandad-scoped endpoints use claim guards + service-level ownership verification. Writes require `CAPATAZ` or `HERMANDAD_ADMIN`. |
 | Repertorio | ✅ Enforced (cruceta) | Cruceta endpoints (`GET`/`PUT` cruceta, run-sheet, current) are claim-guarded via `@PreAuthorize(repertorioSecurity.isAdmin)` and active — no-membership user → 403. |
 | Repertorio marchas | Authenticated only | `GET/POST/PUT/DELETE /api/marchas*` are a global catalog, not hermandad-scoped; only `authenticated()` applies. |
 
-## 4. TARGET (Ticket 09)
+## 4. TARGET (Ticket 09) — ✅ DONE
 
 Every procesion endpoint enforces **persisted** tenant ownership:
 
 - Reads = membership in the owning hermandad.
 - `POST` / `PATCH` / `DELETE` additionally require `CAPATAZ` or `HERMANDAD_ADMIN`.
-- Ownership comes from a DB lookup for the procesion's `hermandadId`; the JWT fast path alone is not sufficient.
+- Ownership comes from a DB lookup for the procesion's `hermandadId`; the JWT fast path alone is not sufficient (implemented on the id-scoped endpoints; hermandad-scoped endpoints additionally verify ownership in the service layer).
 
 See Ticket 09 in `docs/plans/2026-07-28-cruceta-first-high-throughput-roadmap.md`.
 
@@ -49,23 +49,22 @@ For each endpoint class below, the following must hold:
 | Endpoint class | 401 | Cross-tenant 403 | Wrong-role 403 | No-membership 403 |
 |----------------|-----|------------------|----------------|-------------------|
 | Hermandad member CRUD (`/api/hermandades/{id}/members*`) | ✅ | ✅ | ✅ | ✅ |
-| Procesion CRUD/status (`/api/procesiones*`) | ✅ | ✅ | ✅ | ⚠️ TARGET only (Ticket 09) |
-| Procesion pasos/route/finalize (`/api/hermandades/{hid}/procesiones/{pid}/...`) | ✅ | ✅ | ✅ | ⚠️ TARGET only (Ticket 09) |
+| Procesion CRUD/status (`/api/procesiones*`) | ✅ | ✅ | ✅ | ✅ |
+| Procesion pasos/route/finalize (`/api/hermandades/{hid}/procesiones/{pid}/...`) | ✅ | ✅ | ✅ | ✅ |
 | Repertorio cruceta / run-sheet / current | ✅ | ✅ | ✅ | ✅ |
 | Repertorio marchas (global catalog) | ✅ | n/a (not scoped) | n/a | n/a (not scoped) |
 
 ## 6. Measurement protocol with harness gotchas
 
-- Harness **403 assertions for procesion must use cross-tenant (hermandad-B) paths**; a no-membership user on its own path does not get 403 today.
-- No-membership 403 assertions are only valid on **repertorio cruceta paths**.
+- Harness **403 assertions for procesion** may now use cross-tenant (hermandad-B) paths **or** no-membership tokens on own paths — both return 403 after Ticket 09. Unknown procesion ids also return 403 (deny-by-default, no existence oracle).
 - `docs/demo/cruceta-product-flow.sh` is the reference harness: it asserts 403 on cruceta for a no-membership user and 403 on a cross-tenant write.
-- Ticket 09 flips the procesion rows in the matrix above from "TARGET only" to enforced.
+- Ticket 09 flipped the procesion rows in the matrix above from "TARGET only" to enforced.
 
 ## 7. Testable assertions (summary)
 
 1. Unauthenticated request to any non-public endpoint → 401.
 2. Valid token for hermandad B on hermandad A's resource → 403 on every hermandad-scoped endpoint.
 3. `MUSICIAN` role in the owning hermandad → 403 on write endpoints.
-4. No-membership user → 403 on hermandad member CRUD and repertorio cruceta endpoints today; on all procesion endpoints after Ticket 09.
+4. No-membership user → 403 on hermandad member CRUD, repertorio cruceta endpoints, and **all procesion endpoints**.
 5. `GET /api/hermandades` and `GET /api/hermandades/{id}` remain public and GET-only.
 6. Public endpoints are exactly the two listed; no new `permitAll()` on write endpoints.
