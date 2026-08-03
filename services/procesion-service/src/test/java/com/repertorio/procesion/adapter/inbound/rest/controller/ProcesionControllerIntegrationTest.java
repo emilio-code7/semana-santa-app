@@ -4,6 +4,7 @@ import com.repertorio.common.JdbcIntegrationTestBase;
 import com.repertorio.common.outbox.OutboxEventJpaRepository;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionJpaRepository;
+import com.repertorio.procesion.adapter.outbound.persistence.RouteSectionJpaRepository;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ import java.util.UUID;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -45,6 +47,9 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
 
     @Autowired
     private ProcesionJpaRepository procesionRepo;
+
+    @Autowired
+    private RouteSectionJpaRepository routeSectionRepo;
 
     @MockitoBean
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -167,5 +172,78 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
     void returns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/procesiones/{id}", UUID.randomUUID()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void replaceRouteSectionsReturns200AndPersists() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+
+        var stableId = UUID.randomUUID();
+        mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
+                        hermandadId, procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "sections": [
+                                        { "id": "%s", "name": "Salida", "position": 0, "notes": "start" },
+                                        { "name": "Recogida", "position": 1 }
+                                    ]
+                                }
+                                """.formatted(stableId))
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sections.length()").value(2));
+
+        assertThat(routeSectionRepo.findByProcesionIdOrderByPositionAsc(procesion.getId())).hasSize(2);
+
+        mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
+                        hermandadId, procesion.getId())
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sections[0].name").value("Salida"))
+                .andExpect(jsonPath("$.sections[1].name").value("Recogida"));
+
+        assertThat(routeSectionRepo.findAll())
+                .filteredOn(rs -> rs.getProcesionId().equals(procesion.getId()))
+                .extracting(rs -> rs.getName())
+                .containsExactlyInAnyOrder("Salida", "Recogida");
+    }
+
+    @Test
+    void replaceRouteSectionsReDefineUpdatesInPlace() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+
+        var stableId = UUID.randomUUID();
+        mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
+                        hermandadId, procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "sections": [ { "id": "%s", "name": "First", "position": 0 } ]
+                                }
+                                """.formatted(stableId))
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
+                        hermandadId, procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "sections": [ { "id": "%s", "name": "Second", "position": 0 } ]
+                                }
+                                """.formatted(stableId))
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
+                        hermandadId, procesion.getId())
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sections[0].name").value("Second"));
     }
 }
