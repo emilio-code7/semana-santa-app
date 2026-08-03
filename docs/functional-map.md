@@ -890,8 +890,8 @@ Request with Bearer JWT
 | `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
 | `CrucetaServiceTest.java` | Unit (mock service) | 8 | Get/define cruceta, item validation, run-sheet, advance |
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |
-| `CrucetaControllerTest.java` | Web slice (MockMvc) | 17 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403), concurrent replace → 409 (version mismatch/data-integrity/optimistic-lock), unknown path → 404 |
-| `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format — version mismatch/data-integrity/optimistic-lock → 409 |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 18 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403), concurrent replace → 409 (version mismatch/data-integrity/optimistic-lock), unknown path → 404, wrong method → 405 |
+| `GlobalExceptionHandlerTest.java` | Unit | 4 | Error response format — version mismatch/data-integrity/optimistic-lock → 409, method-not-supported → 405 |
 | `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
 | `ProcesionEventProcessorTest.java` | Unit (mock service) | 16 | Plan finalized → project KnownPaso/KnownRouteSection, wire-format `procesionId`, duplicate handling |
 | `MarchaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
