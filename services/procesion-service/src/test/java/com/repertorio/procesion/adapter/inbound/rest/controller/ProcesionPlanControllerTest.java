@@ -8,6 +8,7 @@ import com.repertorio.procesion.application.service.ProcesionService;
 import com.repertorio.procesion.domain.model.Paso;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.RouteSection;
+import com.repertorio.procesion.domain.repository.ProcesionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -41,6 +42,9 @@ class ProcesionPlanControllerTest {
 
     @MockitoBean
     private PasoService pasoService;
+
+    @MockitoBean
+    private ProcesionRepository procesionRepository;
 
     private final UUID hermandadId = UUID.randomUUID();
     private final UUID procesionId = UUID.randomUUID();

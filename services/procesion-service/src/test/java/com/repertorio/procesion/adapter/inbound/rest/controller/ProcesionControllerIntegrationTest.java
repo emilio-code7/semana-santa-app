@@ -121,7 +121,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         ProcesionStatus.PLANNED, null, null, null));
 
         mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(procesion.getId().toString()))
                 .andExpect(jsonPath("$.hermandadId").value(hermandadId.toString()))
@@ -129,10 +129,10 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
     }
 
     @Test
-    void getProcesionReturns404() throws Exception {
+    void getUnknownProcesionReturns403() throws Exception {
         mockMvc.perform(get("/api/procesiones/{id}", UUID.randomUUID())
-                        .with(jwt()))
-                .andExpect(status().isNotFound());
+                        .with(memberJwt(hermandadId.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -177,7 +177,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .content("""
                                 { "newStatus": "IN_PROGRESS" }
                                 """)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
     }
@@ -193,7 +193,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .content("""
                                 { "newStatus": "COMPLETED" }
                                 """)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isBadRequest());
     }
 
@@ -220,12 +220,12 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         ProcesionStatus.PLANNED, null, null, null));
 
         mockMvc.perform(delete("/api/procesiones/{id}", procesion.getId())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
-                        .with(jwt()))
-                .andExpect(status().isNotFound());
+                        .with(memberJwt(hermandadId.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

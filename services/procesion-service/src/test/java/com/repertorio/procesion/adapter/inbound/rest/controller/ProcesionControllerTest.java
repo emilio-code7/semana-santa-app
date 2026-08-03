@@ -122,7 +122,7 @@ class ProcesionControllerTest {
         when(procesionService.getProcesion(procesionId)).thenReturn(buildProcesion());
 
         mockMvc.perform(get("/api/procesiones/{id}", procesionId)
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.hermandadId").value(hermandadId.toString()));
     }
@@ -133,7 +133,7 @@ class ProcesionControllerTest {
                 .thenThrow(new ProcesionNotFoundException(procesionId));
 
         mockMvc.perform(get("/api/procesiones/{id}", procesionId)
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isNotFound())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("not found")));
     }
@@ -208,7 +208,21 @@ class ProcesionControllerTest {
                 .thenReturn(buildProcesion());
 
         mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"newStatus":"IN_PROGRESS"}
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void changeStatusReturns200ForCapataz() throws Exception {
+        when(procesionService.changeStatus(procesionId, ProcesionStatus.IN_PROGRESS))
+                .thenReturn(buildProcesion());
+
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
+                        .with(memberJwt(hermandadId.toString(), "CAPATAZ"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"newStatus":"IN_PROGRESS"}
@@ -223,7 +237,7 @@ class ProcesionControllerTest {
                         "Cannot transition from PLANNED to IN_PROGRESS"));
 
         mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"newStatus":"IN_PROGRESS"}
@@ -273,7 +287,7 @@ class ProcesionControllerTest {
     @Test
     void deleteProcesionReturns204ForAuthenticatedUser() throws Exception {
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isNoContent());
     }
 
@@ -283,7 +297,7 @@ class ProcesionControllerTest {
                 .when(procesionService).deleteProcesion(procesionId);
 
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isNotFound());
     }
 
