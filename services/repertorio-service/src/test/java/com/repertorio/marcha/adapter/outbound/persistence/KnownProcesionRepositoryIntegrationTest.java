@@ -2,7 +2,9 @@ package com.repertorio.marcha.adapter.outbound.persistence;
 
 import com.repertorio.marcha.adapter.inbound.kafka.ProcesionEventConsumer;
 import com.repertorio.common.outbox.OutboxEventJpaRepository;
+import com.repertorio.marcha.domain.model.KnownPaso;
 import com.repertorio.marcha.domain.model.KnownProcesion;
+import com.repertorio.marcha.domain.model.KnownRouteSection;
 import com.repertorio.common.JdbcIntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +41,15 @@ class KnownProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
 
     @Autowired
     private KnownProcesionJpaRepository repo;
+
+    @Autowired
+    private KnownProcesionRepositoryAdapter adapter;
+
+    @Autowired
+    private KnownPasoJpaRepository pasoJpa;
+
+    @Autowired
+    private KnownRouteSectionJpaRepository routeSectionJpa;
 
     @MockitoBean
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -73,5 +85,36 @@ class KnownProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
     @Test
     void existsByProcesionIdReturnsFalseForUnknown() {
         assertThat(repo.existsByProcesionId(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void saveFullPlanPersistsPasosAndRouteSections() {
+        var procesionId = UUID.randomUUID();
+        var hermandadId = UUID.randomUUID();
+        var procesion = new KnownProcesion(procesionId, hermandadId, "PLANNED");
+
+        var pasoId = UUID.randomUUID();
+        var titularId = UUID.randomUUID();
+        var paso = new KnownPaso(pasoId, procesionId, 1, titularId);
+
+        var sectionId = UUID.randomUUID();
+        var section = new KnownRouteSection(sectionId, procesionId, "Salida", 1, null);
+
+        adapter.saveFullPlan(procesion, List.of(paso), List.of(section));
+
+        assertThat(pasoJpa.existsById(pasoId)).isTrue();
+        assertThat(routeSectionJpa.existsById(sectionId)).isTrue();
+        assertThat(adapter.existsPasoById(pasoId)).isTrue();
+        assertThat(adapter.existsRouteSectionById(sectionId)).isTrue();
+
+        var savedPasos = pasoJpa.findByProcesionId(procesionId);
+        assertThat(savedPasos).hasSize(1);
+        assertThat(savedPasos.get(0).getId()).isEqualTo(pasoId);
+        assertThat(savedPasos.get(0).getTitularId()).isEqualTo(titularId);
+
+        var savedSections = routeSectionJpa.findByProcesionId(procesionId);
+        assertThat(savedSections).hasSize(1);
+        assertThat(savedSections.get(0).getId()).isEqualTo(sectionId);
+        assertThat(savedSections.get(0).getName()).isEqualTo("Salida");
     }
 }
