@@ -18,11 +18,24 @@ spring:
             locator:
               enabled: false
           routes:
-            # Cruceta routes must precede hermandad's generic /api/hermandades/**
+            # Month-1 specific routes must precede hermandad's generic /api/hermandades/**
+            # repertorio-cruceta must precede procesion-pasos: /pasos/{pasoId}/cruceta/** also matches /pasos/**
             - id: repertorio-cruceta
               uri: lb://repertorio-service
               predicates:
-                - Path=/api/hermandades/*/procesiones/*/cruceta/**
+                - Path=/api/hermandades/*/procesiones/*/pasos/*/cruceta/**
+            - id: procesion-pasos
+              uri: lb://procesion-service
+              predicates:
+                - Path=/api/hermandades/*/procesiones/*/pasos/**
+            - id: procesion-route
+              uri: lb://procesion-service
+              predicates:
+                - Path=/api/hermandades/*/procesiones/*/route/**
+            - id: procesion-plan
+              uri: lb://procesion-service
+              predicates:
+                - Path=/api/hermandades/*/procesiones/*/plan/**
             - id: repertorio-service
               uri: lb://repertorio-service
               predicates:
