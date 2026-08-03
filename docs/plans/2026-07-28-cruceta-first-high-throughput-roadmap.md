@@ -685,6 +685,8 @@ npx --yes @redocly/cli@2.41.0 lint docs/openapi.yaml
 
 **Blockers:** 08
 
+**Contracts:** [tenant-isolation](../contracts/tenant-isolation.md) — per-endpoint 401/403/404 assertion matrix; [openapi.yaml](../openapi.yaml) carries the 403 responses this ticket implements against.
+
 **Lane / worktree slug:** `09-procesion-tenant-isolation`
 
 **File / folder ownership:**
@@ -745,6 +747,8 @@ Feature: Procesion tenant isolation
 
 **Blockers:** 08
 
+**Contracts:** [event-envelope](../contracts/event-envelope.md) — canonical DomainEvent envelope, eventId generation rule, schemaVersion.
+
 **Lane / worktree slug:** `10-event-envelope`
 
 **File / folder ownership:**
@@ -790,6 +794,8 @@ Feature: Procesion tenant isolation
 
 **Blockers:** 08
 
+**Contracts:** [reliability-metrics](../contracts/reliability-metrics.md) — concurrency/optimistic-lock assertions (never 5xx, loser 409, state consistent).
+
 **Lane / worktree slug:** `11-optimistic-lock`
 
 **File / folder ownership:**
@@ -825,6 +831,8 @@ Feature: Procesion tenant isolation
 **Purpose / delivery:** Update Hermandad's event publishing and consumption to use the new versioned event envelope. Consumer dedup uses the producer-generated `eventId` from the envelope. Includes Titular events published in Ticket 01.
 
 **Blockers:** 10
+
+**Contracts:** [event-envelope](../contracts/event-envelope.md) — canonical DomainEvent envelope, eventId generation rule, schemaVersion.
 
 **Lane / worktree slug:** `12-hermandad-event-flow`
 
@@ -862,6 +870,8 @@ Feature: Procesion tenant isolation
 **Purpose / delivery:** Complete the ordered Procesion→Repertorio projection flow: `ProcesionPlanFinalizedEvent` joins existing created/status-changed/deleted events using the explicit envelope. Failures reach Kafka retry; deletion removes derived projections.
 
 **Blockers:** 10
+
+**Contracts:** [event-envelope](../contracts/event-envelope.md) — canonical DomainEvent envelope, eventId generation rule, schemaVersion.
 
 **Lane / worktree slug:** `13-procesion-repertorio-flow`
 
@@ -901,6 +911,8 @@ Feature: Procesion tenant isolation
 
 **Blockers:** 10
 
+**Contracts:** [event-envelope](../contracts/event-envelope.md) — canonical DomainEvent envelope, eventId generation rule, schemaVersion.
+
 **Lane / worktree slug:** `14-repertorio-producer-flow`
 
 **File / folder ownership:**
@@ -931,6 +943,8 @@ Feature: Procesion tenant isolation
 **Purpose / delivery:** Orchestrator-only ticket. Execute the Gate 15 evidence path. Merge all Month 2 worktrees. Run full test suite. Remove deprecated unkeyed sender overload and temporary default schemaVersion. Update docs.
 
 **Blockers:** 09, 10, 11, 12, 13, 14 (must all be merged)
+
+**Contracts:** [event-envelope](../contracts/event-envelope.md), [reliability-metrics](../contracts/reliability-metrics.md), [tenant-isolation](../contracts/tenant-isolation.md) — gate evidence is measured against these.
 
 **Lane / worktree slug:** `15-correctness-gate`
 
