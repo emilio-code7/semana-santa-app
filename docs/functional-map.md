@@ -514,12 +514,12 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `DELETE` | `/api/marchas/{id}` | authenticated | `deleteMarcha()` | `MarchaController.java:62` |
 | `PUT` | `/api/marchas/{id}` | authenticated | `updateMarcha()` | `MarchaController.java:75` |
 | `GET` | `/api/marchas/search?q={query}` | authenticated | `searchMarchas()` | `MarchaController.java:72` |
-| `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta` | authenticated | `getCruceta()` | `CrucetaController.java:29` |
+| `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta` | admin | `getCruceta()` | `CrucetaController.java:29` |
 | `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta` | admin | `defineCruceta()` | `CrucetaController.java:41` |
 | `GET` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta/run-sheet` | admin | `getRunSheet()` | `CrucetaController.java:61` |
 | `PUT` | `/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos/{pasoId}/cruceta/current` | admin | `advanceCurrent()` | `CrucetaController.java:78` |
 
-**Note**: Marcha CRUD uses `anyRequest().authenticated()`. Cruceta is one per Paso; run-sheet/current are progression-aware and admin-only (`@PreAuthorize`).
+**Note**: Marcha CRUD uses `anyRequest().authenticated()`. Cruceta is one per Paso; all cruceta endpoints (GET/PUT, run-sheet, current) are tenant-isolated and admin-only (`@PreAuthorize`).
 
 ### 4.4 Public Routes (Gateway-level)
 
@@ -868,7 +868,7 @@ Request with Bearer JWT
 | `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
 | `CrucetaServiceTest.java` | Unit (mock service) | 8 | Get/define cruceta, item validation, run-sheet, advance |
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |
-| `CrucetaControllerTest.java` | Web slice (MockMvc) | 12 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403) |
+| `CrucetaControllerTest.java` | Web slice (MockMvc) | 13 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403) |
 | `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
 | `ProcesionEventProcessorTest.java` | Unit (mock service) | 16 | Plan finalized → project KnownPaso/KnownRouteSection, wire-format `procesionId`, duplicate handling |
 | `MarchaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
