@@ -1,5 +1,6 @@
 package com.repertorio.marcha.adapter.inbound.rest.controller;
 
+import com.repertorio.marcha.adapter.config.security.JwtAuthenticationConverter;
 import com.repertorio.marcha.adapter.config.security.RepertorioSecurityService;
 import com.repertorio.marcha.adapter.config.security.SecurityConfig;
 import com.repertorio.marcha.adapter.inbound.rest.dto.AdvanceCurrentRequest;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -51,6 +53,16 @@ class CrucetaControllerTest {
     private Cruceta buildCruceta() {
         var items = List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Opening"));
         return new Cruceta(pasoId, items);
+    }
+
+    private JwtRequestPostProcessor adminJwt(String hermandadIdInClaim) {
+        return adminJwt(hermandadIdInClaim, "HERMANDAD_ADMIN");
+    }
+
+    private JwtRequestPostProcessor adminJwt(String hermandadIdInClaim, String role) {
+        var memberships = "[{\"hermandadId\":\"" + hermandadIdInClaim + "\",\"role\":\"" + role + "\"}]";
+        return jwt().jwt(b -> b.subject("user-1").claim("hermandad_memberships", memberships))
+                .authorities(j -> new JwtAuthenticationConverter().convert(j).getAuthorities());
     }
 
     @Test
@@ -91,6 +103,47 @@ class CrucetaControllerTest {
                                 """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
+    }
+
+    @Test
+    void defineCrucetaReturns200ForAdminClaim() throws Exception {
+        var cruceta = buildCruceta();
+        when(crucetaService.defineCruceta(eq(pasoId), any())).thenReturn(cruceta);
+
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(hermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1,"notes":"Opening"}]}
+                                """.formatted(marchaId, routeSectionId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pasoId").value(pasoId.toString()));
+    }
+
+    @Test
+    void defineCrucetaReturns403WhenClaimHasNoAdminRole() throws Exception {
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(hermandadId.toString(), "MUSICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void defineCrucetaReturns403WhenAdminOfDifferentHermandad() throws Exception {
+        var otherHermandadId = UUID.randomUUID();
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(otherHermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
+                                """.formatted(marchaId, routeSectionId)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
