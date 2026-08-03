@@ -854,7 +854,7 @@ Request with Bearer JWT
 | `ProcesionControllerTest.java` | Web slice (MockMvc) | 17 | All endpoints, 401 scenarios, unknown path → 404 |
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
-| `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 12 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), 401 |
+| `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 13 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, 401 |
 
 ### 8.4 Repertorio Tests
 

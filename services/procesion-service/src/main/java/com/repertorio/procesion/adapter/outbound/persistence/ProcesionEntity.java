@@ -3,7 +3,6 @@ package com.repertorio.procesion.adapter.outbound.persistence;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionStatus;
 import jakarta.persistence.*;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
@@ -16,8 +15,10 @@ import java.util.UUID;
 public class ProcesionEntity implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
 
     @Version
     private long version;
@@ -48,7 +49,7 @@ public class ProcesionEntity implements Persistable<UUID> {
 
     public ProcesionEntity(UUID id, UUID hermandadId, LocalDate date, LocalTime time,
                            ProcesionStatus status, Instant planFinalizedAt, Instant createdAt, Instant updatedAt) {
-        this.id = id;
+        this.id = id != null ? id : UUID.randomUUID();
         this.hermandadId = hermandadId;
         this.date = date;
         this.time = time;
@@ -59,7 +60,16 @@ public class ProcesionEntity implements Persistable<UUID> {
     }
 
     @Override
-    public boolean isNew() { return id == null; }
+    public boolean isNew() { return isNew; }
+
+    @PostLoad
+    void markNotNew() { this.isNew = false; }
+
+    @PostPersist
+    void markNotNewAfterPersist() { this.isNew = false; }
+
+    void setVersion(long version) { this.version = version; }
+    long getVersion() { return version; }
 
     @PrePersist
     protected void prePersist() {
@@ -73,7 +83,7 @@ public class ProcesionEntity implements Persistable<UUID> {
     }
 
     public static ProcesionEntity from(Procesion domain) {
-        return new ProcesionEntity(
+        var entity = new ProcesionEntity(
                 domain.getId(),
                 domain.getHermandadId(),
                 domain.getDate(),
@@ -83,6 +93,8 @@ public class ProcesionEntity implements Persistable<UUID> {
                 domain.getCreatedAt(),
                 domain.getUpdatedAt()
         );
+        entity.isNew = domain.getId() == null;
+        return entity;
     }
 
     public Procesion toDomain() {
