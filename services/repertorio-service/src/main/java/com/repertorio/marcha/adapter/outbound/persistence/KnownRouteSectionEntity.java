@@ -4,18 +4,22 @@ import com.repertorio.marcha.domain.model.KnownRouteSection;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.UuidGenerator;
+import jakarta.persistence.Transient;
+import org.springframework.data.domain.Persistable;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "known_route_section")
-public class KnownRouteSectionEntity {
+public class KnownRouteSectionEntity implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
 
     @Column(name = "procesion_id", nullable = false)
     private UUID procesionId;
@@ -53,6 +57,13 @@ public class KnownRouteSectionEntity {
         return KnownRouteSection.reconstruct(id, procesionId, name, position, notes);
     }
 
+    @Override
+    public boolean isNew() { return isNew; }
+
+    @PostLoad
+    void markNotNew() { this.isNew = false; }
+
+    @Override
     public UUID getId() { return id; }
     public UUID getProcesionId() { return procesionId; }
     public String getName() { return name; }
