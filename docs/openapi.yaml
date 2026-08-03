@@ -338,7 +338,8 @@
         "responses": {
           "201": { "description": "Procesion created", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProcesionResponse" } } } },
           "400": { "description": "Invalid input (validation error)" },
-          "401": { "description": "Unauthorized — missing or invalid JWT" }
+          "401": { "description": "Unauthorized — missing or invalid JWT" },
+          "403": { "description": "Forbidden — not an admin of this hermandad" }
         }
       },
       "get": {
@@ -367,7 +368,8 @@
                 }
               }
             }
-          }
+          },
+          "403": { "description": "Forbidden — not a member of this hermandad" }
         }
       }
     },
@@ -408,6 +410,7 @@
         ],
         "responses": {
           "200": { "description": "Plan finalized", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProcesionResponse" } } } },
+          "403": { "description": "Forbidden — not an admin of this hermandad" },
           "404": { "description": "Procesion not found" }
         }
       }

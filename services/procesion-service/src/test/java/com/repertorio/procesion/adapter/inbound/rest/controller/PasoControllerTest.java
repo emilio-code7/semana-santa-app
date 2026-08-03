@@ -1,6 +1,7 @@
 package com.repertorio.procesion.adapter.inbound.rest.controller;
 
 import com.repertorio.procesion.adapter.config.JwtAuthenticationConverter;
+import com.repertorio.procesion.adapter.config.ProcesionSecurityService;
 import com.repertorio.procesion.adapter.config.SecurityConfig;
 import com.repertorio.procesion.application.service.PasoService;
 import com.repertorio.procesion.domain.model.Paso;
@@ -27,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PasoController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, ProcesionSecurityService.class})
 class PasoControllerTest {
 
     @Autowired
