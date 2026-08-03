@@ -106,7 +106,8 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
         // Then retrieve it
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
                         hermandadId, procesionId, pasoId)
-                        .with(jwt()))
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority("HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasoId").value(pasoId.toString()))
                 .andExpect(jsonPath("$.items").isArray());
@@ -114,11 +115,14 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
 
     @Test
     void getCrucetaReturns404() throws Exception {
+        var hermandadId = UUID.randomUUID();
+        var procesionId = UUID.randomUUID();
         var pasoId = UUID.randomUUID();
 
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
-                        UUID.randomUUID(), UUID.randomUUID(), pasoId)
-                        .with(jwt()))
+                        hermandadId, procesionId, pasoId)
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority("HERMANDAD_" + hermandadId + "_HERMANDAD_ADMIN"))))
                 .andExpect(status().isNotFound());
     }
 

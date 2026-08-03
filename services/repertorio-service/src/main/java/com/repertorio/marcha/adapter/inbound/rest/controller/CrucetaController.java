@@ -30,9 +30,13 @@ public class CrucetaController {
     @Operation(summary = "Get cruceta for a paso")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cruceta found"),
+            @ApiResponse(responseCode = "403", description = "Cross-tenant access denied"),
             @ApiResponse(responseCode = "404", description = "Cruceta not found")
     })
-    public ResponseEntity<CrucetaResponse> getCruceta(@PathVariable UUID pasoId) {
+    @PreAuthorize("@repertorioSecurity.isAdmin(#hermandadId)")
+    public ResponseEntity<CrucetaResponse> getCruceta(
+            @PathVariable UUID hermandadId,
+            @PathVariable UUID pasoId) {
         log.info("Getting cruceta for paso {}", pasoId);
         var cruceta = crucetaService.getCruceta(pasoId);
         return ResponseEntity.ok(CrucetaResponse.from(cruceta));
