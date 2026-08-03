@@ -6,19 +6,21 @@ meta {
 
 post {
   url: {{keycloak_url}}/realms/{{realm}}/protocol/openid-connect/token
-  body: form-urlencoded
+  body: text
   auth: none
 }
 
-body:form-urlencoded {
-  grant_type: password
-  client_id: {{client_id}}
-  client_secret: {{client_secret}}
-  username: {{admin_user}}
-  password: {{admin_password}}
+headers {
+  Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+}
+
+body:text {
+  grant_type=password&client_id={{client_id}}&client_secret={{client_secret}}&username={{admin_user}}&password={{admin_password}}
 }
 
 script:post-response {
+  // CLI workaround: @usebruno/cli drops `body:form-urlencoded` bodies (mode
+  // mismatch); charset suffix keeps interpolation of text bodies working.
   const data = res.getBody();
   bru.setVar("token", data.access_token);
 }

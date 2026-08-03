@@ -1,0 +1,26 @@
+meta {
+  name: Regular User Get Cruceta (expect 403)
+  type: http
+  seq: 39
+}
+
+get {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/pasos/{{paso_id}}/cruceta
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{regular_token}}
+}
+
+script:post-response {
+  // docs: tenant isolation - qa-user-no-hermandad has no hermandad membership
+  // claim, so repertorio's (active) @PreAuthorize must reject with 403.
+  // NOTE: procesion-service pasos/route endpoints are NOT claim-guarded (open
+  // issue) - a no-membership user can read/write those on its own-hermandad
+  // path; repertorio cruceta is the enforced cross-tenant read boundary.
+  const status = res.getStatus();
+  test("no-membership user denied with 403", () => {
+    expect(status).to.equal(403);
+  });
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Advance Current
+  type: http
+  seq: 30
+}
+
+put {
+  url: {{base_url}}/api/hermandades/{{hermandad_id}}/procesiones/{{procesion_id}}/pasos/{{paso_id}}/cruceta/current
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "routeSectionId": "{{route_section_id}}",
+    "crucetaItemId": null
+  }
+}
