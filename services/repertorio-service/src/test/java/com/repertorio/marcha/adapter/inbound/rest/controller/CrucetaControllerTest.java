@@ -283,6 +283,14 @@ class CrucetaControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void getCurrentReturns405WhenMethodNotAllowed() throws Exception {
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta/current",
+                        hermandadId, procesionId, pasoId)
+                        .with(adminJwt(hermandadId.toString())))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
     // --- UNKNOWN PATH ---
 
     @Test
