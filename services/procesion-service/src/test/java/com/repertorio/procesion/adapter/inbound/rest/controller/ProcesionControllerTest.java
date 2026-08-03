@@ -1,5 +1,6 @@
 package com.repertorio.procesion.adapter.inbound.rest.controller;
 
+import com.repertorio.procesion.adapter.config.JwtAuthenticationConverter;
 import com.repertorio.procesion.adapter.config.SecurityConfig;
 import com.repertorio.procesion.application.service.ProcesionService;
 import com.repertorio.procesion.domain.model.Procesion;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -51,6 +53,20 @@ class ProcesionControllerTest {
         return Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0));
     }
 
+    private JwtRequestPostProcessor memberJwt(String hermandadIdInClaim) {
+        return memberJwt(hermandadIdInClaim, "MUSICIAN");
+    }
+
+    private JwtRequestPostProcessor memberJwt(String hermandadIdInClaim, String role) {
+        var memberships = "[{\"hermandadId\":\"" + hermandadIdInClaim + "\",\"role\":\"" + role + "\"}]";
+        return jwt().jwt(b -> b.subject("user-1").claim("hermandad_memberships", memberships))
+                .authorities(j -> new JwtAuthenticationConverter().convert(j).getAuthorities());
+    }
+
+    private JwtRequestPostProcessor adminJwt(String hermandadIdInClaim) {
+        return memberJwt(hermandadIdInClaim, "HERMANDAD_ADMIN");
+    }
+
     // --- CREATE ---
 
     @Test
@@ -58,12 +74,23 @@ class ProcesionControllerTest {
         when(procesionService.createProcesion(any(), any(), any())).thenReturn(buildProcesion());
 
         mockMvc.perform(post("/api/procesiones")
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"hermandadId":"%s","date":"2026-04-13","time":"18:00:00"}
                                 """.formatted(hermandadId)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void createProcesionReturns403ForNonAdmin() throws Exception {
+        mockMvc.perform(post("/api/procesiones")
+                        .with(memberJwt(hermandadId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"hermandadId":"%s","date":"2026-04-13","time":"18:00:00"}
+                                """.formatted(hermandadId)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -115,9 +142,26 @@ class ProcesionControllerTest {
 
         mockMvc.perform(get("/api/procesiones")
                         .param("hermandadId", hermandadId.toString())
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void listByHermandadReturns403WhenAuthenticatedButNotMember() throws Exception {
+        mockMvc.perform(get("/api/procesiones")
+                        .param("hermandadId", hermandadId.toString())
+                        .with(jwt()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listByHermandadReturns403ForMemberOfDifferentHermandad() throws Exception {
+        var otherHermandad = UUID.randomUUID();
+        mockMvc.perform(get("/api/procesiones")
+                        .param("hermandadId", hermandadId.toString())
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -195,8 +239,16 @@ class ProcesionControllerTest {
 
         mockMvc.perform(post("/api/procesiones/{id}/finalize-plan", procesionId)
                         .param("hermandadId", hermandadId.toString())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void finalizePlanReturns403ForNonAdmin() throws Exception {
+        mockMvc.perform(post("/api/procesiones/{id}/finalize-plan", procesionId)
+                        .param("hermandadId", hermandadId.toString())
+                        .with(memberJwt(hermandadId.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -206,7 +258,7 @@ class ProcesionControllerTest {
 
         mockMvc.perform(post("/api/procesiones/{id}/finalize-plan", procesionId)
                         .param("hermandadId", hermandadId.toString())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isNotFound());
     }
 
