@@ -2,7 +2,6 @@ package com.repertorio.procesion.adapter.outbound.persistence;
 
 import com.repertorio.procesion.domain.model.Paso;
 import jakarta.persistence.*;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
@@ -17,8 +16,10 @@ import java.util.UUID;
 public class PasoEntity implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
 
     @Version
     private long version;
@@ -55,7 +56,10 @@ public class PasoEntity implements Persistable<UUID> {
     }
 
     @Override
-    public boolean isNew() { return id == null; }
+    public boolean isNew() { return isNew; }
+
+    @PostLoad
+    void markNotNew() { this.isNew = false; }
 
     @PrePersist
     protected void prePersist() {
