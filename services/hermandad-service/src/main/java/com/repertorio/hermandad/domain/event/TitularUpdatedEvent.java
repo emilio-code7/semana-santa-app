@@ -11,16 +11,15 @@ public record TitularUpdatedEvent(
         String name,
         String description,
         UUID eventId,
-        Instant occurredAt
+        Instant occurredAt,
+        String eventType
 ) implements DomainEvent {
     public TitularUpdatedEvent(UUID id, UUID hermandadId, String name, String description) {
-        this(id, hermandadId, name, description, UUID.randomUUID(), Instant.now());
+        this(id, hermandadId, name, description, UUID.randomUUID(), Instant.now(), "TITULAR_UPDATED");
     }
 
     @Override
     public String aggregateType() { return "titular"; }
     @Override
     public UUID aggregateId() { return id; }
-    @Override
-    public String eventType() { return "TITULAR_UPDATED"; }
 }
