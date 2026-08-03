@@ -13,19 +13,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Fetch main for PR-wide diffing
+        run: git fetch origin main
 
       - name: Validate OpenAPI specification
         run: npx --yes @redocly/cli@2.41.0 lint docs/openapi.yaml
 
       - name: Validate OpenAPI spec consistency with controllers
         run: |
-          if git diff HEAD~1 --name-only 2>/dev/null | grep -q 'Controller\.java$'; then
-            if ! git diff HEAD~1 --name-only | grep -q 'docs/openapi\.yaml$'; then
+          if git diff origin/main...HEAD --name-only 2>/dev/null | grep -q 'Controller\.java$'; then
+            if ! git diff origin/main...HEAD --name-only | grep -q 'docs/openapi\.yaml$'; then
               echo "⚠️  WARNING: Controller files changed but openapi.yaml did not."
             else
               echo "✅ OpenAPI spec updated alongside controllers."
@@ -36,7 +39,7 @@ jobs:
 
       - name: Enforce TDD pairing (main source requires test in same module)
         run: |
-          CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null)
+          CHANGED=$(git diff origin/main...HEAD --name-only 2>/dev/null)
           FAILED=0
           for f in $(echo "$CHANGED" | grep -E '^(services|shared)/[^/]*/src/main/.*\.java$' || true); do
             module=$(echo "$f" | cut -d/ -f1-2)
