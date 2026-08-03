@@ -7,6 +7,8 @@ import com.repertorio.procesion.application.service.ProcesionService;
 import com.repertorio.procesion.domain.model.Procesion;
 import com.repertorio.procesion.domain.model.ProcesionStatus;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
+import com.repertorio.procesion.domain.repository.ProcesionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -47,8 +50,16 @@ class ProcesionControllerTest {
     @MockitoBean
     private ProcesionService procesionService;
 
+    @MockitoBean
+    private ProcesionRepository procesionRepository;
+
     private final UUID procesionId = UUID.randomUUID();
     private final UUID hermandadId = UUID.randomUUID();
+
+    @BeforeEach
+    void stubProcesionExists() {
+        when(procesionRepository.findById(procesionId)).thenReturn(Optional.of(buildProcesion()));
+    }
 
     private Procesion buildProcesion() {
         return Procesion.create(hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0));
@@ -133,6 +144,23 @@ class ProcesionControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void getProcesionReturns403ForMemberOfDifferentHermandad() throws Exception {
+        when(procesionService.getProcesion(procesionId)).thenReturn(buildProcesion());
+        var otherHermandad = UUID.randomUUID();
+        mockMvc.perform(get("/api/procesiones/{id}", procesionId)
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getProcesionReturns403WhenAuthenticatedButNotMember() throws Exception {
+        when(procesionService.getProcesion(procesionId)).thenReturn(buildProcesion());
+        mockMvc.perform(get("/api/procesiones/{id}", procesionId)
+                        .with(jwt()))
+                .andExpect(status().isForbidden());
+    }
+
     // --- LIST BY HERMANDAD ---
 
     @Test
@@ -213,6 +241,33 @@ class ProcesionControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void changeStatusReturns403ForMemberOfDifferentHermandad() throws Exception {
+        when(procesionService.changeStatus(procesionId, ProcesionStatus.IN_PROGRESS))
+                .thenReturn(buildProcesion());
+        var otherHermandad = UUID.randomUUID();
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
+                        .with(memberJwt(otherHermandad.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"newStatus":"IN_PROGRESS"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void changeStatusReturns403ForMemberRole() throws Exception {
+        when(procesionService.changeStatus(procesionId, ProcesionStatus.IN_PROGRESS))
+                .thenReturn(buildProcesion());
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesionId)
+                        .with(memberJwt(hermandadId.toString(), "MUSICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"newStatus":"IN_PROGRESS"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
     // --- DELETE ---
 
     @Test
@@ -230,6 +285,21 @@ class ProcesionControllerTest {
         mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
                         .with(jwt()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteProcesionReturns403ForMemberOfDifferentHermandad() throws Exception {
+        var otherHermandad = UUID.randomUUID();
+        mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteProcesionReturns403ForMemberRole() throws Exception {
+        mockMvc.perform(delete("/api/procesiones/{id}", procesionId)
+                        .with(memberJwt(hermandadId.toString(), "MUSICIAN")))
+                .andExpect(status().isForbidden());
     }
 
     // --- FINALIZE PLAN ---

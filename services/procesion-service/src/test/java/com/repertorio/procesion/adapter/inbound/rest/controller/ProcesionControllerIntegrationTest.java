@@ -136,6 +136,18 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
     }
 
     @Test
+    void getProcesionReturns403ForCrossTenant() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var otherHermandad = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void listByHermandadReturnsPage() throws Exception {
         for (int i = 0; i < 3; i++) {
             procesionRepo.save(new ProcesionEntity(null, hermandadId,
@@ -186,6 +198,22 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
     }
 
     @Test
+    void changeStatusReturns403ForCrossTenant() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var otherHermandad = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/procesiones/{id}/status", procesion.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "newStatus": "IN_PROGRESS" }
+                                """)
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void deleteProcesionReturns204() throws Exception {
         var procesion = procesionRepo.save(
                 new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
@@ -198,6 +226,18 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
         mockMvc.perform(get("/api/procesiones/{id}", procesion.getId())
                         .with(jwt()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteProcesionReturns403ForCrossTenant() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var otherHermandad = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/procesiones/{id}", procesion.getId())
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
     }
 
     @Test
