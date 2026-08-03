@@ -335,11 +335,15 @@ Client ──HTTP──► api-gateway:8080
                   │ JWT validation at gateway level
                   │ (oauth2ResourceServer.jwt)
                   │
-                  ├── /api/hermandades/** ──lb://──► hermandad-service:8081
-                  ├── /api/procesiones/** ──lb://──► procesion-service:8082
+                  │ Specific Month-1 routes are evaluated BEFORE the hermandad catch-all;
+                  │ repertorio-cruceta precedes procesion-pasos (pasos/** also matches pasos/{pasoId}/cruceta/**)
+                  ├── /api/hermandades/*/procesiones/*/pasos/*/cruceta/** ──lb://──► repertorio-service:8083 ✅ (per-Paso cruceta, run-sheet, current — #57)
+                  ├── /api/hermandades/*/procesiones/*/pasos/** ──lb://──► procesion-service:8082 ✅ (pasos — #57)
+                  ├── /api/hermandades/*/procesiones/*/route/** ──lb://──► procesion-service:8082 ✅ (route — #57)
+                  ├── /api/hermandades/*/procesiones/*/plan/** ──lb://──► procesion-service:8082 ✅ (plan finalize — #57)
+                  ├── /api/hermandades/** ──lb://──► hermandad-service:8081 (catch-all; titulares, hermandad CRUD — after specific routes)
                   ├── /api/marchas/**     ──lb://──► repertorio-service:8083
-                  ├── /api/hermandades/** ──lb://──► hermandad-service:8081 ⚠️ (catch-all; swallows Month-1 pasos/route/plan/cruceta paths — see #57)
-                  ├── /api/hermandades/{hermandadId}/procesiones/{procesionId}/cruceta/** ──lb://──► repertorio-service:8083 ⚠️ (stale pre-per-Paso shape — see #57)
+                  ├── /api/procesiones/** ──lb://──► procesion-service:8082
                   ├── /api/tracking/**    ──lb://──► ⚠️ 503 (stub)
                   ├── /api/notifications/**─lb://──► ⚠️ 503 (stub)
                   │
