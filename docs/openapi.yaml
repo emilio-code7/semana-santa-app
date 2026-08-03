@@ -730,7 +730,8 @@
           "200": { "description": "Cruceta defined", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/CrucetaResponse" } } } },
           "400": { "description": "Invalid input (validation error)" },
           "403": { "description": "Forbidden — not admin of this hermandad" },
-          "404": { "description": "Paso not found or not known yet" }
+          "404": { "description": "Paso not found or not known yet" },
+          "409": { "description": "Conflict — concurrent modification of this cruceta (retry with fresh state)" }
         }
       }
     },
