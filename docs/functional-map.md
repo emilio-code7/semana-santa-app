@@ -810,7 +810,7 @@ Request with Bearer JWT
 |---------|------|----------|
 | `core` | docker-compose.yml | Keycloak, Kafka+init+UI, Redis, 5×Postgres, Eureka, Gateway, hermandad, procesion, repertorio |
 | `full` | docker-compose.yml | `core` + Zipkin, ELK (ES+Logstash+Kibana), Prometheus, Grafana |
-| `dev` | docker-compose.dev.yml | Single Postgres + init, all services with 256m mem limits, no observability |
+| `dev` | docker-compose.dev.yml | Single Postgres + init, keycloak + 3 services at 1024m (sized for an 11Gi dev host), no observability |
 
 ---
 

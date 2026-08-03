@@ -1,6 +1,9 @@
 name: repertorio-dev
 
 services:
+  # ─── Memory ────────────────────────────────────────────────────
+  # Limits sized for an 11Gi dev host — the old 512m caps OOM crash-looped
+  # keycloak and the three services. Raise if the host has more RAM.
 
   # ─── Single Postgres for all bounded contexts ────────────────────
   postgres:
@@ -27,7 +30,7 @@ services:
   keycloak:
     container_name: keycloak-dev
     image: quay.io/keycloak/keycloak:24.0.3
-    mem_limit: 512m
+    mem_limit: 1024m
     command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
@@ -109,6 +112,7 @@ services:
         echo 'Creating Kafka topics...'
         kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic hermandad-events           --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic hermandad-member-events     --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic titular-events         --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic procesion-events      --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic marcha-events         --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka-dev:29092 --create --if-not-exists --topic cruceta-events        --partitions 3 --replication-factor 1
@@ -199,7 +203,7 @@ services:
     build:
       context: ./services/hermandad-service
       dockerfile: Dockerfile
-    mem_limit: 512m
+    mem_limit: 1024m
     ports:
       - "8081:8081"
     environment:
@@ -209,7 +213,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-dev:29092
-      SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
+      SPRING_CLOUD_AWS_SQS_ENABLED: "false"
       SPRING_DATA_REDIS_HOST: redis-dev
       SPRING_DATA_REDIS_PORT: 6379
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
@@ -235,7 +239,7 @@ services:
     build:
       context: ./services/procesion-service
       dockerfile: Dockerfile
-    mem_limit: 512m
+    mem_limit: 1024m
     ports:
       - "8082:8082"
     environment:
@@ -244,9 +248,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
-      SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka-dev:29092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-dev:29092
+      SPRING_CLOUD_AWS_SQS_ENABLED: "false"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
-      SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -268,7 +272,7 @@ services:
     build:
       context: ./services/repertorio-service
       dockerfile: Dockerfile
-    mem_limit: 512m
+    mem_limit: 1024m
     ports:
       - "8083:8083"
     environment:
@@ -277,7 +281,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/semana-santa
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak-dev:8080/realms/semana-santa/protocol/openid-connect/certs
-      SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka-dev:29092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-dev:29092
+      SPRING_CLOUD_AWS_SQS_ENABLED: "false"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-dev:8761/eureka/
     depends_on:
       postgres:
