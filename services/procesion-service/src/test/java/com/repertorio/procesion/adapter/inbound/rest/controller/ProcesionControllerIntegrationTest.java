@@ -5,9 +5,11 @@ import com.repertorio.common.outbox.OutboxEventJpaRepository;
 import com.repertorio.procesion.adapter.config.JwtAuthenticationConverter;
 import com.repertorio.procesion.adapter.outbound.persistence.KnownTitularEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.KnownTitularJpaRepository;
+import com.repertorio.procesion.adapter.outbound.persistence.PasoEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.PasoJpaRepository;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.ProcesionJpaRepository;
+import com.repertorio.procesion.adapter.outbound.persistence.RouteSectionEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.RouteSectionJpaRepository;
 import com.repertorio.procesion.domain.model.KnownTitular;
 import com.repertorio.procesion.domain.model.Procesion;
@@ -24,15 +26,19 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -345,5 +351,32 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasos[0].notes").value("Second"));
+    }
+
+    @Test
+    void finalizePlanTwiceIsIdempotent() throws Exception {
+        var procesion = procesionRepo.save(
+                new ProcesionEntity(null, hermandadId, LocalDate.of(2026, 4, 13), LocalTime.of(18, 0),
+                        ProcesionStatus.PLANNED, null, null, null));
+        var titularId = UUID.randomUUID();
+        knownTitularRepo.save(KnownTitularEntity.from(
+                new KnownTitular(titularId, hermandadId, "Jesus del Gran Poder")));
+        pasoRepo.save(new PasoEntity(UUID.randomUUID(), procesion.getId(), 0, titularId, null,
+                Instant.now(), Instant.now()));
+        routeSectionRepo.save(new RouteSectionEntity(UUID.randomUUID(), procesion.getId(), "Salida", 0, null,
+                Instant.now(), Instant.now()));
+
+        mockMvc.perform(post("/api/hermandades/{hermandadId}/procesiones/{procesionId}/plan/finalize",
+                        hermandadId, procesion.getId())
+                        .with(adminJwt(hermandadId.toString())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/hermandades/{hermandadId}/procesiones/{procesionId}/plan/finalize",
+                        hermandadId, procesion.getId())
+                        .with(adminJwt(hermandadId.toString())))
+                .andExpect(status().isOk());
+
+        verify(outboxEventJpaRepository, times(1))
+                .save(argThat(e -> "PROCESION_PLAN_FINALIZED".equals(e.getEventType())));
     }
 }
