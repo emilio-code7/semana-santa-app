@@ -172,7 +172,8 @@ class CrucetaControllerTest {
                                 {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
                                 """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409));
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"));
     }
 
     @Test
@@ -189,7 +190,8 @@ class CrucetaControllerTest {
                                 {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
                                 """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409));
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"));
     }
 
     @Test
@@ -205,7 +207,8 @@ class CrucetaControllerTest {
                                 {"items":[{"marchaId":"%s","routeSectionId":"%s","sequenceWithinSection":1}]}
                                 """.formatted(marchaId, routeSectionId)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409));
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"));
     }
 
     @Test
