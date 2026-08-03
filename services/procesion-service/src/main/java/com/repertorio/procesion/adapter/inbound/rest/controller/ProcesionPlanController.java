@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -27,6 +28,7 @@ public class ProcesionPlanController {
     private final PasoService pasoService;
 
     @GetMapping("/route")
+    @PreAuthorize("@procesionSecurity.isMember(#hermandadId)")
     @Operation(summary = "Get ordered route sections for a procesion")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Ordered list of route sections"),
@@ -43,6 +45,7 @@ public class ProcesionPlanController {
     }
 
     @PutMapping("/route")
+    @PreAuthorize("@procesionSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Atomically replace draft route sections for a procesion")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Route sections replaced"),
@@ -66,6 +69,7 @@ public class ProcesionPlanController {
     }
 
     @PostMapping("/plan/finalize")
+    @PreAuthorize("@procesionSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Finalize the procesion plan, making pasos and route immutable")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Plan finalized"),

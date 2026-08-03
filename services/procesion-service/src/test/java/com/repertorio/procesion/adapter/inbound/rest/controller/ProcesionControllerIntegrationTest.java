@@ -2,6 +2,7 @@ package com.repertorio.procesion.adapter.inbound.rest.controller;
 
 import com.repertorio.common.JdbcIntegrationTestBase;
 import com.repertorio.common.outbox.OutboxEventJpaRepository;
+import com.repertorio.procesion.adapter.config.JwtAuthenticationConverter;
 import com.repertorio.procesion.adapter.outbound.persistence.KnownTitularEntity;
 import com.repertorio.procesion.adapter.outbound.persistence.KnownTitularJpaRepository;
 import com.repertorio.procesion.adapter.outbound.persistence.PasoEntity;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -80,6 +82,20 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
         hermandadId = UUID.randomUUID();
     }
 
+    private JwtRequestPostProcessor memberJwt(String hermandadIdInClaim) {
+        return memberJwt(hermandadIdInClaim, "MUSICIAN");
+    }
+
+    private JwtRequestPostProcessor memberJwt(String hermandadIdInClaim, String role) {
+        var memberships = "[{\"hermandadId\":\"" + hermandadIdInClaim + "\",\"role\":\"" + role + "\"}]";
+        return jwt().jwt(b -> b.subject("user-1").claim("hermandad_memberships", memberships))
+                .authorities(j -> new JwtAuthenticationConverter().convert(j).getAuthorities());
+    }
+
+    private JwtRequestPostProcessor adminJwt(String hermandadIdInClaim) {
+        return memberJwt(hermandadIdInClaim, "HERMANDAD_ADMIN");
+    }
+
     @Test
     void createProcesionReturns201() throws Exception {
         mockMvc.perform(post("/api/procesiones")
@@ -91,7 +107,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     "time": "18:00:00"
                                 }
                                 """.formatted(hermandadId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.hermandadId").value(hermandadId.toString()))
                 .andExpect(jsonPath("$.status").value("PLANNED"))
@@ -131,7 +147,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                         .param("hermandadId", hermandadId.toString())
                         .param("page", "0")
                         .param("size", "2")
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.numberOfElements").value(2))
@@ -208,7 +224,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     ]
                                 }
                                 """.formatted(stableId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections.length()").value(2));
 
@@ -216,7 +232,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
 
         mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
                         hermandadId, procesion.getId())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections[0].name").value("Salida"))
                 .andExpect(jsonPath("$.sections[1].name").value("Recogida"));
@@ -242,7 +258,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     "sections": [ { "id": "%s", "name": "First", "position": 0 } ]
                                 }
                                 """.formatted(stableId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
@@ -253,12 +269,12 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     "sections": [ { "id": "%s", "name": "Second", "position": 0 } ]
                                 }
                                 """.formatted(stableId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/route",
                         hermandadId, procesion.getId())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sections[0].name").value("Second"));
     }
@@ -284,7 +300,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     ]
                                 }
                                 """.formatted(stableId, titularId, titularId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasos.length()").value(2));
 
@@ -292,7 +308,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
 
         mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
                         hermandadId, procesion.getId())
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasos[0].position").value(0))
                 .andExpect(jsonPath("$.pasos[1].position").value(1));
@@ -316,7 +332,7 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     "pasos": [ { "id": "%s", "position": 0, "titularId": "%s", "notes": "First" } ]
                                 }
                                 """.formatted(stableId, titularId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
@@ -327,12 +343,12 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
                                     "pasos": [ { "id": "%s", "position": 0, "titularId": "%s", "notes": "Second" } ]
                                 }
                                 """.formatted(stableId, titularId))
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/hermandades/{hermandadId}/procesiones/{procesionId}/pasos",
                         hermandadId, procesion.getId())
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasos[0].notes").value("Second"));
     }
@@ -352,12 +368,12 @@ class ProcesionControllerIntegrationTest extends JdbcIntegrationTestBase {
 
         mockMvc.perform(post("/api/hermandades/{hermandadId}/procesiones/{procesionId}/plan/finalize",
                         hermandadId, procesion.getId())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/hermandades/{hermandadId}/procesiones/{procesionId}/plan/finalize",
                         hermandadId, procesion.getId())
-                        .with(jwt()))
+                        .with(adminJwt(hermandadId.toString())))
                 .andExpect(status().isOk());
 
         verify(outboxEventJpaRepository, times(1))

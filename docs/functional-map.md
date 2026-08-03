@@ -280,7 +280,7 @@ domain/
 | **Cross-service** | Consumes `procesion-events` → local `KnownProcesion` cache (procesion, pasos, route sections projected from the finalized plan). Validates cruceta definition against known pasos/route sections. |
 | **SB4** | Migrated (`tools.jackson`) |
 
-**Current product boundary and risks (AS-IS):** One Cruceta per Paso, with items carrying marchaId/routeSectionId/sequenceWithinSection/notes, plus per-Paso run-sheet progression. KnownProcesion projects the finalized plan snapshot (date/time/status/planFinalizedAt) plus KnownPaso and KnownRouteSection. KnownPaso/KnownRouteSection projection is populated from the finalized plan; the plan-finalized consumer path was fixed (procesionId wire format) to make this work. Tenant isolation on Procesion-scoped endpoints is still missing (see risks below). See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
+**Current product boundary and risks (AS-IS):** One Cruceta per Paso, with items carrying marchaId/routeSectionId/sequenceWithinSection/notes, plus per-Paso run-sheet progression. KnownProcesion projects the finalized plan snapshot (date/time/status/planFinalizedAt) plus KnownPaso and KnownRouteSection. KnownPaso/KnownRouteSection projection is populated from the finalized plan; the plan-finalized consumer path was fixed (procesionId wire format) to make this work. Tenant isolation on hermandad-scoped Procesion endpoints is enforced (JWT `hermandad_memberships` claim → member/admin `@PreAuthorize` guards, issue #80). See §0.10 for the full AS-IS vs TARGET comparison and the active roadmap for implementation order.
 
 **Key directories:**
 ```
@@ -491,16 +491,16 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 
 | Method | Path | Auth | Endpoint | File |
 |--------|------|------|----------|------|
-| `POST` | `/api/procesiones` | authenticated | `createProcesion()` | `ProcesionController.java:37` |
+| `POST` | `/api/procesiones` | admin | `createProcesion()` | `ProcesionController.java:37` |
 | `GET` | `/api/procesiones/{id}` | authenticated | `getProcesion()` | `ProcesionController.java:49` |
-| `GET` | `/api/procesiones?hermandadId={id}` | authenticated | `listByHermandad()` | `ProcesionController.java:60` |
+| `GET` | `/api/procesiones?hermandadId={id}` | member | `listByHermandad()` | `ProcesionController.java:60` |
 | `PATCH` | `/api/procesiones/{id}/status` | authenticated | `changeStatus()` | `ProcesionController.java:77` |
 | `DELETE` | `/api/procesiones/{id}` | authenticated | `deleteProcesion()` | `ProcesionController.java:93` |
-| `GET` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | authenticated | `getPasos()` | `PasoController.java:27` |
-| `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | authenticated | `replacePasos()` | `PasoController.java:43` |
-| `GET` | `/api/hermandades/{hid}/procesiones/{pid}/route` | authenticated | `getRouteSections()` | `ProcesionPlanController.java:29` |
-| `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/route` | authenticated | `replaceRouteSections()` | `ProcesionPlanController.java:45` |
-| `POST` | `/api/hermandades/{hid}/procesiones/{pid}/plan/finalize` | authenticated | `finalizePlan()` | `ProcesionPlanController.java:68` |
+| `GET` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | member | `getPasos()` | `PasoController.java:27` |
+| `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/pasos` | admin | `replacePasos()` | `PasoController.java:43` |
+| `GET` | `/api/hermandades/{hid}/procesiones/{pid}/route` | member | `getRouteSections()` | `ProcesionPlanController.java:29` |
+| `PUT` | `/api/hermandades/{hid}/procesiones/{pid}/route` | admin | `replaceRouteSections()` | `ProcesionPlanController.java:45` |
+| `POST` | `/api/hermandades/{hid}/procesiones/{pid}/plan/finalize` | admin | `finalizePlan()` | `ProcesionPlanController.java:68` |
 
 **Note**: Procesion service has no `@PreAuthorize` — only `anyRequest().authenticated()`. `@EnableMethodSecurity` is declared but unused. Tenant isolation on these endpoints is tracked as an open issue.
 
@@ -821,8 +821,8 @@ Request with Bearer JWT
 | Module | Test Files | `@Test` Count | Integration Tests | Infrastructure |
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
 | **hermandad-service** | 27 | **131** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
-| **procesion-service** | 18 | **145** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 25 | **157** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
+| **procesion-service** | 18 | **156** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
+| **repertorio-service** | 27 | **163** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
 | **shared/common** | 5 | 10 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
@@ -851,7 +851,9 @@ Request with Bearer JWT
 |-----------|------|:-----:|----------------|
 | `ProcesionTest.java` | Domain unit | 11 | State machine (all transitions) |
 | `ProcesionServiceTest.java` | Unit (mock service) | 8 | CRUD, status transitions, exceptions |
-| `ProcesionControllerTest.java` | Web slice (MockMvc) | 17 | All endpoints, 401 scenarios, unknown path → 404 |
+| `PasoControllerTest.java` | Web slice (MockMvc) | 12 | GET/PUT pasos, tenant guards (member read, admin write, cross-tenant 403) |
+| `ProcesionPlanControllerTest.java` | Web slice (MockMvc) | 11 | Route GET/PUT + plan finalize, tenant guards (member read, admin write, cross-tenant 403) |
+| `ProcesionControllerTest.java` | Web slice (MockMvc) | 21 | All endpoints, 401 scenarios, tenant guards (member/admin claims, cross-tenant 403), unknown path → 404 |
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
 | `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 13 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, 401 |
@@ -909,7 +911,7 @@ Request with Bearer JWT
 | # | Severity | Issue | File(s) | Status |
 |---|----------|-------|---------|--------|
 | 1 | 🟠 Low | ✅ ~~**Flyway index not mirrored on entity** — `idx_procesion_hermandad_id` exists in SQL but `@Table(indexes = ...)` missing on entity~~ | `Procesion.java`, `V1__create_procesion_table.sql` | Done |
-| 2 | 🟠 Low | ✅ ~~**No `@PreAuthorize` on procesion or repertorio controllers** — `@EnableMethodSecurity` declared but unused in both~~ | `CrucetaController.java:47` | Done — `defineCruceta()` uses `@PreAuthorize` |
+| 2 | 🟠 Low | ✅ ~~**No `@PreAuthorize` on procesion or repertorio controllers** — `@EnableMethodSecurity` declared but unused in both~~ | `CrucetaController.java:47` | Done — repertorio `defineCruceta()` + all hermandad-scoped procesion endpoints use `@PreAuthorize` (member reads, admin writes, #80) |
 | 3 | 🟠 Low | ✅ ~~**Dead `@EnableFeignClients`** — annotation + `spring-cloud-starter-openfeign` with zero `@FeignClient`~~ | `ProcesionServiceApplication.java:12`, `build.gradle.kts:18` | Done |
 | 4 | 🟠 Low | **No Redis caching on procesion or repertorio** — hermandad has it, read-heavy listings would benefit | — | Open |
 | 5 | 🟠 Low | ✅ ~~**3 ghost gateway routes** — repertorio, tracking, notification routes point to stub services → 503~~ | `api-gateway/application.yml:33-48` | Done (repertorio fixed, 2 remain) |

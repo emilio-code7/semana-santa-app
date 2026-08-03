@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -29,10 +30,12 @@ public class ProcesionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("@procesionSecurity.isAdmin(#request.hermandadId())")
     @Operation(summary = "Create a new procesion")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Procesion created"),
-            @ApiResponse(responseCode = "400", description = "Invalid input (validation error)")
+            @ApiResponse(responseCode = "400", description = "Invalid input (validation error)"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — not an admin of this hermandad")
     })
     public ResponseEntity<ProcesionResponse> createProcesion(@Valid @RequestBody CreateProcesionRequest request) {
         log.info("Creating procesion for hermandad {} on {}", request.hermandadId(), request.date());
@@ -53,9 +56,11 @@ public class ProcesionController {
     }
 
     @GetMapping
+    @PreAuthorize("@procesionSecurity.isMember(#hermandadId)")
     @Operation(summary = "List procesiones by hermandad")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Paginated list of procesiones")
+            @ApiResponse(responseCode = "200", description = "Paginated list of procesiones"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — not a member of this hermandad")
     })
     public ResponseEntity<Page<ProcesionResponse>> listByHermandad(
             @RequestParam UUID hermandadId,
@@ -84,9 +89,11 @@ public class ProcesionController {
     }
 
     @PostMapping("/{id}/finalize-plan")
+    @PreAuthorize("@procesionSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Finalize the plan for a procesion (idempotent)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Plan finalized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — not an admin of this hermandad"),
             @ApiResponse(responseCode = "404", description = "Procesion not found")
     })
     public ResponseEntity<ProcesionResponse> finalizePlan(

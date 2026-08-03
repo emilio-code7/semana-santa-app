@@ -1,8 +1,9 @@
 package com.repertorio.procesion.adapter.inbound.rest.controller;
 
+import com.repertorio.procesion.adapter.config.JwtAuthenticationConverter;
+import com.repertorio.procesion.adapter.config.ProcesionSecurityService;
 import com.repertorio.procesion.adapter.config.SecurityConfig;
 import com.repertorio.procesion.application.service.PasoService;
-import com.repertorio.procesion.domain.model.ForbiddenException;
 import com.repertorio.procesion.domain.model.Paso;
 import com.repertorio.procesion.domain.model.ProcesionNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -26,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PasoController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, ProcesionSecurityService.class})
 class PasoControllerTest {
 
     @Autowired
@@ -43,6 +45,20 @@ class PasoControllerTest {
         return Paso.create(procesionId, position, titularId, null);
     }
 
+    private JwtRequestPostProcessor memberJwt(String hermandadIdInClaim) {
+        return memberJwt(hermandadIdInClaim, "MUSICIAN");
+    }
+
+    private JwtRequestPostProcessor memberJwt(String hermandadIdInClaim, String role) {
+        var memberships = "[{\"hermandadId\":\"" + hermandadIdInClaim + "\",\"role\":\"" + role + "\"}]";
+        return jwt().jwt(b -> b.subject("user-1").claim("hermandad_memberships", memberships))
+                .authorities(j -> new JwtAuthenticationConverter().convert(j).getAuthorities());
+    }
+
+    private JwtRequestPostProcessor adminJwt(String hermandadIdInClaim) {
+        return memberJwt(hermandadIdInClaim, "HERMANDAD_ADMIN");
+    }
+
     // --- GET pasos ---
 
     @Test
@@ -51,7 +67,7 @@ class PasoControllerTest {
                 .thenReturn(List.of(buildPaso(1), buildPaso(2)));
 
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pasos").isArray())
                 .andExpect(jsonPath("$.pasos.length()").value(2));
@@ -59,9 +75,17 @@ class PasoControllerTest {
 
     @Test
     void getPasosReturns403ForCrossTenant() throws Exception {
+        var otherHermandad = UUID.randomUUID();
         when(pasoService.getPasos(hermandadId, procesionId))
-                .thenThrow(new ForbiddenException("Cross-tenant access"));
+                .thenReturn(List.of(buildPaso(1), buildPaso(2)));
 
+        mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(memberJwt(otherHermandad.toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getPasosReturns403WhenAuthenticatedButNotMember() throws Exception {
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
                         .with(jwt()))
                 .andExpect(status().isForbidden());
@@ -73,7 +97,7 @@ class PasoControllerTest {
                 .thenThrow(new ProcesionNotFoundException(procesionId));
 
         mockMvc.perform(get("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt()))
+                        .with(memberJwt(hermandadId.toString())))
                 .andExpect(status().isNotFound());
     }
 
@@ -95,7 +119,7 @@ class PasoControllerTest {
                 .thenReturn(List.of(buildPaso(1), buildPaso(2)));
 
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -115,7 +139,7 @@ class PasoControllerTest {
                 .thenThrow(new IllegalArgumentException("Duplicate position in paso list"));
 
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -130,11 +154,23 @@ class PasoControllerTest {
 
     @Test
     void replacePasosReturns403ForCrossTenant() throws Exception {
+        var otherHermandad = UUID.randomUUID();
         when(pasoService.replacePasos(eq(hermandadId), eq(procesionId), any()))
-                .thenThrow(new ForbiddenException("Cross-tenant"));
+                .thenReturn(List.of(buildPaso(1)));
 
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt())
+                        .with(adminJwt(otherHermandad.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pasos": [{"position": 1, "titularId": "%s"}]}
+                                """.formatted(titularId)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void replacePasosReturns403ForMemberRole() throws Exception {
+        mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
+                        .with(memberJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"pasos": [{"position": 1, "titularId": "%s"}]}
@@ -148,7 +184,7 @@ class PasoControllerTest {
                 .thenThrow(new ProcesionNotFoundException(procesionId));
 
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"pasos": [{"position": 1, "titularId": "%s"}]}
@@ -159,7 +195,7 @@ class PasoControllerTest {
     @Test
     void replacePasosReturns400ForEmptyList() throws Exception {
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos", hermandadId, procesionId)
-                        .with(jwt())
+                        .with(adminJwt(hermandadId.toString()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"pasos": []}

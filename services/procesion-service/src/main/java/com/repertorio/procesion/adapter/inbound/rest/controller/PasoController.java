@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class PasoController {
     private final PasoService pasoService;
 
     @GetMapping
+    @PreAuthorize("@procesionSecurity.isMember(#hermandadId)")
     @Operation(summary = "Get ordered list of pasos for a procesion")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Ordered list of pasos"),
@@ -41,6 +43,7 @@ public class PasoController {
     }
 
     @PutMapping
+    @PreAuthorize("@procesionSecurity.isAdmin(#hermandadId)")
     @Operation(summary = "Atomically replace the ordered list of pasos")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Pasos replaced"),
