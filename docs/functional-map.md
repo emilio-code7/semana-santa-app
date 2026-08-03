@@ -115,6 +115,18 @@ The canonical protocol — including who owns doc reconciliation (the orchestrat
 | **KnownProcesion** | ✅ Plan snapshot (date, time, status, planFinalizedAt) + KnownPaso + KnownRouteSection | Full plan snapshot (Pasos, Route Sections, Titular refs) |
 | **Tenant isolation** | Partial (Hermandad ✅, Procesion ❌, Cruceta partial) | All contexts enforced |
 
+### 0.11 Reliability & Tenant Contracts
+
+Frozen contracts that every subsequent roadmap ticket verifies against (issue #22):
+
+| Contract | Summary |
+|----------|---------|
+| [`docs/contracts/event-envelope.md`](contracts/event-envelope.md) | Canonical versioned `DomainEvent` envelope: producer-generated `eventId`, `schemaVersion` (Ticket 10), outbox transport, at-least-once semantics, consumer dedup separation. |
+| [`docs/contracts/reliability-metrics.md`](contracts/reliability-metrics.md) | Target metrics (outbox backlog, oldest age, poll interval, consumer lag) + measurement protocol, concurrency contract (loser 409, never 5xx), OpenAPI spec-integrity guard. |
+| [`docs/contracts/tenant-isolation.md`](contracts/tenant-isolation.md) | Per-service tenant-isolation invariants, AS-IS/TARGET status, 401/403/404 assertion matrix, harness gotchas (cross-tenant paths for procesion 403). |
+
+Every subsequent roadmap ticket references these contracts; the OpenAPI responses they require are in `docs/openapi.yaml`.
+
 ---
 
 ## 1. Project Topology
