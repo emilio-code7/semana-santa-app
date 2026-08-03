@@ -69,6 +69,19 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleAccessDeniedReturns403WithApiError() {
+        var ex = new org.springframework.security.access.AccessDeniedException("Cross-tenant access");
+
+        ResponseEntity<ApiError> response = handler.handleAccessDenied(ex);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(403, response.getBody().status());
+        assertEquals("Forbidden", response.getBody().error());
+        assertEquals("Cross-tenant access", response.getBody().message());
+    }
+
+    @Test
     void handleGenericReturns500WithApiError() {
         var ex = new RuntimeException("Kaboom");
 
