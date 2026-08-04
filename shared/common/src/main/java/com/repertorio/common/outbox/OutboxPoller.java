@@ -20,7 +20,8 @@ public class OutboxPoller {
         List<OutboxEventEntity> events = outboxEventRepository
                 .findTop100ByProcessedFalseOrderByCreatedAtAsc();
         for (OutboxEventEntity event : events) {
-            messageSender.send(event.getAggregateType() + "-events", event.getPayload())
+            messageSender.send(event.getAggregateType() + "-events",
+                    event.getAggregateId(), event.getEventId(), event.getPayload())
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         log.error("Error sending outbox event {}: {}", event.getId(), ex.getMessage());

@@ -41,13 +41,26 @@ public class OutboxEventEntity implements Persistable<UUID> {
     @Column
     private Boolean processed;
 
+    @Column(nullable = false, updatable = false)
+    private UUID eventId;
+
+    @Column(nullable = false, updatable = false)
+    private Instant occurredAt;
+
+    @Column(nullable = false, updatable = false)
+    private int schemaVersion;
+
     protected OutboxEventEntity() {}
 
-    public OutboxEventEntity(String aggregateType, UUID aggregateId, String eventType, String payload) {
+    public OutboxEventEntity(String aggregateType, UUID aggregateId, String eventType, String payload,
+                             UUID eventId, Instant occurredAt, int schemaVersion) {
         this.aggregateType = aggregateType;
         this.aggregateId = aggregateId;
         this.eventType = eventType;
         this.payload = payload;
+        this.eventId = eventId;
+        this.occurredAt = occurredAt;
+        this.schemaVersion = schemaVersion;
         this.processed = false;
     }
 
