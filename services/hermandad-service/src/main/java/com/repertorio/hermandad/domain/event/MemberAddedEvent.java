@@ -27,4 +27,7 @@ public record MemberAddedEvent(
 
     @Override
     public String eventType() { return "MEMBER_ADDED"; }
+
+    @Override
+    public int schemaVersion() { return 1; }
 }

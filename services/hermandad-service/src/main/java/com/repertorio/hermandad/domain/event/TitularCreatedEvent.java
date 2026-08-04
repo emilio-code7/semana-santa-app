@@ -22,4 +22,7 @@ public record TitularCreatedEvent(
     public String aggregateType() { return "titular"; }
     @Override
     public UUID aggregateId() { return id; }
+
+    @Override
+    public int schemaVersion() { return 1; }
 }

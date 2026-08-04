@@ -27,4 +27,7 @@ public record MemberRemovedEvent(
 
     @Override
     public String eventType() { return "MEMBER_REMOVED"; }
+
+    @Override
+    public int schemaVersion() { return 1; }
 }

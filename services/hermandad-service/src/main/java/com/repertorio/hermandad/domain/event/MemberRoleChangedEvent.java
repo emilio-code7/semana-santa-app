@@ -23,4 +23,7 @@ public record MemberRoleChangedEvent(
 
     @Override
     public String eventType() { return "MEMBER_ROLE_CHANGED"; }
+
+    @Override
+    public int schemaVersion() { return 1; }
 }
