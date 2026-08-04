@@ -104,7 +104,7 @@ class KnownProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
 
         assertThat(pasoJpa.existsById(pasoId)).isTrue();
         assertThat(routeSectionJpa.existsById(sectionId)).isTrue();
-        assertThat(adapter.existsPasoById(pasoId)).isTrue();
+        assertThat(adapter.findPasoById(pasoId)).isPresent();
         assertThat(adapter.existsRouteSectionById(sectionId)).isTrue();
 
         var savedPasos = pasoJpa.findByProcesionId(procesionId);

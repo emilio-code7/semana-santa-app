@@ -13,11 +13,13 @@ public record MarchaAddedEvent(
         String composer,
         BandType bandType,
         Integer compositionYear,
-        String youtubeUrl
+        String youtubeUrl,
+        String eventType
 ) implements DomainEvent {
     public MarchaAddedEvent(UUID marchaId, String title, String composer,
                             BandType bandType, Integer compositionYear, String youtubeUrl) {
-        this(UUID.randomUUID(), Instant.now(), marchaId, title, composer, bandType, compositionYear, youtubeUrl);
+        this(UUID.randomUUID(), Instant.now(), marchaId, title, composer, bandType, compositionYear, youtubeUrl,
+                "MARCHA_ADDED");
     }
 
     @Override
@@ -27,5 +29,5 @@ public record MarchaAddedEvent(
     public UUID aggregateId() { return marchaId(); }
 
     @Override
-    public String eventType() { return "MARCHA_ADDED"; }
+    public int schemaVersion() { return 1; }
 }

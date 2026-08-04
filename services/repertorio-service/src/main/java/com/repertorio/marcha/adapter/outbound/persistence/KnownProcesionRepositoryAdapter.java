@@ -103,8 +103,8 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
     }
 
     @Override
-    public boolean existsPasoById(UUID pasoId) {
-        return pasoJpa.existsById(pasoId);
+    public Optional<KnownPaso> findPasoById(UUID pasoId) {
+        return pasoJpa.findById(pasoId).map(KnownPasoEntity::toDomain);
     }
 
     @Override

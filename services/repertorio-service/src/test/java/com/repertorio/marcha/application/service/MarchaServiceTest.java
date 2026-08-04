@@ -9,6 +9,7 @@ import com.repertorio.marcha.domain.model.MarchaNotFoundException;
 import com.repertorio.marcha.domain.port.MarchaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -40,7 +41,12 @@ class MarchaServiceTest {
         assertNotNull(marcha.getId());
         assertEquals("Amarguras", marcha.getTitle());
         verify(marchaRepository).save(any(Marcha.class));
-        verify(eventPublisher).publish(any(MarchaAddedEvent.class));
+        var eventCaptor = ArgumentCaptor.forClass(MarchaAddedEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertNotNull(event.eventId());
+        assertEquals("MARCHA_ADDED", event.eventType());
+        assertEquals(1, event.schemaVersion());
     }
 
     @Test
@@ -112,7 +118,12 @@ class MarchaServiceTest {
         marchaService.deleteMarcha(id);
 
         verify(marchaRepository).deleteById(id);
-        verify(eventPublisher).publish(any(MarchaRemovedEvent.class));
+        var eventCaptor = ArgumentCaptor.forClass(MarchaRemovedEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertNotNull(event.eventId());
+        assertEquals("MARCHA_REMOVED", event.eventType());
+        assertEquals(1, event.schemaVersion());
     }
 
     @Test

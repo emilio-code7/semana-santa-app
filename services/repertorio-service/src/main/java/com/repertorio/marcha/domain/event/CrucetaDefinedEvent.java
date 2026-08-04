@@ -8,11 +8,13 @@ public record CrucetaDefinedEvent(
         UUID eventId,
         Instant occurredAt,
         UUID crucetaId,
+        UUID procesionId,
         UUID pasoId,
-        int itemCount
+        int itemCount,
+        String eventType
 ) implements DomainEvent {
-    public CrucetaDefinedEvent(UUID crucetaId, UUID pasoId, int itemCount) {
-        this(UUID.randomUUID(), Instant.now(), crucetaId, pasoId, itemCount);
+    public CrucetaDefinedEvent(UUID crucetaId, UUID procesionId, UUID pasoId, int itemCount) {
+        this(UUID.randomUUID(), Instant.now(), crucetaId, procesionId, pasoId, itemCount, "CRUCETA_DEFINED");
     }
 
     @Override
@@ -22,5 +24,5 @@ public record CrucetaDefinedEvent(
     public UUID aggregateId() { return crucetaId(); }
 
     @Override
-    public String eventType() { return "CRUCETA_DEFINED"; }
+    public int schemaVersion() { return 1; }
 }

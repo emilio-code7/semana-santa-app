@@ -902,6 +902,7 @@ Request with Bearer JWT
 | `KnownProcesionTest.java` | Domain unit | 11 | Creation, validation, reconstruct, status updates |
 | `KnownPasoTest.java` | Domain unit | 6 | Creation, validation, position invariants |
 | `KnownRouteSectionTest.java` | Domain unit | 6 | Creation, validation, position invariants |
+| `RepertorioEventSerializationTest.java` | Domain unit | 3 | All 3 repertorio producer events serialize envelope fields (`eventType`, `eventId`, `occurredAt`) into the outbox payload; `schemaVersion()=1` |
 | `MarchaServiceTest.java` | Unit (mock service) | 10 | CRUD, events, search, existence check |
 | `CrucetaServiceTest.java` | Unit (mock service) | 8 | Get/define cruceta, item validation, run-sheet, advance |
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |

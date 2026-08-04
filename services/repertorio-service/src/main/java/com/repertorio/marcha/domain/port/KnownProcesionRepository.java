@@ -31,8 +31,10 @@ public interface KnownProcesionRepository {
      */
     void deleteByProcesionId(UUID procesionId);
 
-    /** Returns true if the given paso ID exists in the local plan projection. */
-    boolean existsPasoById(UUID pasoId);
+    /**
+     * Returns the paso projection for the given paso ID, if known, with its owning procesionId.
+     */
+    Optional<KnownPaso> findPasoById(UUID pasoId);
 
     /** Returns true if the given route section ID exists in the local plan projection. */
     boolean existsRouteSectionById(UUID routeSectionId);
