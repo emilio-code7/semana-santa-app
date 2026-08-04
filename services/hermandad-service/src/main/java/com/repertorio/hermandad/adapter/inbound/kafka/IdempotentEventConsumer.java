@@ -1,6 +1,5 @@
 package com.repertorio.hermandad.adapter.inbound.kafka;
 
-import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventEntity;
 import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +10,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -43,12 +43,12 @@ public class IdempotentEventConsumer {
     public void consume(String payload) {
         UUID eventId = extractEventId(payload);
 
-        if (processedEventRepository.existsById(eventId)) {
+        int claimed = processedEventRepository.tryClaim(eventId, CONSUMER_NAME, Instant.now());
+        if (claimed == 0) {
             log.info("Duplicate event skipped: {}", eventId);
             return;
         }
 
-        processedEventRepository.save(new ProcessedEventEntity(eventId, CONSUMER_NAME));
         log.info("Event processed: {} payload={}", eventId, truncate(payload, 200));
     }
 

@@ -4,6 +4,7 @@ import com.repertorio.procesion.application.port.ProcessedEventStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Component
@@ -15,12 +16,7 @@ public class ProcessedEventStoreAdapter implements ProcessedEventStore {
     private final ProcessedEventJpaRepository jpaRepository;
 
     @Override
-    public boolean exists(UUID eventId) {
-        return jpaRepository.existsById(eventId);
-    }
-
-    @Override
-    public void record(UUID eventId) {
-        jpaRepository.save(new ProcessedEventEntity(eventId, CONSUMER_NAME));
+    public boolean claim(UUID eventId) {
+        return jpaRepository.tryClaim(eventId, CONSUMER_NAME, Instant.now()) > 0;
     }
 }

@@ -1,23 +1,22 @@
 package com.repertorio.hermandad.adapter.inbound.kafka;
 
-import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventEntity;
 import com.repertorio.hermandad.adapter.outbound.events.ProcessedEventJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class IdempotentEventConsumerTest {
@@ -32,23 +31,18 @@ class IdempotentEventConsumerTest {
     @InjectMocks
     private IdempotentEventConsumer consumer;
 
-    @Captor
-    private ArgumentCaptor<ProcessedEventEntity> entityCaptor;
-
     @Test
     void newEventIsProcessed() {
         UUID eventId = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
         var payload = "{\"eventId\":\"" + eventId
                 + "\",\"id\":\"550e8400-e29b-41d4-a716-446655440000\",\"name\":\"Macarena\"}";
 
-        when(processedEventRepository.existsById(eventId)).thenReturn(false);
+        when(processedEventRepository.tryClaim(eq(eventId), eq("hermandad-service"), any(Instant.class)))
+                .thenReturn(1);
 
         consumer.consume(payload);
 
-        verify(processedEventRepository).save(entityCaptor.capture());
-        assertThat(entityCaptor.getValue().getEventId()).isEqualTo(eventId);
-        assertThat(entityCaptor.getValue().getConsumerName()).isEqualTo("hermandad-service");
-        assertThat(entityCaptor.getValue().getProcessedAt()).isNotNull();
+        verify(processedEventRepository).tryClaim(eq(eventId), eq("hermandad-service"), any(Instant.class));
     }
 
     @Test
@@ -57,10 +51,12 @@ class IdempotentEventConsumerTest {
         var payload = "{\"eventId\":\"" + eventId
                 + "\",\"id\":\"550e8400-e29b-41d4-a716-446655440000\",\"name\":\"Macarena\"}";
 
-        when(processedEventRepository.existsById(eventId)).thenReturn(true);
+        when(processedEventRepository.tryClaim(eq(eventId), eq("hermandad-service"), any(Instant.class)))
+                .thenReturn(0);
 
         consumer.consume(payload);
 
+        verify(processedEventRepository).tryClaim(eq(eventId), eq("hermandad-service"), any(Instant.class));
         verify(processedEventRepository, never()).save(any());
     }
 
@@ -73,17 +69,15 @@ class IdempotentEventConsumerTest {
         var payloadY = "{\"eventId\":\"" + eventIdY
                 + "\",\"id\":\"550e8400-e29b-41d4-a716-446655440000\",\"name\":\"Macarena\"}";
 
-        when(processedEventRepository.existsById(eventIdX)).thenReturn(false);
-        when(processedEventRepository.existsById(eventIdY)).thenReturn(false);
+        when(processedEventRepository.tryClaim(eq(eventIdX), eq("hermandad-service"), any(Instant.class)))
+                .thenReturn(1);
+        when(processedEventRepository.tryClaim(eq(eventIdY), eq("hermandad-service"), any(Instant.class)))
+                .thenReturn(1);
 
         consumer.consume(payloadX);
         consumer.consume(payloadY);
 
-        verify(processedEventRepository, times(2)).save(entityCaptor.capture());
-        List<ProcessedEventEntity> saved = entityCaptor.getAllValues();
-        assertThat(saved).extracting(ProcessedEventEntity::getEventId)
-                .containsExactly(eventIdX, eventIdY);
-        assertThat(saved).extracting(ProcessedEventEntity::getConsumerName)
-                .containsExactly("hermandad-service", "hermandad-service");
+        verify(processedEventRepository).tryClaim(eq(eventIdX), eq("hermandad-service"), any(Instant.class));
+        verify(processedEventRepository).tryClaim(eq(eventIdY), eq("hermandad-service"), any(Instant.class));
     }
 }

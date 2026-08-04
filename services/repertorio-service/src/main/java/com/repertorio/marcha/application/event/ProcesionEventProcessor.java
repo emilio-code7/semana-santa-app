@@ -37,7 +37,7 @@ public class ProcesionEventProcessor {
             JsonNode root = parsePayload(payload);
             UUID eventId = extractUuid(root, "eventId");
 
-            if (processedEventStore.exists(eventId)) {
+            if (!processedEventStore.claim(eventId)) {
                 log.debug("Duplicate procesion event skipped: {}", eventId);
                 return;
             }
@@ -50,8 +50,6 @@ public class ProcesionEventProcessor {
                 case "PROCESION_DELETED" -> handleDeleted(root);
                 default -> throw new IllegalArgumentException("Unknown procesion event type: " + eventType);
             }
-
-            processedEventStore.record(eventId);
         } catch (IllegalArgumentException e) {
             if (e.getMessage() != null && e.getMessage().startsWith("Malformed event payload")) {
                 // malformed JSON is a transport-level failure: escalate so Kafka/SQS retries
