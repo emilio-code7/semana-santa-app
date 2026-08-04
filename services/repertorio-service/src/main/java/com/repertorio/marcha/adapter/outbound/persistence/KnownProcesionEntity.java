@@ -72,4 +72,12 @@ public class KnownProcesionEntity {
     public String getStatus() { return status; }
     public Instant getPlanFinalizedAt() { return planFinalizedAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    // ponytail: package-private setters for adapter update of the managed entity
+    void setHermandadId(UUID hermandadId) { this.hermandadId = hermandadId; }
+    void setDate(LocalDate date) { this.date = date; }
+    void setTime(LocalTime time) { this.time = time; }
+    void setStatus(String status) { this.status = status; }
+    void setPlanFinalizedAt(Instant planFinalizedAt) { this.planFinalizedAt = planFinalizedAt; }
+    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

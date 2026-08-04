@@ -28,9 +28,19 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
 
     @Override
     public KnownProcesion save(KnownProcesion knownProcesion) {
-        var entity = KnownProcesionEntity.from(knownProcesion);
-        var saved = jpa.save(entity);
-        return saved.toDomain();
+        var managed = jpa.findById(knownProcesion.getProcesionId());
+        if (managed.isEmpty()) {
+            return jpa.save(KnownProcesionEntity.from(knownProcesion)).toDomain();
+        }
+        var entity = managed.get();
+        entity.setHermandadId(knownProcesion.getHermandadId());
+        entity.setDate(knownProcesion.getDate());
+        entity.setTime(knownProcesion.getTime());
+        entity.setStatus(knownProcesion.getStatus());
+        entity.setPlanFinalizedAt(knownProcesion.getPlanFinalizedAt());
+        entity.setUpdatedAt(knownProcesion.getUpdatedAt());
+        jpa.flush();
+        return entity.toDomain();
     }
 
     @Override
@@ -46,7 +56,19 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
     @Override
     @Transactional
     public void saveFullPlan(KnownProcesion knownProcesion, List<KnownPaso> pasos, List<KnownRouteSection> routeSections) {
-        jpa.save(KnownProcesionEntity.from(knownProcesion));
+        var managed = jpa.findById(knownProcesion.getProcesionId());
+        if (managed.isEmpty()) {
+            jpa.save(KnownProcesionEntity.from(knownProcesion));
+        } else {
+            var entity = managed.get();
+            entity.setHermandadId(knownProcesion.getHermandadId());
+            entity.setDate(knownProcesion.getDate());
+            entity.setTime(knownProcesion.getTime());
+            entity.setStatus(knownProcesion.getStatus());
+            entity.setPlanFinalizedAt(knownProcesion.getPlanFinalizedAt());
+            entity.setUpdatedAt(knownProcesion.getUpdatedAt());
+            jpa.flush();
+        }
 
         // ponytail: delete-then-insert for child replace; fine for small datasets
         pasoJpa.deleteByProcesionId(knownProcesion.getProcesionId());
