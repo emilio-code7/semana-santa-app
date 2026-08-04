@@ -6,13 +6,13 @@ import com.repertorio.marcha.application.port.ProcessedEventStore;
 import com.repertorio.marcha.domain.model.KnownPaso;
 import com.repertorio.marcha.domain.model.KnownProcesion;
 import com.repertorio.marcha.domain.model.KnownRouteSection;
+import com.repertorio.marcha.domain.port.CrucetaRepository;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -27,38 +27,58 @@ import java.util.UUID;
 public class ProcesionEventProcessor {
 
     private final KnownProcesionRepository knownProcesionRepository;
+    private final CrucetaRepository crucetaRepository;
     private final ProcessedEventStore processedEventStore;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public void process(String payload) {
-        UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
-
-        if (processedEventStore.exists(eventId)) {
-            log.debug("Duplicate procesion event skipped: {}", eventId);
-            return;
-        }
-
         try {
-            JsonNode root = objectMapper.readTree(payload);
+            JsonNode root = parsePayload(payload);
+            UUID eventId = extractUuid(root, "eventId");
 
-            if (root.has("planFinalizedAt")) {
-                handlePlanFinalized(root);
-            } else if (root.has("previousStatus") || root.has("newStatus")) {
-                handleStatusChanged(root);
-            } else {
-                handleCreated(root);
+            if (processedEventStore.exists(eventId)) {
+                log.debug("Duplicate procesion event skipped: {}", eventId);
+                return;
+            }
+
+            String eventType = extractEventType(root);
+            switch (eventType) {
+                case "PROCESION_CREATED" -> handleCreated(root);
+                case "PROCESION_STATUS_CHANGED" -> handleStatusChanged(root);
+                case "PROCESION_PLAN_FINALIZED" -> handlePlanFinalized(root);
+                case "PROCESION_DELETED" -> handleDeleted(root);
+                default -> throw new IllegalArgumentException("Unknown procesion event type: " + eventType);
             }
 
             processedEventStore.record(eventId);
         } catch (IllegalArgumentException e) {
-            // domain validation failure — throw so transport can retry/error
-            log.warn("Invalid procesion event {}: {}", eventId, e.getMessage());
+            if (e.getMessage() != null && e.getMessage().startsWith("Malformed event payload")) {
+                // malformed JSON is a transport-level failure: escalate so Kafka/SQS retries
+                throw new RuntimeException("Failed to process procesion event: " + e.getMessage(), e);
+            }
+            log.warn("Invalid procesion event: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("Failed to process procesion event {}: {}", eventId, e.getMessage());
-            throw new RuntimeException("Failed to process procesion event: " + eventId, e);
+            log.error("Failed to process procesion event: {}", e.getMessage());
+            throw new RuntimeException("Failed to process procesion event: " + e.getMessage(), e);
         }
+    }
+
+    private JsonNode parsePayload(String payload) {
+        try {
+            return objectMapper.readTree(payload);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Malformed event payload", e);
+        }
+    }
+
+    private static String extractEventType(JsonNode root) {
+        JsonNode node = root.get("eventType");
+        if (node == null || !node.isTextual() || node.asText().isBlank()) {
+            throw new IllegalArgumentException("Missing required field: eventType");
+        }
+        return node.asText();
     }
 
     private void handleCreated(JsonNode root) {
@@ -101,6 +121,20 @@ public class ProcesionEventProcessor {
 
         knownProcesionRepository.saveFullPlan(known, parsePasos(root, procesionId), parseRouteSections(root, procesionId));
         log.info("Projected finalized plan for procesion {} at {}", procesionId, planFinalizedAt);
+    }
+
+    private void handleDeleted(JsonNode root) {
+        UUID procesionId = extractUuid(root, "id");
+        extractUuid(root, "hermandadId");
+
+        List<KnownPaso> pasos = knownProcesionRepository.findPasosByProcesionId(procesionId);
+        for (KnownPaso paso : pasos) {
+            crucetaRepository.deleteByPasoId(paso.getId());
+        }
+        // idempotent: no-op when the procesion projection is already unknown
+        knownProcesionRepository.deleteByProcesionId(procesionId);
+        log.info("Removed plan projections for deleted procesion {} ({} pasos, crucetas removed)",
+                procesionId, pasos.size());
     }
 
     private static List<KnownPaso> parsePasos(JsonNode root, UUID procesionId) {

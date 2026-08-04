@@ -2,6 +2,7 @@ package com.repertorio.marcha.adapter.inbound.sqs;
 
 import com.repertorio.marcha.application.event.ProcesionEventProcessor;
 import com.repertorio.marcha.application.port.ProcessedEventStore;
+import com.repertorio.marcha.domain.port.CrucetaRepository;
 import com.repertorio.marcha.domain.port.KnownProcesionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +11,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,14 +43,15 @@ class ProcesionSqsConsumerTest {
 
     @Test
     void acknowledgesDuplicateViaRealProcessor() throws Exception {
-        var payload = "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"hermandadId\":\"00000000-0000-0000-0000-000000000002\"}";
+        var payload = "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"hermandadId\":\"00000000-0000-0000-0000-000000000002\",\"eventId\":\"a0000000-0000-0000-0000-000000000022\",\"eventType\":\"PROCESION_CREATED\"}";
         var ack = mock(io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement.class);
         var knownRepo = mock(KnownProcesionRepository.class);
+        var crucetaRepo = mock(CrucetaRepository.class);
 
-        UUID eventId = UUID.nameUUIDFromBytes(payload.getBytes(StandardCharsets.UTF_8));
+        UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000022");
         when(processedEventStore.exists(eventId)).thenReturn(true);
 
-        var realProcessor = new ProcesionEventProcessor(knownRepo, processedEventStore, realMapper);
+        var realProcessor = new ProcesionEventProcessor(knownRepo, crucetaRepo, processedEventStore, realMapper);
         var consumerWithRealProcessor = new ProcesionSqsConsumer(realProcessor);
 
         consumerWithRealProcessor.consume(payload, ack);
