@@ -885,6 +885,7 @@ Request with Bearer JWT
 | `ProcesionControllerTest.java` | Web slice (MockMvc) | 28 | All endpoints, 401 scenarios, tenant guards (member/admin claims, cross-tenant 403, persisted-owner canRead/canWrite, CAPATAZ write), unknown path → 404 |
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
+| `ConcurrentWriteTest.java` | **IT** (Testcontainers) | 2 | Optimistic locking through the real adapter: successive updates succeed, concurrent stale write → ObjectOptimisticLockingFailureException |
 | `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 16 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, cross-tenant 403 on GET/{id}/PATCH status/DELETE, 401 |
 | `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
 | `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
@@ -914,6 +915,7 @@ Request with Bearer JWT
 | `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
 | `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
+| `ConcurrentWriteTest.java` | **IT** (Testcontainers) | 2 | Optimistic locking through the real Marcha adapter: successive updates succeed, concurrent stale write → ObjectOptimisticLockingFailureException |
 | `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
 | `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 5 | Get cruceta, define cruceta per Paso, 404 on unknown paso, concurrent replace → never 500 (loser 409, state consistent) |
 | `ProcesionSqsConsumerTest.java` | Unit (mock) | 3 | AWS SQS consumer path |
