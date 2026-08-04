@@ -41,9 +41,11 @@ class CrucetaServiceTest {
     @Test
     void defineCruceta_createsNew() {
         var pasoId = UUID.randomUUID();
+        var procesionId = UUID.randomUUID();
         var marchaId = UUID.randomUUID();
         var items = List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Opening"));
-        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(knownProcesionRepository.findPasoById(pasoId))
+                .thenReturn(Optional.of(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID())));
         when(marchaRepository.existsById(marchaId)).thenReturn(true);
         when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(true);
         when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.empty());
@@ -54,16 +56,26 @@ class CrucetaServiceTest {
         assertEquals(pasoId, cruceta.getPasoId());
         assertEquals(1, cruceta.getItems().size());
         verify(crucetaRepository).save(any(Cruceta.class));
-        verify(eventPublisher).publish(any(CrucetaDefinedEvent.class));
+        var eventCaptor = ArgumentCaptor.forClass(CrucetaDefinedEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertEquals(procesionId, event.procesionId());
+        assertEquals(pasoId, event.pasoId());
+        assertEquals(items.size(), event.itemCount());
+        assertNotNull(event.eventId());
+        assertEquals("CRUCETA_DEFINED", event.eventType());
+        assertEquals(1, event.schemaVersion());
     }
 
     @Test
     void defineCruceta_replacesExisting() {
         var pasoId = UUID.randomUUID();
+        var procesionId = UUID.randomUUID();
         var marchaId = UUID.randomUUID();
         var existing = new Cruceta(pasoId, List.of(new CrucetaItem(marchaId, routeSectionId, 1, "Old")));
         var existingId = existing.getId();
-        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(knownProcesionRepository.findPasoById(pasoId))
+                .thenReturn(Optional.of(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID())));
         when(marchaRepository.existsById(marchaId)).thenReturn(true);
         when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(true);
         when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.of(existing));
@@ -80,6 +92,13 @@ class CrucetaServiceTest {
         var eventCaptor = ArgumentCaptor.forClass(CrucetaDefinedEvent.class);
         verify(eventPublisher).publish(eventCaptor.capture());
         assertEquals(existingId, eventCaptor.getValue().crucetaId(), "event must use preserved aggregate ID");
+        var event = eventCaptor.getValue();
+        assertEquals(procesionId, event.procesionId());
+        assertEquals(pasoId, event.pasoId());
+        assertEquals(newItems.size(), event.itemCount());
+        assertNotNull(event.eventId());
+        assertEquals("CRUCETA_DEFINED", event.eventType());
+        assertEquals(1, event.schemaVersion());
     }
 
     @Test
@@ -104,7 +123,7 @@ class CrucetaServiceTest {
     @Test
     void defineCrucetaThrowsWhenPasoNotKnown() {
         var pasoId = UUID.randomUUID();
-        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(false);
+        when(knownProcesionRepository.findPasoById(pasoId)).thenReturn(Optional.empty());
 
         assertThrows(PasoNotFoundException.class,
                 () -> crucetaService.defineCruceta(pasoId, List.of()));
@@ -113,10 +132,12 @@ class CrucetaServiceTest {
     @Test
     void defineCrucetaThrowsWhenMarchaNotFound() {
         var pasoId = UUID.randomUUID();
+        var procesionId = UUID.randomUUID();
         var marchaId = UUID.randomUUID();
         var items = List.of(new CrucetaItem(marchaId, routeSectionId, 0, null));
 
-        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(knownProcesionRepository.findPasoById(pasoId))
+                .thenReturn(Optional.of(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID())));
         when(marchaRepository.existsById(marchaId)).thenReturn(false);
 
         assertThrows(MarchaNotFoundException.class,
@@ -126,10 +147,12 @@ class CrucetaServiceTest {
     @Test
     void defineCrucetaThrowsWhenRouteSectionNotFound() {
         var pasoId = UUID.randomUUID();
+        var procesionId = UUID.randomUUID();
         var marchaId = UUID.randomUUID();
         var items = List.of(new CrucetaItem(marchaId, routeSectionId, 0, null));
 
-        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(knownProcesionRepository.findPasoById(pasoId))
+                .thenReturn(Optional.of(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID())));
         when(marchaRepository.existsById(marchaId)).thenReturn(true);
         when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(false);
 
@@ -140,10 +163,12 @@ class CrucetaServiceTest {
     @Test
     void defineCrucetaSucceedsWhenPasoIsKnown() {
         var pasoId = UUID.randomUUID();
+        var procesionId = UUID.randomUUID();
         var marchaId = UUID.randomUUID();
         var items = List.of(new CrucetaItem(marchaId, routeSectionId, 0, null));
 
-        when(knownProcesionRepository.existsPasoById(pasoId)).thenReturn(true);
+        when(knownProcesionRepository.findPasoById(pasoId))
+                .thenReturn(Optional.of(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID())));
         when(marchaRepository.existsById(marchaId)).thenReturn(true);
         when(knownProcesionRepository.existsRouteSectionById(routeSectionId)).thenReturn(true);
         when(crucetaRepository.findByPasoId(pasoId)).thenReturn(Optional.empty());
@@ -154,6 +179,6 @@ class CrucetaServiceTest {
         assertNotNull(result);
         assertEquals(pasoId, result.getPasoId());
         assertEquals(1, result.getItems().size());
-        verify(knownProcesionRepository).existsPasoById(pasoId);
+        verify(knownProcesionRepository).findPasoById(pasoId);
     }
 }
