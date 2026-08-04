@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -17,13 +18,23 @@ public class ProcesionRepositoryAdapter implements ProcesionRepository {
     private final ProcesionJpaRepository jpaRepository;
 
     @Override
+    @Transactional
     public Procesion save(Procesion procesion) {
-        var entity = ProcesionEntity.from(procesion);
-        if (!entity.isNew()) {
-            // carry the persisted version so the merge optimistic-lock check passes
-            jpaRepository.findById(entity.getId())
-                    .ifPresent(existing -> entity.setVersion(existing.getVersion()));
+        if (procesion.getId() != null) {
+            var existing = jpaRepository.findById(procesion.getId());
+            if (existing.isPresent()) {
+                var managed = existing.get();
+                managed.setHermandadId(procesion.getHermandadId());
+                managed.setDate(procesion.getDate());
+                managed.setTime(procesion.getTime());
+                managed.setStatus(procesion.getStatus());
+                managed.setPlanFinalizedAt(procesion.getPlanFinalizedAt());
+                managed.setUpdatedAt(procesion.getUpdatedAt());
+                jpaRepository.flush();
+                return managed.toDomain();
+            }
         }
+        var entity = ProcesionEntity.from(procesion);
         var saved = jpaRepository.save(entity);
         return saved.toDomain();
     }

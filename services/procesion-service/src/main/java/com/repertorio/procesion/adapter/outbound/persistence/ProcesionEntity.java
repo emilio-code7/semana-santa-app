@@ -71,6 +71,13 @@ public class ProcesionEntity implements Persistable<UUID> {
     void setVersion(long version) { this.version = version; }
     long getVersion() { return version; }
 
+    void setHermandadId(UUID hermandadId) { this.hermandadId = hermandadId; }
+    void setDate(LocalDate date) { this.date = date; }
+    void setTime(LocalTime time) { this.time = time; }
+    void setStatus(ProcesionStatus status) { this.status = status; }
+    void setPlanFinalizedAt(Instant planFinalizedAt) { this.planFinalizedAt = planFinalizedAt; }
+    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
     @PrePersist
     protected void prePersist() {
         if (createdAt == null) createdAt = Instant.now();
