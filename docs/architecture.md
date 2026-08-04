@@ -108,13 +108,13 @@ All domain events implement the `DomainEvent` interface (in `shared/common` or p
 
 ### Idempotent Kafka Consumer (AS-IS)
 
-Kafka consumers currently use payload-hash check-before-process idempotency via the `processed_event` table:
+Kafka consumers use check-before-process idempotency via the `processed_event` table, keyed by the **producer-generated envelope `eventId`** (payload-hash dedup is retired — hermandad migrated in #26, repertorio's procesion consumer in #27):
 
-1. **Deterministic event ID** — derived from the full payload via `UUID.nameUUIDFromBytes(payload.getBytes())`. Same payload always produces the same ID.
+1. **Envelope event ID** — the `eventId` produced by the producer at event construction, parsed from the consumed payload.
 2. **Check-before-process** — consumer checks `processed_event` before handling; skips if event_id exists.
 3. **Register on first process** — stores event_id + consumer_name + timestamp after successful processing.
 
-**TARGET** (active roadmap): Producer-generated `eventId` replaces payload hash. Transactional `INSERT ... ON CONFLICT DO NOTHING` with `(consumer_name, event_id)` composite key eliminates the check-then-insert race. See event-migration Tickets 12–14 and atomic-idempotency Ticket 17 in the active plan.
+**TARGET** (active roadmap): Transactional `INSERT ... ON CONFLICT DO NOTHING` with `(consumer_name, event_id)` composite key eliminates the check-then-insert race. See atomic-idempotency Ticket 17 in the active plan.
 
 Topics follow `{aggregate-type}-events` naming (e.g., `hermandad-events`, `hermandad-member-events`). Consumer group: `hermandad-service-group`.
 
