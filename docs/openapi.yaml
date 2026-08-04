@@ -18,6 +18,34 @@
   ],
   "paths": {
     "/api/hermandades": {
+      "get": {
+        "tags": [
+          "hermandad-controller"
+        ],
+        "summary": "List all hermandades",
+        "operationId": "getAllHermandades",
+        "responses": {
+          "200": {
+            "description": "List of hermandades",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HermandadResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid JWT"
+          },
+          "403": {
+            "description": "Forbidden — insufficient privileges"
+          }
+        }
+      },
       "post": {
         "tags": [
           "hermandad-controller"
