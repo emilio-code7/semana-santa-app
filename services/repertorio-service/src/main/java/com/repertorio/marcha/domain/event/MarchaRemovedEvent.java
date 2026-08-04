@@ -8,10 +8,11 @@ public record MarchaRemovedEvent(
         UUID eventId,
         Instant occurredAt,
         UUID marchaId,
-        String title
+        String title,
+        String eventType
 ) implements DomainEvent {
     public MarchaRemovedEvent(UUID marchaId, String title) {
-        this(UUID.randomUUID(), Instant.now(), marchaId, title);
+        this(UUID.randomUUID(), Instant.now(), marchaId, title, "MARCHA_REMOVED");
     }
 
     @Override
@@ -21,5 +22,5 @@ public record MarchaRemovedEvent(
     public UUID aggregateId() { return marchaId(); }
 
     @Override
-    public String eventType() { return "MARCHA_REMOVED"; }
+    public int schemaVersion() { return 1; }
 }

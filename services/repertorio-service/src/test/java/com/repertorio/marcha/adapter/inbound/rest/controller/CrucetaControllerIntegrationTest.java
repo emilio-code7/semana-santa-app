@@ -2,10 +2,12 @@ package com.repertorio.marcha.adapter.inbound.rest.controller;
 
 import com.repertorio.marcha.adapter.inbound.kafka.ProcesionEventConsumer;
 import com.repertorio.common.outbox.OutboxEventJpaRepository;
+import com.repertorio.marcha.adapter.outbound.persistence.KnownPasoEntity;
 import com.repertorio.marcha.adapter.outbound.persistence.KnownPasoJpaRepository;
 import com.repertorio.marcha.adapter.outbound.persistence.KnownRouteSectionJpaRepository;
 import com.repertorio.common.JdbcIntegrationTestBase;
 import com.jayway.jsonpath.JsonPath;
+import com.repertorio.marcha.domain.model.KnownPaso;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -21,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -74,7 +77,8 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
         var procesionId = UUID.randomUUID();
         var pasoId = UUID.randomUUID();
         var marchaId = UUID.fromString("a0000001-0000-0000-0000-000000000001");
-        when(knownPasoJpaRepository.existsById(pasoId)).thenReturn(true);
+        when(knownPasoJpaRepository.findById(pasoId))
+                .thenReturn(Optional.of(KnownPasoEntity.from(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID()))));
         when(knownRouteSectionJpaRepository.existsById(routeSectionId)).thenReturn(true);
 
         mockMvc.perform(put("/api/hermandades/{hid}/procesiones/{pid}/pasos/{pasoId}/cruceta",
@@ -97,7 +101,8 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
         var procesionId = UUID.randomUUID();
         var pasoId = UUID.randomUUID();
         var marchaId = UUID.fromString("a0000001-0000-0000-0000-000000000001");
-        when(knownPasoJpaRepository.existsById(pasoId)).thenReturn(true);
+        when(knownPasoJpaRepository.findById(pasoId))
+                .thenReturn(Optional.of(KnownPasoEntity.from(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID()))));
         when(knownRouteSectionJpaRepository.existsById(routeSectionId)).thenReturn(true);
 
         // First define the cruceta
@@ -147,7 +152,8 @@ class CrucetaControllerIntegrationTest extends JdbcIntegrationTestBase {
         var procesionId = UUID.randomUUID();
         var pasoId = UUID.randomUUID();
         var marchaId = UUID.fromString("a0000001-0000-0000-0000-000000000001");
-        when(knownPasoJpaRepository.existsById(pasoId)).thenReturn(true);
+        when(knownPasoJpaRepository.findById(pasoId))
+                .thenReturn(Optional.of(KnownPasoEntity.from(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID()))));
         when(knownRouteSectionJpaRepository.existsById(routeSectionId)).thenReturn(true);
 
         // Seed the cruceta once so both concurrent replaces hit the replace path

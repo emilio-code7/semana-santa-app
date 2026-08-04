@@ -25,9 +25,8 @@ public class CrucetaService {
 
     @Transactional
     public Cruceta defineCruceta(UUID pasoId, List<CrucetaItem> items) {
-        if (!knownProcesionRepository.existsPasoById(pasoId)) {
-            throw new PasoNotFoundException(pasoId);
-        }
+        var paso = knownProcesionRepository.findPasoById(pasoId)
+                .orElseThrow(() -> new PasoNotFoundException(pasoId));
         for (var item : items) {
             if (!marchaRepository.existsById(item.getMarchaId())) {
                 throw new MarchaNotFoundException(item.getMarchaId());
@@ -46,7 +45,7 @@ public class CrucetaService {
                     var newCruceta = new Cruceta(pasoId, items);
                     return crucetaRepository.save(newCruceta);
                 });
-        eventPublisher.publish(new CrucetaDefinedEvent(cruceta.getId(), pasoId, items.size()));
+        eventPublisher.publish(new CrucetaDefinedEvent(cruceta.getId(), paso.getProcesionId(), pasoId, items.size()));
         return cruceta;
     }
 
