@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
@@ -50,6 +51,24 @@ public class OutboxEventEntity implements Persistable<UUID> {
     @Column(nullable = false, updatable = false)
     private int schemaVersion;
 
+    @Column
+    private String claimedBy;
+
+    @Column
+    private Instant claimedAt;
+
+    @Column(nullable = false)
+    private int retryCount;
+
+    @Column
+    private Instant nextAttemptAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String lastError;
+
+    @Column(nullable = false)
+    private boolean terminal;
+
     protected OutboxEventEntity() {}
 
     public OutboxEventEntity(String aggregateType, UUID aggregateId, String eventType, String payload,
@@ -62,6 +81,8 @@ public class OutboxEventEntity implements Persistable<UUID> {
         this.occurredAt = occurredAt;
         this.schemaVersion = schemaVersion;
         this.processed = false;
+        this.retryCount = 0;
+        this.terminal = false;
     }
 
     @PrePersist
@@ -72,6 +93,29 @@ public class OutboxEventEntity implements Persistable<UUID> {
     public void markAsProcessed() {
         this.processed = true;
         this.processedAt = Instant.now();
+        clearClaim();
+    }
+
+    public void claim(String instanceId, Instant now) {
+        this.claimedBy = instanceId;
+        this.claimedAt = now;
+    }
+
+    public void clearClaim() {
+        this.claimedBy = null;
+        this.claimedAt = null;
+    }
+
+    public void recordFailure(String error, Instant now, Duration backoff, int maxRetries) {
+        this.retryCount++;
+        this.lastError = error;
+        clearClaim();
+        if (retryCount >= maxRetries) {
+            this.terminal = true;
+            this.nextAttemptAt = null;
+        } else {
+            this.nextAttemptAt = now.plus(backoff.multipliedBy(1L << (retryCount - 1)));
+        }
     }
 
     @Override
