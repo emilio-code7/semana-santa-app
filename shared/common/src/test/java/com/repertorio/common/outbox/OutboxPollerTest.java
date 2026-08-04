@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -28,7 +29,7 @@ class OutboxPollerTest {
     void marksAndSavesEventAfterSuccessfulSend() {
         OutboxEventEntity event = event();
         when(repository.findTop100ByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
-        when(messageSender.send("procesion-events", "payload"))
+        when(messageSender.send("procesion-events", event.getAggregateId(), event.getEventId(), "payload"))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         new OutboxPoller(repository, messageSender).processPendingOutbox();
@@ -38,10 +39,24 @@ class OutboxPollerTest {
     }
 
     @Test
+    void forwardsRowMetadataAsTransportKeysWithoutParsingPayload() {
+        OutboxEventEntity event = event();
+        when(repository.findTop100ByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(messageSender.send("procesion-events", event.getAggregateId(), event.getEventId(), "payload"))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        new OutboxPoller(repository, messageSender).processPendingOutbox();
+
+        // The poller forwards the row's aggregateId and eventId as transport metadata
+        // (Kafka message key / SQS group + dedup) — it never parses the payload to recover them.
+        verify(messageSender).send("procesion-events", event.getAggregateId(), event.getEventId(), "payload");
+    }
+
+    @Test
     void leavesEventPendingWhenSendFails() {
         OutboxEventEntity event = event();
         when(repository.findTop100ByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
-        when(messageSender.send("procesion-events", "payload"))
+        when(messageSender.send("procesion-events", event.getAggregateId(), event.getEventId(), "payload"))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("send failed")));
 
         new OutboxPoller(repository, messageSender).processPendingOutbox();
@@ -51,6 +66,7 @@ class OutboxPollerTest {
     }
 
     private OutboxEventEntity event() {
-        return new OutboxEventEntity("procesion", UUID.randomUUID(), "Created", "payload");
+        return new OutboxEventEntity("procesion", UUID.randomUUID(), "Created", "payload",
+                UUID.randomUUID(), Instant.now(), 1);
     }
 }

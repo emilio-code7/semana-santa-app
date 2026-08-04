@@ -21,7 +21,10 @@ public class OutboxEventPublisher implements OutboxPublisher {
                     domainEvent.aggregateType(),
                     domainEvent.aggregateId(),
                     domainEvent.eventType(),
-                    json));
+                    json,
+                    domainEvent.eventId(),
+                    domainEvent.occurredAt(),
+                    domainEvent.schemaVersion()));
         } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize outbox payload", e);
         }
