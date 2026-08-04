@@ -385,7 +385,8 @@ Domain Event (e.g. HermandadCreatedEvent)
             │
             ├──► SELECT TOP 100 WHERE processed = FALSE ORDER BY created_at ASC
             │
-            └──► MessageSender.send("{aggregateType}-events", payload)
+            └──► MessageSender.send("{aggregateType}-events", aggregateId, eventId, payload)
+                    │       (Kafka key = aggregateId; SQS FIFO group = aggregateId, dedup = eventId)
                     │
                     ├──► @Profile("!aws"): KafkaMessageSender → Kafka topic
                     │       (e.g. hermandad-events, procesion-events)
@@ -452,7 +453,7 @@ The AWS profile replaces Kafka topics with SQS queues. The target architecture p
 
 Each queue has a corresponding DLQ (retention 14 days, maxReceiveCount 3). **Currently 3 queues deployed** (`hermandad-events`, `hermandad-member-events`, `procesion-events`); `marcha-events` will be provisioned in the next CDK deployment.
 
-> **`cruceta-events` not provisioned**: There is no `cruceta-events` queue in the AWS architecture. Cruceta outbox rows (aggregate type `cruceta`) will be produced as `{aggregateType}-events` → `cruceta-events` by the outbox poller, but no SQS queue exists for this destination. Under AWS, the outbox poller's `SqsMessageSender.send("cruceta-events", payload)` will receive a `CompletableFuture` failure. The outbox row therefore remains `processed = false` and will be retried every poll cycle. A separate, reviewed decision is needed to provision a `cruceta-events` queue and its consumer. This is tracked in the deferred work section of the consolidation plan.
+> **`cruceta-events` not provisioned**: There is no `cruceta-events` queue in the AWS architecture. Cruceta outbox rows (aggregate type `cruceta`) will be produced as `{aggregateType}-events` → `cruceta-events` by the outbox poller, but no SQS queue exists for this destination. Under AWS, the outbox poller's `SqsMessageSender.send("cruceta-events", aggregateId, eventId, payload)` will receive a `CompletableFuture` failure. The outbox row therefore remains `processed = false` and will be retried every poll cycle. A separate, reviewed decision is needed to provision a `cruceta-events` queue and its consumer. This is tracked in the deferred work section of the consolidation plan.
 
 ### 3.5 Kafka Topology
 
@@ -596,6 +597,9 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `created_at` | TIMESTAMPTZ | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | nullable |
 | `processed` | BOOLEAN | DEFAULT FALSE |
+| `event_id` | UUID | NOT NULL |
+| `occurred_at` | TIMESTAMPTZ | NOT NULL |
+| `schema_version` | INTEGER | NOT NULL |
 
 #### `processed_event` table (idempotency)
 
@@ -605,7 +609,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL |
 
-**Flyway migrations**: V1 (create tables) → V2 (outbox) → V3 (alter payload column) → V4 (unique name) → V5 (description) → V6 (processed_event) → V7 (updated_at) → V8 (add @version column)
+**Flyway migrations**: V1 (create tables) → V2 (outbox) → V3 (alter payload column) → V4 (unique name) → V5 (description) → V6 (processed_event) → V7 (updated_at) → V8 (add @version column) → V9 (titular) → V10 (outbox event metadata: event_id, occurred_at, schema_version)
 
 ### 5.2 Procesion DB (`procesion_db`)
 
@@ -643,8 +647,11 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `created_at` | TIMESTAMPTZ NOT NULL |
 | `processed_at` | TIMESTAMPTZ nullable |
 | `processed` | BOOLEAN DEFAULT FALSE |
+| `event_id` | UUID NOT NULL |
+| `occurred_at` | TIMESTAMPTZ NOT NULL |
+| `schema_version` | INTEGER NOT NULL |
 
-**Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload) → V4 (add @version column)
+**Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload) → V4 (add @version column) → V5 (known_titular) → V6 (processed_event) → V7 (paso) → V8 (route_section + finalize) → V9 (outbox event metadata: event_id, occurred_at, schema_version)
 
 ### 5.3 Repertorio DB (`repertorio_db`)
 
@@ -716,7 +723,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox) → V9 (known_paso + route_section) → V10 (migrate cruceta to per-Paso) → V11 (cruceta_progression)
+**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox) → V9 (known_paso + route_section) → V10 (migrate cruceta to per-Paso) → V11 (cruceta_progression) → V12 (outbox event metadata: event_id, occurred_at, schema_version)
 
 ### 5.4 Domain Entity ↔ DB Mapping
 
@@ -840,14 +847,14 @@ Request with Bearer JWT
 
 | Module | Test Files | `@Test` Count | Integration Tests | Infrastructure |
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
-| **hermandad-service** | 27 | **131** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
-| **procesion-service** | 18 | **156** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 28 | **167** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
-| **shared/common** | 5 | 10 | 0 | — |
+| **hermandad-service** | 27 | **132** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
+| **procesion-service** | 18 | **157** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
+| **repertorio-service** | 28 | **168** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
+| **shared/common** | 6 | 12 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
 | **2 stub services** | 0 | 0 | 0 | ❌ |
-| **Total** | **75** | **441** | **8** | |
+| **Total** | **76** | **446** | **8** | |
 
 ### 8.2 Hermandad Tests
 
@@ -864,6 +871,8 @@ Request with Bearer JWT
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `JwtAuthenticationConverterTest.java` | Unit | 1 | Authority extraction |
 | `KeycloakUserExistenceAdapterTest.java` | Unit (mock) | 2 | User existence, not-found |
+| `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
+| `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
 
 ### 8.3 Procesion Tests
 
@@ -877,6 +886,8 @@ Request with Bearer JWT
 | `GlobalExceptionHandlerTest.java` | Unit | 3 | Error response format |
 | `ProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD, pagination, status persistence |
 | `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 16 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, cross-tenant 403 on GET/{id}/PATCH status/DELETE, 401 |
+| `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
+| `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
 
 ### 8.4 Repertorio Tests
 
@@ -899,8 +910,8 @@ Request with Bearer JWT
 | `CrucetaItemEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
 | `MarchaRepositoryLifecycleTest.java` | Persistence | 10 | Save/redefine lifecycle, version handling |
 | `CrucetaRepositoryLifecycleTest.java` | Persistence | 8 | Save/redefine lifecycle, progression persistence, version mismatch |
-| `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge |
-| `SqsMessageSenderTest.java` | Unit | 2 | MessageSender → SQS bridge (AWS profile) |
+| `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
+| `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
 | `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
 | `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
@@ -915,6 +926,8 @@ Request with Bearer JWT
 |-----------|:-----:|----------------|
 | `TenantContextTest.java` | 3 | ThreadLocal isolation |
 | `JwtMembershipExtractorTest.java` | 4 | Claim parsing, null/malformed handling |
+| `OutboxPollerTest.java` | 3 | Poller success/failure; passes aggregateId + eventId transport metadata to MessageSender |
+| `SchemaVersionContractTest.java` | 1 | `schemaVersion()` default = 1 (temporary, removed at Gate 15) |
 
 ### 8.5 Test Infrastructure
 
