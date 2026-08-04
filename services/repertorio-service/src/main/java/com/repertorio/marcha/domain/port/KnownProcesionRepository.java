@@ -25,6 +25,12 @@ public interface KnownProcesionRepository {
 
     List<KnownPaso> findPasosByProcesionId(UUID procesionId);
 
+    /**
+     * Removes the full plan projection for a deleted procesion (pasos, route sections
+     * and the procesion row itself). Idempotent: a no-op when the procesion is unknown.
+     */
+    void deleteByProcesionId(UUID procesionId);
+
     /** Returns true if the given paso ID exists in the local plan projection. */
     boolean existsPasoById(UUID pasoId);
 

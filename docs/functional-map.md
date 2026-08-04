@@ -420,19 +420,21 @@ SQS queue:  procesion-events  (@Profile("aws")   → ProcesionSqsConsumer)
     │
     └──► ProcesionEventProcessor.process(payload)
             │
-            ├──► Compute deterministic eventId (UUID.nameUUIDFromBytes)
-            ├──► Check processed_event table
+            ├──► Parse payload → envelope eventId + explicit eventType
+            ├──► Check processed_event table (key = producer eventId)
             │       ├── Existing → log "duplicate skipped", return
             │       └── New → continue
             │
-            └──► Parse event payload:
-                    ├── Has neither "previousStatus" nor "newStatus"
-                    │   → ProcesionCreatedEvent
-                    │       └── knownProcesionRepository.save(KnownProcesion(...))
-                    │
-                    └── Has "previousStatus" or "newStatus"
-                        → ProcesionStatusChangedEvent
-                            └── knownProcesionRepository.updateStatus(procesionId, newStatus)
+            └──► Switch on eventType (no payload-field inference):
+                    ├── PROCESION_CREATED
+                    │   └── knownProcesionRepository.save(KnownProcesion(...))
+                    ├── PROCESION_STATUS_CHANGED
+                    │   └── update status on known procesion
+                    ├── PROCESION_PLAN_FINALIZED
+                    │   └── saveFullPlan(KnownProcesion, Pasos, RouteSections)
+                    └── PROCESION_DELETED
+                        └── crucetaRepository.deleteByPasoId per paso,
+                            then deleteByProcesionId (Pasos, Route Sections)
 
             On success → processedEventStore.record(eventId)
             On failure → throw (transport retries / DLQ)
@@ -879,7 +881,8 @@ Request with Bearer JWT
 | Test File | Type | Tests | What it covers |
 |-----------|------|:-----:|----------------|
 | `ProcesionTest.java` | Domain unit | 11 | State machine (all transitions) |
-| `ProcesionServiceTest.java` | Unit (mock service) | 8 | CRUD, status transitions, exceptions |
+| `ProcesionServiceTest.java` | Unit (mock service) | 19 | CRUD, status transitions, exceptions, event publishing (created/status-changed/plan-finalized/deleted with explicit eventType + schemaVersion) |
+| `ProcesionEventSerializationTest.java` | Domain unit | 4 | All 4 procesion events serialize envelope fields (`eventId`, `eventType`) into the outbox payload |
 | `PasoControllerTest.java` | Web slice (MockMvc) | 12 | GET/PUT pasos, tenant guards (member read, admin write, cross-tenant 403) |
 | `ProcesionPlanControllerTest.java` | Web slice (MockMvc) | 11 | Route GET/PUT + plan finalize, tenant guards (member read, admin write, cross-tenant 403) |
 | `ProcesionControllerTest.java` | Web slice (MockMvc) | 28 | All endpoints, 401 scenarios, tenant guards (member/admin claims, cross-tenant 403, persisted-owner canRead/canWrite, CAPATAZ write), unknown path → 404 |
@@ -904,8 +907,8 @@ Request with Bearer JWT
 | `MarchaControllerTest.java` | Web slice (MockMvc) | 11 | All endpoints, 401 scenarios, search |
 | `CrucetaControllerTest.java` | Web slice (MockMvc) | 18 | Get/define cruceta, run-sheet, advance, claim-based auth (admin claim → 200, non-admin/cross-tenant → 403, cross-tenant GET → 403), concurrent replace → 409 (version mismatch/data-integrity/optimistic-lock), unknown path → 404, wrong method → 405 |
 | `GlobalExceptionHandlerTest.java` | Unit | 4 | Error response format — version mismatch/data-integrity/optimistic-lock → 409, method-not-supported → 405 |
-| `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Procesion created → save KnownProcesion, status change → update, duplicate skip, malformed payload |
-| `ProcesionEventProcessorTest.java` | Unit (mock service) | 16 | Plan finalized → project KnownPaso/KnownRouteSection, wire-format `procesionId`, duplicate handling |
+| `ProcesionEventConsumerTest.java` | Unit (mock service) | 2 | Kafka consumer delegates to processor, propagates exceptions (retry) |
+| `ProcesionEventProcessorTest.java` | Unit (mock service) | 22 | Envelope eventId dedup (same-payload-different-id both processed, same id skipped), explicit eventType dispatch, created/status-changed, plan finalized → project KnownPaso/KnownRouteSection, deletion cleanup (Pasos, Route Sections, Crucetas), unknown-type/missing-field rejection |
 | `MarchaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
 | `CrucetaEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
 | `CrucetaItemEntityTest.java` | Entity unit | 2 | JPA entity mapping invariants |
@@ -914,7 +917,7 @@ Request with Bearer JWT
 | `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
 | `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
-| `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
+| `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 5 | Save/find, exists(true), exists(false), saveFullPlan persists Pasos+RouteSections, deleteByProcesionId removes all projections |
 | `ConcurrentWriteTest.java` | **IT** (Testcontainers) | 2 | Optimistic locking through the real Marcha adapter: successive updates succeed, concurrent stale write → ObjectOptimisticLockingFailureException |
 | `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
 | `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 5 | Get cruceta, define cruceta per Paso, 404 on unknown paso, concurrent replace → never 500 (loser 409, state consistent) |

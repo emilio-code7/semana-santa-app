@@ -12,10 +12,11 @@ public record ProcesionStatusChangedEvent(
         ProcesionStatus previousStatus,
         ProcesionStatus newStatus,
         UUID eventId,
-        Instant occurredAt
+        Instant occurredAt,
+        String eventType
 ) implements DomainEvent {
     public ProcesionStatusChangedEvent(UUID id, UUID hermandadId, ProcesionStatus previousStatus, ProcesionStatus newStatus) {
-        this(id, hermandadId, previousStatus, newStatus, UUID.randomUUID(), Instant.now());
+        this(id, hermandadId, previousStatus, newStatus, UUID.randomUUID(), Instant.now(), "PROCESION_STATUS_CHANGED");
     }
 
     @Override
@@ -23,5 +24,5 @@ public record ProcesionStatusChangedEvent(
     @Override
     public UUID aggregateId() { return id; }
     @Override
-    public String eventType() { return "PROCESION_STATUS_CHANGED"; }
+    public int schemaVersion() { return 1; }
 }

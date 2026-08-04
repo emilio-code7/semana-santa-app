@@ -93,6 +93,16 @@ public class KnownProcesionRepositoryAdapter implements KnownProcesionRepository
     }
 
     @Override
+    @Transactional
+    public void deleteByProcesionId(UUID procesionId) {
+        pasoJpa.deleteByProcesionId(procesionId);
+        routeSectionJpa.deleteByProcesionId(procesionId);
+        // findById + delete instead of deleteById: Spring Data deleteById throws
+        // EmptyResultDataAccessException on a missing row, breaking deletion idempotency.
+        jpa.findById(procesionId).ifPresent(jpa::delete);
+    }
+
+    @Override
     public boolean existsPasoById(UUID pasoId) {
         return pasoJpa.existsById(pasoId);
     }

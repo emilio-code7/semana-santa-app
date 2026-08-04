@@ -41,11 +41,9 @@ Deterministic hashing is **rejected**: two events with identical payloads that r
 
 ### Consumer-side dedup is a separate mechanism
 
-Consumers currently compute a **local** dedup key — `UUID.nameUUIDFromBytes(payload)` — stored in the `processed_event` table:
+Consumer idempotency for at-least-once delivery uses the **producer-generated envelope `eventId`** as the key in the `processed_event` table — never a value derived from payload bytes. Consumers parse the payload to extract `eventId`, check the table, process, then record the event after success.
 
-- `services/repertorio-service/.../application/event/ProcesionEventProcessor.java:35`
-
-That is a consumer-side idempotency mechanism for at-least-once delivery, **not** the envelope `eventId`. It must never be presented as the envelope `eventId`. Hermandad's consumer (`IdempotentEventConsumer`) migrated to the producer-generated `eventId` in Ticket 12 (#26); Tickets 13-14 migrate the remaining consumers.
+Migration status: hermandad's consumer (`IdempotentEventConsumer`) migrated in Ticket 12 (#26); repertorio's procesion consumer (`ProcesionEventProcessor`) migrated in Ticket 13 (#27). No main-code consumer computes a payload hash anymore; new consumers must follow the same pattern.
 
 ## 4. Outbox persistence and transport
 

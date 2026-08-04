@@ -19,14 +19,15 @@ public record ProcesionPlanFinalizedEvent(
         List<PasoSnapshot> pasos,
         List<RouteSectionSnapshot> routeSections,
         UUID eventId,
-        Instant occurredAt
+        Instant occurredAt,
+        String eventType
 ) implements DomainEvent {
 
     public ProcesionPlanFinalizedEvent(UUID procesionId, UUID hermandadId, LocalDate date, LocalTime time,
                                         ProcesionStatus status, Instant planFinalizedAt,
                                         List<PasoSnapshot> pasos, List<RouteSectionSnapshot> routeSections) {
         this(procesionId, hermandadId, date, time, status, planFinalizedAt, pasos, routeSections,
-                UUID.randomUUID(), Instant.now());
+                UUID.randomUUID(), Instant.now(), "PROCESION_PLAN_FINALIZED");
     }
 
     @Override
@@ -34,7 +35,7 @@ public record ProcesionPlanFinalizedEvent(
     @Override
     public UUID aggregateId() { return procesionId; }
     @Override
-    public String eventType() { return "PROCESION_PLAN_FINALIZED"; }
+    public int schemaVersion() { return 1; }
 
     public record PasoSnapshot(UUID id, int position, UUID titularId) {}
     public record RouteSectionSnapshot(UUID id, String name, int position, String notes) {}

@@ -117,4 +117,22 @@ class KnownProcesionRepositoryIntegrationTest extends JdbcIntegrationTestBase {
         assertThat(savedSections.get(0).getId()).isEqualTo(sectionId);
         assertThat(savedSections.get(0).getName()).isEqualTo("Salida");
     }
+
+    @Test
+    void deleteByProcesionIdRemovesPasosRouteSectionsAndProcesion() {
+        var procesionId = UUID.randomUUID();
+        var hermandadId = UUID.randomUUID();
+        var pasoId = UUID.randomUUID();
+        var sectionId = UUID.randomUUID();
+
+        adapter.saveFullPlan(new KnownProcesion(procesionId, hermandadId, "PLANNED"),
+                List.of(new KnownPaso(pasoId, procesionId, 1, UUID.randomUUID())),
+                List.of(new KnownRouteSection(sectionId, procesionId, "Salida", 1, null)));
+
+        adapter.deleteByProcesionId(procesionId);
+
+        assertThat(repo.existsByProcesionId(procesionId)).isFalse();
+        assertThat(pasoJpa.existsById(pasoId)).isFalse();
+        assertThat(routeSectionJpa.existsById(sectionId)).isFalse();
+    }
 }

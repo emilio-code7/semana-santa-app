@@ -3,21 +3,17 @@ package com.repertorio.procesion.domain.event;
 import com.repertorio.common.event.DomainEvent;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.UUID;
 
-public record ProcesionCreatedEvent(
+public record ProcesionDeletedEvent(
         UUID id,
         UUID hermandadId,
-        LocalDate date,
-        LocalTime time,
         UUID eventId,
         Instant occurredAt,
         String eventType
 ) implements DomainEvent {
-    public ProcesionCreatedEvent(UUID id, UUID hermandadId, LocalDate date, LocalTime time) {
-        this(id, hermandadId, date, time, UUID.randomUUID(), Instant.now(), "PROCESION_CREATED");
+    public ProcesionDeletedEvent(UUID id, UUID hermandadId) {
+        this(id, hermandadId, UUID.randomUUID(), Instant.now(), "PROCESION_DELETED");
     }
 
     @Override
