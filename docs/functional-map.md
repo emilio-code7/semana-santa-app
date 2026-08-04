@@ -406,7 +406,7 @@ Kafka topic: hermandad-events / hermandad-member-events
     │
     └──► IdempotentEventConsumer (groupId = hermandad-service-group)
             │
-            ├──► Check processed_event table by deterministic UUID
+            ├──► Check processed_event table by envelope eventId
             │       ├── Existing → log "duplicate skipped"
             │       └── New → save processed_event row
             │

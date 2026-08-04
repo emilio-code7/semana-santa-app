@@ -23,4 +23,6 @@ public record HermandadCreatedEvent(
     public UUID aggregateId() { return id; }
     @Override
     public String eventType() { return "HERMANDAD_CREATED"; }
+    @Override
+    public int schemaVersion() { return 1; }
 }

@@ -44,9 +44,8 @@ Deterministic hashing is **rejected**: two events with identical payloads that r
 Consumers currently compute a **local** dedup key — `UUID.nameUUIDFromBytes(payload)` — stored in the `processed_event` table:
 
 - `services/repertorio-service/.../application/event/ProcesionEventProcessor.java:35`
-- `services/hermandad-service/.../adapter/inbound/kafka/IdempotentEventConsumer.java:41`
 
-That is a consumer-side idempotency mechanism for at-least-once delivery, **not** the envelope `eventId`. It must never be presented as the envelope `eventId`. Roadmap Tickets 12-14 migrate consumer dedup to the producer-generated `eventId`.
+That is a consumer-side idempotency mechanism for at-least-once delivery, **not** the envelope `eventId`. It must never be presented as the envelope `eventId`. Hermandad's consumer (`IdempotentEventConsumer`) migrated to the producer-generated `eventId` in Ticket 12 (#26); Tickets 13-14 migrate the remaining consumers.
 
 ## 4. Outbox persistence and transport
 
