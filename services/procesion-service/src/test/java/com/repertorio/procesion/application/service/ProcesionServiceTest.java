@@ -3,6 +3,7 @@ package com.repertorio.procesion.application.service;
 import com.repertorio.common.event.DomainEvent;
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
+import com.repertorio.procesion.domain.event.ProcesionDeletedEvent;
 import com.repertorio.procesion.domain.event.ProcesionPlanFinalizedEvent;
 import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;
 import com.repertorio.procesion.domain.model.ForbiddenException;
@@ -73,7 +74,10 @@ class ProcesionServiceTest {
         assertThat(result.getStatus()).isEqualTo(ProcesionStatus.PLANNED);
         verify(procesionRepository).save(any());
         verify(eventPublisher).publish(eventCaptor.capture());
-        assertThat(eventCaptor.getValue()).isInstanceOf(ProcesionCreatedEvent.class);
+        var event = eventCaptor.getValue();
+        assertThat(event).isInstanceOf(ProcesionCreatedEvent.class);
+        assertThat(event.eventType()).isEqualTo("PROCESION_CREATED");
+        assertThat(event.schemaVersion()).isEqualTo(1);
     }
 
     @Test
@@ -112,6 +116,8 @@ class ProcesionServiceTest {
         var event = (ProcesionStatusChangedEvent) eventCaptor.getValue();
         assertThat(event.previousStatus()).isEqualTo(ProcesionStatus.PLANNED);
         assertThat(event.newStatus()).isEqualTo(ProcesionStatus.IN_PROGRESS);
+        assertThat(event.eventType()).isEqualTo("PROCESION_STATUS_CHANGED");
+        assertThat(event.schemaVersion()).isEqualTo(1);
     }
 
     @Test
@@ -148,6 +154,26 @@ class ProcesionServiceTest {
         procesionService.deleteProcesion(id);
 
         verify(procesionRepository).delete(procesion);
+    }
+
+    @Test
+    void deleteProcesionPublishesDeletedEvent() {
+        var id = UUID.randomUUID();
+        var hermandadId = UUID.randomUUID();
+        var procesion = Procesion.create(hermandadId, LocalDate.now(), LocalTime.now());
+
+        when(procesionRepository.findById(id)).thenReturn(Optional.of(procesion));
+
+        procesionService.deleteProcesion(id);
+
+        verify(procesionRepository).delete(procesion);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertThat(event).isInstanceOf(ProcesionDeletedEvent.class);
+        assertThat(((ProcesionDeletedEvent) event).id()).isEqualTo(id);
+        assertThat(((ProcesionDeletedEvent) event).hermandadId()).isEqualTo(hermandadId);
+        assertThat(event.eventType()).isEqualTo("PROCESION_DELETED");
+        assertThat(event.schemaVersion()).isEqualTo(1);
     }
 
     @Test
@@ -371,5 +397,7 @@ class ProcesionServiceTest {
         assertThat(event.routeSections()).hasSize(1);
         assertThat(event.routeSections().get(0).name()).isEqualTo("Section");
         assertThat(event.routeSections().get(0).notes()).isEqualTo("notes");
+        assertThat(event.eventType()).isEqualTo("PROCESION_PLAN_FINALIZED");
+        assertThat(event.schemaVersion()).isEqualTo(1);
     }
 }

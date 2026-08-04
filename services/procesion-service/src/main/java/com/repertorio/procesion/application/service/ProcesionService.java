@@ -2,6 +2,7 @@ package com.repertorio.procesion.application.service;
 
 import com.repertorio.procesion.application.port.DomainEventPublisher;
 import com.repertorio.procesion.domain.event.ProcesionCreatedEvent;
+import com.repertorio.procesion.domain.event.ProcesionDeletedEvent;
 import com.repertorio.procesion.domain.event.ProcesionPlanFinalizedEvent;
 import com.repertorio.procesion.domain.event.ProcesionStatusChangedEvent;
 import com.repertorio.procesion.domain.model.ForbiddenException;
@@ -142,6 +143,7 @@ public class ProcesionService {
         var procesion = procesionRepository.findById(id)
                 .orElseThrow(() -> new ProcesionNotFoundException(id));
         procesionRepository.delete(procesion);
+        eventPublisher.publish(new ProcesionDeletedEvent(id, procesion.getHermandadId()));
     }
 
     public record RouteSectionItem(UUID id, String name, int position, String notes) {}
