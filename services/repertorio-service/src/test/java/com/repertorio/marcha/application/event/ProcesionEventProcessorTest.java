@@ -61,7 +61,7 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000001");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         processor.process(payload);
 
@@ -70,7 +70,7 @@ class ProcesionEventProcessorTest {
         assertThat(saved.getProcesionId()).hasToString("11111111-1111-1111-1111-111111111111");
         assertThat(saved.getHermandadId()).hasToString("22222222-2222-2222-2222-222222222222");
         assertThat(saved.getStatus()).isEqualTo("PLANNED");
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -79,7 +79,7 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000002");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         var hermandadId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -90,7 +90,7 @@ class ProcesionEventProcessorTest {
 
         assertThat(existing.getStatus()).isEqualTo("IN_PROGRESS");
         verify(knownProcesionRepository).save(existing);
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -99,14 +99,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000003");
-        when(processedEventStore.exists(eventId)).thenReturn(true);
+        when(processedEventStore.claim(eventId)).thenReturn(false);
 
         processor.process(payload);
 
         verify(objectMapper).readTree(payload);
-        verify(processedEventStore).exists(eventId);
+        verify(processedEventStore).claim(eventId);
         verifyNoInteractions(knownProcesionRepository);
-        verify(processedEventStore, never()).record(any());
     }
 
     @Test
@@ -121,7 +120,7 @@ class ProcesionEventProcessorTest {
                 .hasCauseInstanceOf(IllegalArgumentException.class);
 
         verifyNoInteractions(knownProcesionRepository);
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore, never()).claim(any());
     }
 
     @Test
@@ -130,13 +129,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000004");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verifyNoInteractions(knownProcesionRepository);
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -145,13 +144,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000005");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verifyNoInteractions(knownProcesionRepository);
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -160,14 +159,14 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000006");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownProcesionRepository.findByProcesionId(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -176,13 +175,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000007");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -191,14 +190,14 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000008");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("newStatus");
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -207,14 +206,14 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000009");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("newStatus");
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -223,13 +222,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000010");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -238,13 +237,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000011");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -253,14 +252,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000012");
-        when(processedEventStore.exists(eventId)).thenReturn(true);
+        when(processedEventStore.claim(eventId)).thenReturn(false);
 
         processor.process(payload);
 
         verify(objectMapper).readTree(payload);
-        verify(processedEventStore).exists(eventId);
+        verify(processedEventStore).claim(eventId);
         verifyNoInteractions(knownProcesionRepository);
-        verify(processedEventStore, never()).record(any());
     }
 
     // --- PLAN FINALIZED ---
@@ -271,7 +269,7 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000013");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         var hermandadId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -300,7 +298,7 @@ class ProcesionEventProcessorTest {
         assertThat(section.getPosition()).isZero();
         assertThat(section.getNotes()).isEqualTo("Salida notes");
 
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -309,7 +307,7 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000014");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         when(knownProcesionRepository.findByProcesionId(procesionId)).thenReturn(Optional.empty());
@@ -338,7 +336,7 @@ class ProcesionEventProcessorTest {
         assertThat(section.getPosition()).isZero();
         assertThat(section.getNotes()).isEqualTo("Salida notes");
 
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -347,13 +345,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000015");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(knownProcesionRepository, never()).saveFullPlan(any(), anyList(), anyList());
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     // --- EVENT-ID DEDUP SEMANTICS (ticket 13) ---
@@ -368,15 +366,15 @@ class ProcesionEventProcessorTest {
         when(objectMapper.readTree(payload2)).thenReturn(node2);
         UUID eventId1 = UUID.fromString("a0000000-0000-0000-0000-000000000016");
         UUID eventId2 = UUID.fromString("a0000000-0000-0000-0000-000000000017");
-        when(processedEventStore.exists(eventId1)).thenReturn(false);
-        when(processedEventStore.exists(eventId2)).thenReturn(false);
+        when(processedEventStore.claim(eventId1)).thenReturn(true);
+        when(processedEventStore.claim(eventId2)).thenReturn(true);
 
         processor.process(payload1);
         processor.process(payload2);
 
         verify(knownProcesionRepository, times(2)).save(any(KnownProcesion.class));
-        verify(processedEventStore).record(eventId1);
-        verify(processedEventStore).record(eventId2);
+        verify(processedEventStore).claim(eventId1);
+        verify(processedEventStore).claim(eventId2);
     }
 
     @Test
@@ -385,13 +383,13 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000018");
-        when(processedEventStore.exists(eventId)).thenReturn(false, true);
+        when(processedEventStore.claim(eventId)).thenReturn(true, false);
 
         processor.process(payload);
         processor.process(payload);
 
         verify(knownProcesionRepository, times(1)).save(any(KnownProcesion.class));
-        verify(processedEventStore, times(1)).record(eventId);
+        verify(processedEventStore, times(2)).claim(eventId);
     }
 
     // --- PROCEESION_DELETED (ticket 13) ---
@@ -402,7 +400,7 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000019");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         var paso = new KnownPaso(UUID.fromString("33333333-3333-3333-3333-333333333333"),
@@ -413,7 +411,7 @@ class ProcesionEventProcessorTest {
 
         verify(crucetaRepository).deleteByPasoId(paso.getId());
         verify(knownProcesionRepository).deleteByProcesionId(procesionId);
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -422,7 +420,7 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000021");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         var procesionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         when(knownProcesionRepository.findPasosByProcesionId(procesionId)).thenReturn(List.of());
@@ -430,7 +428,7 @@ class ProcesionEventProcessorTest {
         processor.process(payload);
 
         verify(knownProcesionRepository).deleteByProcesionId(procesionId);
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -439,14 +437,14 @@ class ProcesionEventProcessorTest {
         var node = realMapper.readTree(payload);
         when(objectMapper.readTree(payload)).thenReturn(node);
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000020");
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unknown procesion event type");
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -460,6 +458,6 @@ class ProcesionEventProcessorTest {
                 .hasMessageContaining("eventId");
 
         verify(knownProcesionRepository, never()).save(any(KnownProcesion.class));
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore, never()).claim(any());
     }
 }

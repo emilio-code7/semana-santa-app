@@ -49,14 +49,14 @@ class ProcesionSqsConsumerTest {
         var crucetaRepo = mock(CrucetaRepository.class);
 
         UUID eventId = UUID.fromString("a0000000-0000-0000-0000-000000000022");
-        when(processedEventStore.exists(eventId)).thenReturn(true);
+        when(processedEventStore.claim(eventId)).thenReturn(false);
 
         var realProcessor = new ProcesionEventProcessor(knownRepo, crucetaRepo, processedEventStore, realMapper);
         var consumerWithRealProcessor = new ProcesionSqsConsumer(realProcessor);
 
         consumerWithRealProcessor.consume(payload, ack);
 
-        verify(processedEventStore).exists(eventId);
+        verify(processedEventStore).claim(eventId);
         verifyNoInteractions(knownRepo);
         verify(ack).acknowledge();
     }

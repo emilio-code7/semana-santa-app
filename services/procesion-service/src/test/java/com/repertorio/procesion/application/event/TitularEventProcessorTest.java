@@ -53,7 +53,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"Jesus del Gran Poder","eventId":"%s","eventType":"TITULAR_CREATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.empty());
         when(knownTitularRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -63,7 +63,7 @@ class TitularEventProcessorTest {
         assertThat(titularCaptor.getValue().getId()).isEqualTo(titularId);
         assertThat(titularCaptor.getValue().getHermandadId()).isEqualTo(hermandadId);
         assertThat(titularCaptor.getValue().getName()).isEqualTo("Jesus del Gran Poder");
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -72,14 +72,13 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"Jesus","eventId":"%s","eventType":"TITULAR_CREATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.empty());
         when(knownTitularRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         processor.process(payload);
 
-        verify(processedEventStore).exists(eventId);
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -89,7 +88,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"New Name","eventId":"%s","eventType":"TITULAR_UPDATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.of(kt));
         when(knownTitularRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -97,7 +96,7 @@ class TitularEventProcessorTest {
 
         verify(knownTitularRepository).save(titularCaptor.capture());
         assertThat(titularCaptor.getValue().getName()).isEqualTo("New Name");
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -106,12 +105,12 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"Jesus","eventId":"%s","eventType":"TITULAR_CREATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(true);
+        when(processedEventStore.claim(eventId)).thenReturn(false);
 
         processor.process(payload);
 
         verify(knownTitularRepository, never()).save(any());
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -120,7 +119,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"New","eventId":"%s","eventType":"TITULAR_UPDATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> processor.process(payload))
@@ -142,14 +141,14 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"Jesus","eventId":"%s","eventType":"TITULAR_UNKNOWN"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unknown titular event type");
 
         verify(knownTitularRepository, never()).save(any());
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -171,7 +170,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"Jesus","eventId":"%s","eventType":"TITULAR_CREATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> processor.process(payload))
@@ -179,7 +178,7 @@ class TitularEventProcessorTest {
                 .hasMessageContaining("HermandadId mismatch");
 
         verify(knownTitularRepository, never()).save(any());
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -190,7 +189,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"Jesus del Gran Poder","eventId":"%s","eventType":"TITULAR_CREATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.of(existing));
         when(knownTitularRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -200,7 +199,7 @@ class TitularEventProcessorTest {
         assertThat(titularCaptor.getValue().getId()).isEqualTo(titularId);
         assertThat(titularCaptor.getValue().getHermandadId()).isEqualTo(hermandadId);
         assertThat(titularCaptor.getValue().getName()).isEqualTo("Jesus del Gran Poder");
-        verify(processedEventStore).record(eventId);
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -211,7 +210,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","hermandadId":"%s","name":"New Name","eventId":"%s","eventType":"TITULAR_UPDATED"}
                 """.formatted(titularId, hermandadId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
         when(knownTitularRepository.findById(titularId)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> processor.process(payload))
@@ -219,7 +218,7 @@ class TitularEventProcessorTest {
                 .hasMessageContaining("HermandadId mismatch");
 
         verify(knownTitularRepository, never()).save(any());
-        verify(processedEventStore, never()).record(any());
+        verify(processedEventStore).claim(eventId);
     }
 
     @Test
@@ -227,6 +226,8 @@ class TitularEventProcessorTest {
         var payload = """
                 {"id":"%s","name":"Jesus","eventId":"%s","eventType":"TITULAR_CREATED"}
                 """.formatted(titularId, eventId);
+
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -239,7 +240,7 @@ class TitularEventProcessorTest {
                 {"id":"%s","name":"New","eventId":"%s","eventType":"TITULAR_UPDATED"}
                 """.formatted(titularId, eventId);
 
-        when(processedEventStore.exists(eventId)).thenReturn(false);
+        when(processedEventStore.claim(eventId)).thenReturn(true);
 
         assertThatThrownBy(() -> processor.process(payload))
                 .isInstanceOf(IllegalArgumentException.class)

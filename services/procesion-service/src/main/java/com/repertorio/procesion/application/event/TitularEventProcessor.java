@@ -27,7 +27,7 @@ public class TitularEventProcessor {
             JsonNode root = objectMapper.readTree(payload);
             UUID eventId = extractUuid(root, "eventId");
 
-            if (processedEventStore.exists(eventId)) {
+            if (!processedEventStore.claim(eventId)) {
                 log.debug("Duplicate titular event skipped: {}", eventId);
                 return;
             }
@@ -41,8 +41,6 @@ public class TitularEventProcessor {
             } else {
                 throw new IllegalArgumentException("Unknown titular event type: " + eventType);
             }
-
-            processedEventStore.record(eventId);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid titular event: {}", e.getMessage());
             throw e;

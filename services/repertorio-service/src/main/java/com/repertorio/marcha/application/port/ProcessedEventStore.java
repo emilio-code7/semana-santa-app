@@ -3,6 +3,6 @@ package com.repertorio.marcha.application.port;
 import java.util.UUID;
 
 public interface ProcessedEventStore {
-    boolean exists(UUID eventId);
-    void record(UUID eventId);
+    /** Atomically claims (consumer_name, event_id). True = this caller owns the claim and must process. */
+    boolean claim(UUID eventId);
 }
