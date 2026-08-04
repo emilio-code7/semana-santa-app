@@ -381,9 +381,19 @@ Domain Event (e.g. HermandadCreatedEvent)
     │               │
     │               └──► OutboxEventEntity saved to outbox_event table
     │
-    └──► OutboxPoller (@Scheduled every 5s)
+    └──► OutboxPoller (@Scheduled every 5s) — multi-replica safe (Ticket 16)
             │
-            ├──► SELECT TOP 100 WHERE processed = FALSE ORDER BY created_at ASC
+            ├──► Claim tx (short): SELECT ... FOR UPDATE SKIP LOCKED, oldest eligible
+            │       row per aggregate, aggregates with an active claim excluded;
+            │       write claim token (claimed_by = instance id) + claimed_at, COMMIT
+            │
+            ├──► Publish OUTSIDE the claim tx (no long-held locks)
+            │
+            ├──► Success: processed = true, processed_at, claim cleared
+            │
+            ├──► Failure: retry_count++, last_error, next_attempt_at = exponential
+            │       backoff; terminal = true after max retries (default 5);
+            │       expired claims (default 30s) are reprocessed
             │
             └──► MessageSender.send("{aggregateType}-events", aggregateId, eventId, payload)
                     │       (Kafka key = aggregateId; SQS FIFO group = aggregateId, dedup = eventId)
@@ -397,6 +407,8 @@ Domain Event (e.g. HermandadCreatedEvent)
 ```
 
 **Transport selection**: `OutboxPoller` uses `MessageSender` (port in `shared/common`) which is bound to `KafkaMessageSender` under `@Profile("!aws")` and `SqsMessageSender` under `@Profile("aws")`. No direct `KafkaTemplate` use in the poller.
+
+**Multi-replica safety**: the poller claims rows with `SELECT ... FOR UPDATE SKIP LOCKED` inside a short transaction, commits the claim, publishes outside the transaction, and marks/records results in their own transactions (Ticket 16 / issue #30). At most one claimer per row and per aggregate at a time; rows publish per aggregate in `created_at` order; a claim older than `repertorio.outbox.claim-timeout` (default 30s) is reprocessed; failures back off exponentially (`repertorio.outbox.backoff-initial`, default 1s) and become terminal after `repertorio.outbox.max-retries` (default 5). No exactly-once promise — crash after publish before mark may redeliver; consumers are idempotent.
 
 ### 3.3 Event Consumption Flow
 
@@ -602,6 +614,14 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `event_id` | UUID | NOT NULL |
 | `occurred_at` | TIMESTAMPTZ | NOT NULL |
 | `schema_version` | INTEGER | NOT NULL |
+| `claimed_by` | VARCHAR(100) | nullable — claim token (poller instance id); NULL when unclaimed |
+| `claimed_at` | TIMESTAMPTZ | nullable — claim timestamp; claims older than 30s are reprocessed |
+| `retry_count` | INTEGER | NOT NULL DEFAULT 0 |
+| `next_attempt_at` | TIMESTAMPTZ | nullable — exponential backoff gate |
+| `last_error` | TEXT | nullable — last publish failure message |
+| `terminal` | BOOLEAN | NOT NULL DEFAULT FALSE — terminal rows are not retried |
+
+**Indexes** (V11): `idx_outbox_eligible (processed, terminal, created_at)`, `idx_outbox_aggregate_order (aggregate_id, processed, created_at)`
 
 #### `processed_event` table (idempotency)
 
@@ -611,7 +631,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL |
 
-**Flyway migrations**: V1 (create tables) → V2 (outbox) → V3 (alter payload column) → V4 (unique name) → V5 (description) → V6 (processed_event) → V7 (updated_at) → V8 (add @version column) → V9 (titular) → V10 (outbox event metadata: event_id, occurred_at, schema_version)
+**Flyway migrations**: V1 (create tables) → V2 (outbox) → V3 (alter payload column) → V4 (unique name) → V5 (description) → V6 (processed_event) → V7 (updated_at) → V8 (add @version column) → V9 (titular) → V10 (outbox event metadata: event_id, occurred_at, schema_version) → V11 (outbox claim/retry metadata: claimed_by, claimed_at, retry_count, next_attempt_at, last_error, terminal + eligible/aggregate-order indexes)
 
 ### 5.2 Procesion DB (`procesion_db`)
 
@@ -652,8 +672,16 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `event_id` | UUID NOT NULL |
 | `occurred_at` | TIMESTAMPTZ NOT NULL |
 | `schema_version` | INTEGER NOT NULL |
+| `claimed_by` | VARCHAR(100) nullable — claim token (poller instance id) |
+| `claimed_at` | TIMESTAMPTZ nullable — claim timestamp; expired after 30s |
+| `retry_count` | INTEGER NOT NULL DEFAULT 0 |
+| `next_attempt_at` | TIMESTAMPTZ nullable — exponential backoff gate |
+| `last_error` | TEXT nullable — last publish failure message |
+| `terminal` | BOOLEAN NOT NULL DEFAULT FALSE — terminal rows are not retried |
 
-**Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload) → V4 (add @version column) → V5 (known_titular) → V6 (processed_event) → V7 (paso) → V8 (route_section + finalize) → V9 (outbox event metadata: event_id, occurred_at, schema_version)
+**Indexes** (V10): `idx_outbox_eligible (processed, terminal, created_at)`, `idx_outbox_aggregate_order (aggregate_id, processed, created_at)`
+
+**Flyway migrations**: V1 (create procesion + index) → V2 (rename columns to English) → V3 (outbox table with TEXT payload) → V4 (add @version column) → V5 (known_titular) → V6 (processed_event) → V7 (paso) → V8 (route_section + finalize) → V9 (outbox event metadata: event_id, occurred_at, schema_version) → V10 (outbox claim/retry metadata: claimed_by, claimed_at, retry_count, next_attempt_at, last_error, terminal + eligible/aggregate-order indexes)
 
 ### 5.3 Repertorio DB (`repertorio_db`)
 
@@ -707,6 +735,8 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 
 #### `outbox_event` table (same schema as procesion with TEXT payload)
 
+V13 adds the claim/retry metadata columns (`claimed_by`, `claimed_at`, `retry_count`, `next_attempt_at`, `last_error`, `terminal`) plus `idx_outbox_eligible (processed, terminal, created_at)` and `idx_outbox_aggregate_order (aggregate_id, processed, created_at)` — same shape as §5.1.
+
 #### `known_procesion` table
 
 | Column | Type | Constraints |
@@ -725,7 +755,7 @@ Rules enforced in `Procesion.changeStatus()`: PLANNED → IN_PROGRESS|CANCELLED,
 | `consumer_name` | VARCHAR(100) | NOT NULL |
 | `processed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox) → V9 (known_paso + route_section) → V10 (migrate cruceta to per-Paso) → V11 (cruceta_progression) → V12 (outbox event metadata: event_id, occurred_at, schema_version)
+**Flyway migrations**: V1 (marcha table + indexes) → V2 (cruceta + cruceta_item with FKs) → V3 (seed 15 iconic marchas) → V4 (outbox table) → V5 (known_procesion) → V6 (processed_event) → V7 (add @version columns) → V8 (add processed_at to outbox) → V9 (known_paso + route_section) → V10 (migrate cruceta to per-Paso) → V11 (cruceta_progression) → V12 (outbox event metadata: event_id, occurred_at, schema_version) → V13 (outbox claim/retry metadata: claimed_by, claimed_at, retry_count, next_attempt_at, last_error, terminal + eligible/aggregate-order indexes)
 
 ### 5.4 Domain Entity ↔ DB Mapping
 
@@ -849,14 +879,14 @@ Request with Bearer JWT
 
 | Module | Test Files | `@Test` Count | Integration Tests | Infrastructure |
 |--------|:----------:|:-------------:|:-----------------:|:--------------:|
-| **hermandad-service** | 27 | **132** | 2 (Repository + Controller) | Testcontainers (PG + Kafka + Redis) |
-| **procesion-service** | 18 | **157** | 2 (Repository + Controller) | Testcontainers (PG + Kafka), @MockitoBean for Kafka/Outbox |
-| **repertorio-service** | 28 | **168** | 4 (Repository IT ×2 + Controller IT ×2) | Testcontainers (PG + Kafka), @MockitoBean for sender/outbox |
-| **shared/common** | 6 | 12 | 0 | — |
+| **hermandad-service** | 28 | **138** | 3 (Repository + Controller + MultiReplica) | Testcontainers (PG + Kafka + Redis) + real-PG ITs |
+| **procesion-service** | 19 | **163** | 3 (Repository + Controller + MultiReplica) | Testcontainers (PG + Kafka) + real-PG ITs, @MockitoBean for Kafka/Outbox |
+| **repertorio-service** | 29 | **174** | 5 (Repository IT ×2 + Controller IT ×2 + MultiReplica) | Testcontainers (PG + Kafka) + real-PG ITs, @MockitoBean for sender/outbox |
+| **shared/common** | 7 | 18 | 0 | — |
 | **api-gateway** | 0 | 0 | 0 | ❌ |
 | **discovery-server** | 0 | 0 | 0 | ❌ |
 | **2 stub services** | 0 | 0 | 0 | ❌ |
-| **Total** | **76** | **446** | **8** | |
+| **Total** | **79** | **464** | **11** | |
 
 ### 8.2 Hermandad Tests
 
@@ -875,6 +905,7 @@ Request with Bearer JWT
 | `KeycloakUserExistenceAdapterTest.java` | Unit (mock) | 2 | User existence, not-found |
 | `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
 | `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
+| `OutboxPollerMultiReplicaTest.java` | **IT** (real PG) | 6 | Two poller instances: disjoint claims under concurrency, oldest-eligible-per-aggregate, no jump-ahead under active claim, expired-claim reprocessing, retry backoff → terminal |
 
 ### 8.3 Procesion Tests
 
@@ -892,6 +923,7 @@ Request with Bearer JWT
 | `ProcesionControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 16 | HTTP lifecycle, status transitions, route PUT e2e (stable-id persist, re-define), pasos PUT e2e (stable-id persist, re-define), finalize plan idempotency e2e, cross-tenant 403 on GET/{id}/PATCH status/DELETE, 401 |
 | `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
 | `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
+| `OutboxPollerMultiReplicaTest.java` | **IT** (real PG) | 6 | Two poller instances: disjoint claims under concurrency, oldest-eligible-per-aggregate, no jump-ahead under active claim, expired-claim reprocessing, retry backoff → terminal |
 
 ### 8.4 Repertorio Tests
 
@@ -925,6 +957,7 @@ Request with Bearer JWT
 | `ProcesionSqsConsumerTest.java` | Unit (mock) | 3 | AWS SQS consumer path |
 | `RepertorioAwsProfileContextTest.java` | Context | 3 | AWS profile context loads |
 | `RepertorioAwsYamlConfigTest.java` | Config | 4 | AWS YAML config binds |
+| `OutboxPollerMultiReplicaTest.java` | **IT** (real PG) | 6 | Two poller instances: disjoint claims under concurrency, oldest-eligible-per-aggregate, no jump-ahead under active claim, expired-claim reprocessing, retry backoff → terminal |
 
 ### 8.5 Shared Tests
 
@@ -932,7 +965,8 @@ Request with Bearer JWT
 |-----------|:-----:|----------------|
 | `TenantContextTest.java` | 3 | ThreadLocal isolation |
 | `JwtMembershipExtractorTest.java` | 4 | Claim parsing, null/malformed handling |
-| `OutboxPollerTest.java` | 3 | Poller success/failure; passes aggregateId + eventId transport metadata to MessageSender |
+| `OutboxPollerTest.java` | 3 | Claim/lease poller: success → processed + claim cleared, transport keys forwarded, failure → retry recorded |
+| `OutboxEventEntityTest.java` | 6 | Claim token, claim clearing, exponential backoff, terminal at max retries |
 | `SchemaVersionContractTest.java` | 1 | `schemaVersion()` default = 1 (temporary, removed at Gate 15) |
 
 ### 8.5 Test Infrastructure
