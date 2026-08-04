@@ -917,7 +917,7 @@ Request with Bearer JWT
 | `KafkaMessageSenderTest.java` | Unit | 2 | MessageSender → Kafka bridge, key = aggregateId |
 | `SqsMessageSenderTest.java` | Unit | 3 | MessageSender → SQS bridge: FIFO group = aggregateId, dedup = eventId (AWS profile) |
 | `MarchaRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 4 | CRUD round-trip, find by composers, band type filter |
-| `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 3 | Save/find, exists(true), exists(false) |
+| `KnownProcesionRepositoryIntegrationTest.java` | **IT** (Testcontainers) | 5 | Save/find, exists(true), exists(false), saveFullPlan persists Pasos+RouteSections, deleteByProcesionId removes all projections |
 | `ConcurrentWriteTest.java` | **IT** (Testcontainers) | 2 | Optimistic locking through the real Marcha adapter: successive updates succeed, concurrent stale write → ObjectOptimisticLockingFailureException |
 | `MarchaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 6 | HTTP lifecycle, search, event publishing on create/delete |
 | `CrucetaControllerIntegrationTest.java` | **IT** (Testcontainers + MockMvc) | 5 | Get cruceta, define cruceta per Paso, 404 on unknown paso, concurrent replace → never 500 (loser 409, state consistent) |
